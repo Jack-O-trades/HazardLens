@@ -1,0 +1,10 @@
+/* Status & Severity Badges */
+.badge--critical { background: hsla(5,80%,55%,0.15);   color: var(--sev-critical); }
+.badge--high     { background: hsla(22,90%,55%,0.15);  color: var(--sev-high);     }
+.badge--medium   { background: hsla(42,95%,55%,0.15);  color: var(--sev-medium);   }
+.badge--low      { background: hsla(195,70%,50%,0.15); color: var(--sev-low);      }
+
+.badge--pending  { background: hsla(42,95%,55%,0.15);  color: var(--status-pending);  }
+.badge--verified { background: hsla(195,70%,50%,0.15); color: var(--status-verified); }
+.badge--resolved { background: hsla(145,60%,45%,0.15); color: var(--status-resolved); }
+.badge--rejected { background: hsla(5,80%,55%,0.15);   color: var(--status-rejected); }

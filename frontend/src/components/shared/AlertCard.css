@@ -1,0 +1,99 @@
+/* AlertCard */
+.alert-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: 1.125rem 1.125rem 0.875rem;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.alert-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  background: var(--bg-card-hover);
+}
+
+.alert-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.alert-card--critical { border-left-color: var(--sev-critical); }
+.alert-card--high     { border-left-color: var(--sev-high);     }
+.alert-card--medium   { border-left-color: var(--sev-medium);   }
+.alert-card--low      { border-left-color: var(--sev-low);      }
+
+.alert-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alert-card-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.alert-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.alert-card-arrow {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.alert-card:hover .alert-card-arrow {
+  transform: translateX(3px);
+  color: var(--text-accent);
+}
+
+.alert-card-title {
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.alert-card-desc {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.alert-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.alert-card-location,
+.alert-card-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Compact variant */
+.alert-card--compact { padding: 0.75rem 1rem; }
+.alert-card--compact .alert-card-title { font-size: 0.875rem; }

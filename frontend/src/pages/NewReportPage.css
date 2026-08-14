@@ -1,0 +1,565 @@
+/* ================================================================
+   NewReportPage — Responsive: warm cream on mobile + web/desktop
+   Mobile  (<768px): full-screen single-column, exact reference style
+   Tablet  (768-1023px): centered card, single column, wider
+   Desktop (≥1024px): inside AppLayout, two-column grid
+   ================================================================ */
+
+/* ── CSS tokens scoped to this page ── */
+.nr-shell {
+  --nr-bg:         hsl(38, 28%, 94%);
+  --nr-surface:    hsl(38, 25%, 97%);
+  --nr-border:     hsl(35, 18%, 82%);
+  --nr-text:       hsl(30, 15%, 18%);
+  --nr-text-sub:   hsl(30, 10%, 42%);
+  --nr-amber:      hsl(35, 82%, 52%);
+  --nr-amber-bg:   hsl(38, 60%, 90%);
+  --nr-amber-text: hsl(34, 70%, 36%);
+  --nr-slate:      hsl(220, 22%, 24%);
+  --nr-finder-bg:  hsl(220, 18%, 38%);
+  --nr-radius-sm:  10px;
+  --nr-radius-md:  14px;
+  --nr-radius-lg:  18px;
+  --nr-radius-xl:  22px;
+  --nr-ease:       cubic-bezier(0.4, 0, 0.2, 1);
+
+  color: var(--nr-text);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* ── Responsive show/hide helpers ── */
+.nr-mobile-only  { display: flex;  flex-direction: column; }
+.nr-desktop-only { display: none; }
+
+/* ================================================================
+   MOBILE (default — ≤767px)
+   Full-screen override matching the reference image exactly
+   ================================================================ */
+
+/* On mobile the shell fills the viewport (no AppLayout) */
+@media (max-width: 767px) {
+  .nr-shell {
+    min-height: 100vh;
+    background: var(--nr-bg);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Undo the app-content padding that AppLayout applies */
+  .app-content:has(.nr-shell) {
+    padding: 0 !important;
+    background: var(--nr-bg);
+  }
+}
+
+/* ── Mobile Header ── */
+.nr-header {
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--nr-border);
+  background: var(--nr-bg);
+  flex-shrink: 0;
+}
+
+.nr-back {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--nr-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 150ms var(--nr-ease);
+}
+.nr-back:hover { background: var(--nr-border); }
+
+.nr-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--nr-text);
+  letter-spacing: -0.01em;
+}
+
+/* ── Mobile body ── */
+.nr-body {
+  flex: 1;
+  gap: 16px;
+  padding: 16px 16px 0;
+  overflow-y: auto;
+}
+
+/* ================================================================
+   TABLET (768px – 1023px)
+   Centered card, single column, warmer feel
+   ================================================================ */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .nr-shell {
+    background: var(--nr-bg);
+    min-height: 100%;
+  }
+
+  /* Undo dark AppLayout background for this page content area */
+  .app-content:has(.nr-shell) {
+    background: var(--nr-bg);
+  }
+
+  .nr-mobile-only {
+    max-width: 560px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 24px 0 32px;
+  }
+
+  /* hide the mobile-only header on tablet — use desktop header instead */
+  .nr-header.nr-mobile-only { display: none; }
+
+  .nr-desktop-only {
+    display: block;
+    max-width: 560px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .nr-body {
+    padding: 0;
+  }
+}
+
+/* ================================================================
+   DESKTOP (≥1024px)
+   Two-column layout inside AppLayout shell
+   ================================================================ */
+@media (min-width: 1024px) {
+  .nr-shell {
+    background: var(--nr-bg);
+    border-radius: var(--nr-radius-xl);
+    padding: 32px;
+    min-height: 100%;
+  }
+
+  /* Undo dark AppLayout background for this content area */
+  .app-content:has(.nr-shell) {
+    background: hsl(38, 20%, 90%);
+  }
+
+  /* Hide mobile layout */
+  .nr-mobile-only { display: none !important; }
+
+  /* Show desktop layout */
+  .nr-desktop-only { display: block; }
+}
+
+/* ── Desktop page title ── */
+.nr-desktop-header {
+  margin-bottom: 28px;
+}
+
+.nr-desktop-title {
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: var(--nr-text);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.nr-desktop-sub {
+  font-size: 0.9375rem;
+  color: var(--nr-text-sub);
+  margin-top: 6px;
+}
+
+/* ── Desktop two-column grid ── */
+.nr-desktop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (min-width: 1280px) {
+  .nr-desktop-grid {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 36px;
+  }
+}
+
+.nr-desktop-left,
+.nr-desktop-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Viewfinder ── */
+.nr-viewfinder {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--nr-radius-xl);
+  overflow: hidden;
+  background: var(--nr-finder-bg);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* On desktop make the viewfinder taller */
+@media (min-width: 1024px) {
+  .nr-viewfinder {
+    aspect-ratio: 3 / 2;
+    border-radius: var(--nr-radius-xl);
+  }
+}
+
+.nr-finder-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Crosshair */
+.nr-crosshair {
+  position: relative;
+  width: 55%;
+  height: 60%;
+}
+
+.nr-ch-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-color: rgba(255,255,255,0.9);
+  border-style: dashed;
+}
+.nr-ch-tl { top: 0; left: 0;  border-width: 2px 0 0 2px; }
+.nr-ch-tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+.nr-ch-bl { bottom: 0; left: 0;  border-width: 0 0 2px 2px; }
+.nr-ch-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+.nr-crosshair::before,
+.nr-crosshair::after {
+  content: '';
+  position: absolute;
+  border-color: rgba(255,255,255,0.4);
+  border-style: dashed;
+}
+.nr-crosshair::before {
+  top: 0; left: 22px; right: 22px;
+  height: 0;
+  border-top-width: 1.5px;
+}
+.nr-crosshair::after {
+  bottom: 0; left: 22px; right: 22px;
+  height: 0;
+  border-bottom-width: 1.5px;
+}
+
+.nr-ch-plus {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nr-ch-plus span {
+  position: absolute;
+  background: rgba(255,255,255,0.85);
+}
+.nr-ch-plus span:nth-child(1) { width: 18px; height: 1.5px; }
+.nr-ch-plus span:nth-child(2) { width: 1.5px; height: 18px; }
+
+/* Viewfinder controls (bottom bar) */
+.nr-finder-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 20px;
+}
+
+.nr-ctrl-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms var(--nr-ease), transform 150ms var(--nr-ease);
+}
+.nr-ctrl-btn:hover {
+  background: rgba(255,255,255,0.28);
+  transform: scale(1.06);
+}
+
+.nr-shutter {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.95);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms var(--nr-ease);
+}
+.nr-shutter:hover  { transform: scale(1.05); }
+.nr-shutter:active { transform: scale(0.96); }
+
+.nr-shutter-ring {
+  display: block;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2.5px solid hsl(220, 18%, 42%);
+  background: white;
+}
+
+.nr-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.nr-photo-clear {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(6px);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nr-text);
+  transition: background 120ms var(--nr-ease);
+  z-index: 2;
+}
+.nr-photo-clear:hover { background: white; }
+
+/* ── Location bar ── */
+.nr-location {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--nr-amber-bg);
+  border-radius: var(--nr-radius-md);
+  padding: 13px 16px;
+}
+
+.nr-loc-icon { color: var(--nr-amber); flex-shrink: 0; }
+
+.nr-loc-name {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--nr-amber-text);
+  letter-spacing: -0.01em;
+}
+
+.nr-loc-acc {
+  font-size: 0.875rem;
+  color: var(--nr-text-sub);
+  margin-left: 2px;
+}
+
+/* ── Section ── */
+.nr-section { display: flex; flex-direction: column; gap: 10px; }
+
+.nr-section-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--nr-text);
+  letter-spacing: -0.005em;
+}
+
+.nr-section-hint {
+  font-weight: 400;
+  color: var(--nr-text-sub);
+  font-size: 0.875rem;
+}
+
+/* ── Hazard chips ── */
+.nr-chip-track-wrap { overflow: hidden; }
+
+.nr-chip-track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scroll-snap-type: x mandatory;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.nr-chip-track::-webkit-scrollbar { display: none; }
+
+/* On desktop — wrap chips instead of scroll */
+@media (min-width: 1024px) {
+  .nr-chip-track-wrap { overflow: visible; }
+  .nr-chip-track {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+}
+
+.nr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 99px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  scroll-snap-align: start;
+  border: 1.5px solid var(--nr-border);
+  background: var(--nr-surface);
+  color: var(--nr-text);
+  transition: all 140ms var(--nr-ease);
+  flex-shrink: 0;
+}
+.nr-chip:hover { border-color: var(--nr-amber); background: var(--nr-amber-bg); }
+
+.nr-chip--active {
+  background: var(--nr-amber-bg);
+  border-color: var(--nr-amber);
+  color: var(--nr-amber-text);
+  font-weight: 600;
+}
+
+.nr-chip-icon { font-size: 0.9rem; line-height: 1; }
+
+.nr-chip-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--nr-border);
+  background: var(--nr-surface);
+  color: var(--nr-text-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 140ms var(--nr-ease);
+}
+.nr-chip-arrow:hover {
+  border-color: var(--nr-amber);
+  background: var(--nr-amber-bg);
+  color: var(--nr-amber-text);
+}
+
+/* ── Severity ── */
+.nr-sev-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.nr-sev-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px 8px;
+  border-radius: var(--nr-radius-md);
+  border: 1.5px solid var(--nr-border);
+  background: var(--nr-surface);
+  color: var(--nr-text-sub);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 140ms var(--nr-ease);
+}
+.nr-sev-btn:hover { border-color: var(--nr-amber); color: var(--nr-amber-text); }
+
+.nr-sev-btn--active {
+  border-color: var(--nr-amber);
+  background: var(--nr-amber-bg);
+  color: var(--nr-amber-text);
+  font-weight: 600;
+}
+
+.nr-sev-icon { font-size: 1.05rem; line-height: 1; font-style: normal; }
+
+/* ── Textarea ── */
+.nr-textarea {
+  width: 100%;
+  border: 1.5px solid var(--nr-border);
+  border-radius: var(--nr-radius-md);
+  background: var(--nr-surface);
+  color: var(--nr-text);
+  padding: 14px 16px;
+  font-size: 0.9375rem;
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+  transition: border-color 150ms var(--nr-ease), box-shadow 150ms var(--nr-ease);
+}
+.nr-textarea::placeholder { color: var(--nr-text-sub); }
+.nr-textarea:focus {
+  border-color: var(--nr-amber);
+  box-shadow: 0 0 0 3px hsla(35, 82%, 52%, 0.14);
+}
+
+/* On desktop, let textarea grow taller */
+@media (min-width: 1024px) {
+  .nr-textarea { min-height: 140px; }
+}
+
+/* ── Submit button ── */
+.nr-submit {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 17px 24px;
+  border: none;
+  border-radius: var(--nr-radius-lg);
+  background: var(--nr-slate);
+  color: white;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background 150ms var(--nr-ease), transform 120ms var(--nr-ease),
+              box-shadow 150ms var(--nr-ease);
+  margin-top: 4px;
+}
+.nr-submit:hover {
+  background: hsl(220, 22%, 30%);
+  box-shadow: 0 4px 18px hsla(220, 22%, 10%, 0.22);
+}
+.nr-submit:active { transform: scale(0.985); }
+
+/* ── Mobile home indicator ── */
+.nr-home-indicator {
+  width: 134px;
+  height: 5px;
+  background: var(--nr-text);
+  border-radius: 99px;
+  margin: 12px auto 8px;
+  opacity: 0.18;
+}

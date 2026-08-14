@@ -1,0 +1,103 @@
+/* LoginPage */
+.login-page { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.login-title {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.login-subtitle { font-size: 0.875rem; color: var(--text-muted); margin-top: -8px; }
+
+.login-roles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+}
+
+.login-role-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.75rem 0.875rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--dur-fast) var(--ease);
+  position: relative;
+}
+
+.login-role-btn:hover {
+  border-color: var(--accent-dim);
+  background: var(--bg-card-hover);
+}
+
+.login-role-icon { font-size: 1.375rem; flex-shrink: 0; line-height: 1; }
+
+.login-role-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.login-role-desc {
+  font-size: 0.71rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+  line-height: 1.4;
+}
+
+.login-role-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: hsl(220, 25%, 7%);
+  font-weight: 700;
+}
+
+.login-form { display: flex; flex-direction: column; gap: 1rem; }
+
+.login-pass-wrap { position: relative; }
+
+.login-pass-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  transition: color var(--dur-fast) var(--ease);
+  padding: 4px;
+}
+
+.login-pass-toggle:hover { color: var(--text-secondary); }
+
+.login-pass-wrap .input { padding-right: 2.25rem; }
+
+.login-error {
+  font-size: 0.8125rem;
+  color: var(--text-danger);
+  padding: 0.5rem 0.75rem;
+  background: hsla(5,80%,55%,0.1);
+  border: 1px solid hsla(5,80%,55%,0.25);
+  border-radius: var(--radius-sm);
+}
+
+.login-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.5rem;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+}
