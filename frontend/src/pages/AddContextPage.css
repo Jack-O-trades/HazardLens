@@ -353,6 +353,87 @@
 }
 .ac-hazard-tag-close:hover { color: var(--ac-text); }
 
+/* Hazard type <select>, styled to sit invisibly inside the chip */
+.ac-hazard-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ac-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+.ac-hazard-select:focus-visible {
+  outline: 2px solid var(--ac-amber);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Empty-state control shown once the hazard tag has been cleared */
+.ac-hazard-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1.5px dashed var(--ac-border);
+  border-radius: var(--ac-radius-sm);
+  background: none;
+  color: var(--ac-text-sub);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: border-color 140ms var(--ac-ease), color 140ms var(--ac-ease);
+}
+.ac-hazard-add:hover {
+  border-color: var(--ac-amber-border);
+  color: var(--ac-amber-text);
+}
+
+/* ── Attached video chip ── */
+.ac-video-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 7px 12px;
+  border: 1.5px solid var(--ac-border);
+  border-radius: var(--ac-radius-sm);
+  background: var(--ac-surface);
+  max-width: 100%;
+}
+
+.ac-video-chip-icon { color: var(--ac-amber); flex-shrink: 0; }
+
+.ac-video-chip-name {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--ac-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-video-chip-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ac-text-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 120ms var(--ac-ease);
+}
+.ac-video-chip-close:hover { color: var(--ac-text); }
+
 /* ── Notes textarea ── */
 .ac-notes-wrap {
   position: relative;

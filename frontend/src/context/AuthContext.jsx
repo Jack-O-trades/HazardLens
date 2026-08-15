@@ -130,7 +130,10 @@ export function AuthProvider({ children }) {
     const session = loadJson(SESSION_KEY, null)
     if (!session?.roleKey) return null
     const base = MOCK_USERS[session.roleKey]
-    if (!base) return null
+    if (!base) {
+      localStorage.removeItem(SESSION_KEY)
+      return null
+    }
     return mergeUserWithProfile(base)
   })
 

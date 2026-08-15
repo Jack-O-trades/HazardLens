@@ -7,6 +7,8 @@ import AlertCard from '../components/shared/AlertCard'
 import EmptyState from '../components/shared/EmptyState'
 import './MyReportsPage.css'
 
+const STATUS_FILTERS = ['all', 'pending', 'verified', 'resolved', 'rejected']
+
 export default function MyReportsPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -27,11 +29,23 @@ export default function MyReportsPage() {
     return matchSearch && matchStatus
   })
 
+  const summary = [
+    { label: 'Total',    tone: 'neutral',  value: myReports.length,                                     color: 'var(--text-muted)' },
+    { label: 'Pending',  tone: 'pending',  value: myReports.filter(a => a.status === 'pending').length,  color: 'var(--status-pending)' },
+    { label: 'Verified', tone: 'verified', value: myReports.filter(a => a.status === 'verified').length, color: 'var(--status-verified)' },
+    { label: 'Resolved', tone: 'resolved', value: myReports.filter(a => a.status === 'resolved').length, color: 'var(--status-resolved)' },
+  ]
+
   return (
     <div className="my-reports animate-fade-in">
+
+      {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">{isFieldRole ? 'My Reports' : 'All Reports'}</h1>
+          <h1 className="page-title">
+            <FileText size={22} className="my-reports-title-icon" />
+            {isFieldRole ? 'My Reports' : 'All Reports'}
+          </h1>
           <p className="page-subtitle">
             {isFieldRole
               ? `${myReports.length} report${myReports.length !== 1 ? 's' : ''} submitted by you`
@@ -44,9 +58,24 @@ export default function MyReportsPage() {
         </button>
       </div>
 
+      {/* Summary cards */}
+      <div className="my-reports-summary">
+        {summary.map(item => (
+          <div
+            key={item.label}
+            className={`my-reports-summary-card my-reports-summary-card--${item.tone}`}
+          >
+            <span className="my-reports-summary-val" style={{ color: item.color }}>
+              {item.value}
+            </span>
+            <span className="my-reports-summary-label">{item.label}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Search & filters */}
       <div className="my-reports-controls">
-        <div className="topbar-search" style={{ flex: 1, maxWidth: 380 }}>
+        <div className="topbar-search my-reports-search">
           <Search size={15} className="topbar-search-icon" />
           <input
             id="my-reports-search"
@@ -57,33 +86,25 @@ export default function MyReportsPage() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="dashboard-filters">
-          {['all', 'pending', 'verified', 'resolved', 'rejected'].map(s => (
-            <button
-              key={s}
-              id={`my-filter-${s}`}
-              className={`dashboard-filter-btn ${statusFilter === s ? 'dashboard-filter-btn--active' : ''}`}
-              onClick={() => setStatusFilter(s)}
-            >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
 
-      {/* Summary cards */}
-      <div className="my-reports-summary">
-        {[
-          { label: 'Total', value: myReports.length, color: 'var(--text-muted)' },
-          { label: 'Pending', value: myReports.filter(a => a.status === 'pending').length, color: 'var(--status-pending)' },
-          { label: 'Verified', value: myReports.filter(a => a.status === 'verified').length, color: 'var(--status-verified)' },
-          { label: 'Resolved', value: myReports.filter(a => a.status === 'resolved').length, color: 'var(--status-resolved)' },
-        ].map(item => (
-          <div key={item.label} className="my-reports-summary-card">
-            <span className="my-reports-summary-val" style={{ color: item.color }}>{item.value}</span>
-            <span className="my-reports-summary-label">{item.label}</span>
+        <div className="my-reports-filter-group">
+          <span className="my-reports-filter-label">
+            <Filter size={13} />
+            Status
+          </span>
+          <div className="dashboard-filters">
+            {STATUS_FILTERS.map(s => (
+              <button
+                key={s}
+                id={`my-filter-${s}`}
+                className={`dashboard-filter-btn ${statusFilter === s ? 'dashboard-filter-btn--active' : ''}`}
+                onClick={() => setStatusFilter(s)}
+              >
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
 
       {/* List */}
@@ -101,7 +122,7 @@ export default function MyReportsPage() {
           )}
         />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div className="my-reports-list">
           {filtered.map(alert => <AlertCard key={alert.id} alert={alert} />)}
         </div>
       )}

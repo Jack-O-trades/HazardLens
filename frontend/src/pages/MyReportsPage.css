@@ -1,48 +1,171 @@
-/* MyReportsPage */
-.my-reports-controls {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
+/* =========================================================
+   MyReportsPage
+   ========================================================= */
+
+.my-reports {
+  padding-bottom: 2rem;
 }
 
-.my-reports-summary {
+/* Icon sits inline with the page title */
+.my-reports .page-title {
   display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.my-reports-title-icon {
+  color: var(--accent-text, var(--accent));
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   SUMMARY CARDS
+   ========================================================= */
+
+.my-reports-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
 }
 
 .my-reports-summary-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 0.875rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 3px;
-  min-width: 80px;
-  transition: all var(--dur-fast) var(--ease);
+
+  padding: 1rem 1.15rem;
+
+  background: var(--bg-card, var(--bg-surface));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+
+  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.my-reports-summary-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--card-accent, var(--border));
 }
 
 .my-reports-summary-card:hover {
-  border-color: var(--border-accent);
+  border-color: var(--border);
   transform: translateY(-1px);
 }
 
+.my-reports-summary-card--neutral  { --card-accent: var(--text-muted); }
+.my-reports-summary-card--pending  { --card-accent: var(--status-pending); }
+.my-reports-summary-card--verified { --card-accent: var(--status-verified); }
+.my-reports-summary-card--resolved { --card-accent: var(--status-resolved); }
+
 .my-reports-summary-val {
   font-family: var(--font-heading);
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 800;
   line-height: 1;
 }
 
 .my-reports-summary-label {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+  font-size: 0.75rem;
   font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* =========================================================
+   SEARCH & FILTERS
+   ========================================================= */
+
+.my-reports-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  margin-bottom: 1.25rem;
+}
+
+.my-reports-search {
+  flex: 1;
+  min-width: 220px;
+  max-width: 380px;
+}
+
+.my-reports-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.my-reports-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  font-size: 0.72rem;
+  font-weight: 700;
   letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   LIST
+   ========================================================= */
+
+.my-reports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .my-reports-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 640px) {
+
+  .my-reports-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .my-reports-search {
+    max-width: none;
+  }
+
+  .my-reports-filter-group {
+    justify-content: flex-start;
+  }
+
+}
+
+@media (max-width: 560px) {
+  .my-reports-summary {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.625rem;
+  }
 }

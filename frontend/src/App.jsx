@@ -39,7 +39,7 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
-      <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<PublicRoute><AuthLayout><LoginPage /></AuthLayout></PublicRoute>} />
 
       {/* Protected — App Shell */}

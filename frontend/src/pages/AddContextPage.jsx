@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { HAZARD_TYPES } from '../data/mockData'
 import './AddContextPage.css'
@@ -25,32 +25,78 @@ export default function AddContextPage() {
   const [photos, setPhotos] = useState(passedPhoto ? [passedPhoto] : [])
   const [photoIdx, setPhotoIdx] = useState(0)
 
+  // video (single short clip)
+  const [video, setVideo] = useState(null) // { url, name } | null
+
   // form state
-  const [hazardTag,  setHazardTag]  = useState(
-    HAZARD_TYPES.find(h => h.value === passedHazard)?.label ?? 'Storm Damage'
+  const [hazardValue, setHazardValue] = useState(
+    HAZARD_TYPES.some(h => h.value === passedHazard) ? passedHazard : ''
   )
   const [notes,      setNotes]      = useState(passedDesc)
   const [publicLoc,  setPublicLoc]  = useState(false)
+
+  const hazardTag = HAZARD_TYPES.find(h => h.value === hazardValue)?.label ?? ''
+
+  // blob: URLs created by this component, so we only revoke ones we own
+  // (not the photo handed in via navigation state, which the previous
+  // page may still need if the user navigates back).
+  const createdUrls = useRef(new Set())
+
+  useEffect(() => {
+    return () => {
+      createdUrls.current.forEach(url => URL.revokeObjectURL(url))
+    }
+  }, [])
 
   // ── helpers ──────────────────────────────────────────────────
   function addPhoto(file) {
     if (!file || !file.type.startsWith('image/')) return
     const url = URL.createObjectURL(file)
+    createdUrls.current.add(url)
     setPhotos(p => [...p, url])
     setPhotoIdx(photos.length)
   }
 
   function deletePhoto(idx) {
-    setPhotos(p => {
-      const next = p.filter((_, i) => i !== idx)
-      setPhotoIdx(Math.max(0, idx - 1))
-      return next
+    setPhotos(prev => {
+      const removed = prev[idx]
+      if (removed && createdUrls.current.has(removed)) {
+        URL.revokeObjectURL(removed)
+        createdUrls.current.delete(removed)
+      }
+      return prev.filter((_, i) => i !== idx)
+    })
+    setPhotoIdx(prev => {
+      if (idx < prev) return prev - 1
+      if (idx === prev) return Math.max(0, prev - 1)
+      return prev
+    })
+  }
+
+  function addVideo(file) {
+    if (!file || !file.type.startsWith('video/')) return
+    if (video && createdUrls.current.has(video.url)) {
+      URL.revokeObjectURL(video.url)
+      createdUrls.current.delete(video.url)
+    }
+    const url = URL.createObjectURL(file)
+    createdUrls.current.add(url)
+    setVideo({ url, name: file.name })
+  }
+
+  function removeVideo() {
+    setVideo(v => {
+      if (v && createdUrls.current.has(v.url)) {
+        URL.revokeObjectURL(v.url)
+        createdUrls.current.delete(v.url)
+      }
+      return null
     })
   }
 
   function handleSubmit() {
     navigate('/dashboard/report/success', {
-      state: { photos, hazardTag, notes, publicLoc },
+      state: { photos, video, hazardTag, notes, publicLoc },
     })
   }
 
@@ -154,26 +200,50 @@ export default function AddContextPage() {
   const HazardSection = (
     <div className="ac-section">
       <p className="ac-section-label">HAZARD TYPE</p>
-      <div className="ac-hazard-tag">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-             className="ac-hazard-tag-icon">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-          <line x1="12" y1="9" x2="12" y2="13"/>
-          <line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
-        <span className="ac-hazard-tag-text">{hazardTag}</span>
-        <button
-          className="ac-hazard-tag-close"
-          onClick={() => setHazardTag('')}
-          aria-label="Remove hazard tag"
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M18 6 6 18M6 6l12 12"/>
+      {hazardValue ? (
+        <div className="ac-hazard-tag">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+               className="ac-hazard-tag-icon">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
+          <select
+            className="ac-hazard-select"
+            value={hazardValue}
+            onChange={e => setHazardValue(e.target.value)}
+            aria-label="Hazard type"
+          >
+            {HAZARD_TYPES.map(h => (
+              <option key={h.value} value={h.value}>{h.label}</option>
+            ))}
+          </select>
+          <button
+            className="ac-hazard-tag-close"
+            onClick={() => setHazardValue('')}
+            aria-label="Remove hazard tag"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="ac-hazard-add"
+          onClick={() => setHazardValue(HAZARD_TYPES[0]?.value ?? '')}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Select hazard type
         </button>
-      </div>
+      )}
       <p className="ac-section-hint">This helps us route your report to the right team.</p>
     </div>
   )
@@ -253,11 +323,33 @@ export default function AddContextPage() {
             </svg>
           </div>
           <div>
-            <p className="ac-evidence-card-title">Add Short Video</p>
-            <p className="ac-evidence-card-sub">Record up to 30 seconds</p>
+            <p className="ac-evidence-card-title">{video ? 'Replace Video' : 'Add Short Video'}</p>
+            <p className="ac-evidence-card-sub">{video ? video.name : 'Record up to 30 seconds'}</p>
           </div>
         </button>
       </div>
+
+      {video && (
+        <div className="ac-video-chip">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+               className="ac-video-chip-icon">
+            <polygon points="23 7 16 12 23 17 23 7"/>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+          </svg>
+          <span className="ac-video-chip-name">{video.name}</span>
+          <button
+            className="ac-video-chip-close"
+            onClick={removeVideo}
+            aria-label="Remove video"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   )
 
@@ -324,7 +416,8 @@ export default function AddContextPage() {
       {/* Hidden inputs */}
       <input ref={fileRef} type="file" accept="image/*" className="sr-only"
              onChange={e => addPhoto(e.target.files[0])} />
-      <input ref={videoRef} type="file" accept="video/*" className="sr-only" />
+      <input ref={videoRef} type="file" accept="video/*" className="sr-only"
+             onChange={e => addVideo(e.target.files[0])} />
 
       {/* ── Mobile header ── */}
       <header className="ac-header ac-mobile-only">
