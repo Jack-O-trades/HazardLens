@@ -19,6 +19,7 @@ import SubmissionSuccessPage from './pages/SubmissionSuccessPage'
 import MyReportsPage from './pages/MyReportsPage'
 import ProfilePage from './pages/ProfilePage'
 import SettingsPage from './pages/SettingsPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 import QueuePage from './pages/QueuePage'
 import QueueCorrectionPage from './pages/QueueCorrectionPage'
 import AdminPage from './pages/AdminPage'
@@ -55,6 +56,7 @@ function AppRoutes() {
         <Route path="my-reports" element={<MyReportsPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="queue" element={<ProtectedRoute requireCap="canQueue"><QueuePage /></ProtectedRoute>} />
         <Route path="queue/correct/:id" element={<ProtectedRoute requireCap="canCorrect"><QueueCorrectionPage /></ProtectedRoute>} />
         <Route path="admin" element={<ProtectedRoute requireCap="canAdmin"><AdminPage /></ProtectedRoute>} />

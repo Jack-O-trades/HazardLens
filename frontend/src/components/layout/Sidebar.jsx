@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, TriangleAlert, PlusCircle, FileText,
-  Bell, Settings, ClipboardList, LogOut, X, Shield, ChevronRight
+  LayoutDashboard, Map, Bell, PlusCircle, FileText,
+  BarChart3, BookOpen, ClipboardList, Shield, User,
+  Settings, LogOut, X, ChevronRight
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import './Sidebar.css'
@@ -37,7 +38,7 @@ export default function Sidebar({ isOpen, onClose }) {
   const roleStyle = ROLE_COLORS[user.role] || ROLE_COLORS.reporter
 
   return (
-    <aside className={`sidebar ${isOpen ? 'sidebar--open' : 'sidebar--closed'}`}>
+    <aside className={`sidebar ${isOpen ? 'sidebar--open' : ''}`}>
       {/* Header */}
       <div className="sidebar-header">
         <div className="sidebar-logo">
@@ -72,9 +73,16 @@ export default function Sidebar({ isOpen, onClose }) {
           <span>Dashboard</span>
         </NavLink>
 
+        {/* NOTE: no /dashboard/live-map route exists yet in your router —
+            this link will dead-end until that page is built. */}
+        <NavLink to="/dashboard/live-map" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+          <Map size={18} />
+          <span>Live Map</span>
+        </NavLink>
+
         <NavLink to="/dashboard/notifications" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
           <Bell size={18} />
-          <span>Notifications</span>
+          <span>Alerts</span>
           <span className="sidebar-badge">3</span>
         </NavLink>
 
@@ -87,7 +95,21 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <NavLink to="/dashboard/my-reports" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
           <FileText size={18} />
-          <span>My Reports</span>
+          <span>Reports</span>
+        </NavLink>
+
+        <p className="sidebar-nav-label">Insights</p>
+
+        {/* NOTE: /dashboard/analytics and /dashboard/resources don't
+            exist yet either — same situation as Live Map above. */}
+        <NavLink to="/dashboard/analytics" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+          <BarChart3 size={18} />
+          <span>Analytics</span>
+        </NavLink>
+
+        <NavLink to="/dashboard/resources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+          <BookOpen size={18} />
+          <span>Resources</span>
         </NavLink>
 
         {caps.canQueue && (
@@ -109,7 +131,15 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <p className="sidebar-nav-label">Account</p>
 
+        {/* Profile currently points at the same Settings page as the
+            user card above — there's no page dedicated to just profile
+            info yet, so this avoids a second dead link. */}
         <NavLink to="/dashboard/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+          <User size={18} />
+          <span>Profile</span>
+        </NavLink>
+
+        <NavLink to="/dashboard/settings" end className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
           <Settings size={18} />
           <span>Settings</span>
         </NavLink>

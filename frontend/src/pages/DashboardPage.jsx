@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Layers, Filter, RefreshCw, Shield,
-  Plus, Minus, Compass, Navigation,
-  ExternalLink, AlertTriangle, ChevronDown, Wrench
+  AlertTriangle, Shield, FileText, Sun,
+  Plus, Minus, Maximize2, ChevronRight, ArrowRight
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { MOCK_ALERTS, timeAgo } from '../data/mockData'
+import { MOCK_ALERTS } from '../data/mockData'
 import './DashboardPage.css'
 
 /* ─── Severity dot colour map — exact image colours ─── */
@@ -15,13 +14,6 @@ const SEV_DOT = {
   high:     '#f97316',
   medium:   '#eab308',
   low:      '#64748b',
-}
-
-/* ─── Confidence bar colour ─── */
-function confColor(pct) {
-  if (pct >= 80) return '#ef4444'
-  if (pct >= 65) return '#f97316'
-  return '#64748b'
 }
 
 /* ─── Map marker icon components ─── */
@@ -245,262 +237,162 @@ function MockMap({ activeMarker, onMarkerClick }) {
   )
 }
 
-/* ─── Alert Card V2 — exact image match ─── */
-function AlertCardV2({ alert, onClick, onCorrect, canCorrect }) {
-  const dot = SEV_DOT[alert.severity] || '#9ca3af'
-  const barColor = confColor(alert.confidence)
+/* ─── Helpers ─── */
 
-  const warnClass = alert.severity === 'critical' ? 'av2-warning--red'
-    : alert.severity === 'high' ? 'av2-warning--orange'
-    : 'av2-warning--info'
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+}
 
+function computeRisk(alerts) {
+  const active = alerts.filter(a => a.status !== 'resolved')
+  if (active.some(a => a.severity === 'critical' || a.severity === 'high')) {
+    return { label: 'High', tone: 'critical' }
+  }
+  if (active.some(a => a.severity === 'medium')) {
+    return { label: 'Moderate', tone: 'medium' }
+  }
+  return { label: 'Low', tone: 'safe' }
+}
+
+/* ─── Stat card ─── */
+function StatCard({ icon: Icon, value, label, tone }) {
   return (
-    <div className="av2-card" onClick={() => onClick(alert.id)} role="button" tabIndex={0}
-      onKeyDown={e => e.key === 'Enter' && onClick(alert.id)}>
-
-      {/* Title row */}
-      <div className="av2-title-row">
-        <span className="av2-dot" style={{ background: dot }} />
-        <span className="av2-title">{alert.title}</span>
-        <div className="av2-action-btns" onClick={e => e.stopPropagation()}>
-          {canCorrect && alert.status !== 'resolved' && (
-            <button
-              className="av2-correct-btn"
-              onClick={() => onCorrect(alert.id)}
-              title="Open Authorized Correction"
-            >
-              <Wrench size={10} /> Correct
-            </button>
-          )}
-          <button className="av2-update-btn" onClick={() => onClick(alert.id)}>
-            Update <ExternalLink size={11} />
-          </button>
-        </div>
+    <div className={`dash-stat-card dash-stat-card--${tone}`}>
+      <div className="dash-stat-icon"><Icon size={19} /></div>
+      <div>
+        <p className="dash-stat-value">{value}</p>
+        <p className="dash-stat-label">{label}</p>
       </div>
-
-      {/* Confidence bar */}
-      <div className="av2-confidence-row">
-        <span className="av2-conf-label">Confidence: {alert.confidence}%</span>
-        <div className="av2-conf-bar-bg">
-          <div className="av2-conf-bar-fill" style={{ width: `${alert.confidence}%`, background: barColor }} />
-        </div>
-      </div>
-
-      {/* Affected areas */}
-      <p className="av2-affected">
-        <strong>Affected:</strong> {alert.affectedAreas.join(', ')}
-      </p>
-
-      {/* Source chips */}
-      <div className="av2-chips">
-        {alert.sources.map(s => (
-          <span key={s} className="av2-chip">{s}</span>
-        ))}
-      </div>
-
-      {/* Warning banner or info text */}
-      {alert.warningText ? (
-        <div className={`av2-warning ${warnClass}`}>
-          <AlertTriangle size={12} style={{ flexShrink: 0 }} />
-          {alert.warningText}
-        </div>
-      ) : alert.infoText ? (
-        <p className="av2-info-text">{alert.infoText}</p>
-      ) : null}
     </div>
   )
 }
 
-/* ─── Filter chips — matching reference image ─── */
-const FILTER_CHIPS = ['All', 'Weather', 'River', 'Seismic', 'Fire', 'Infrastructure', 'Reports']
-const SEV_FILTERS = ['All severities', 'Critical', 'High', 'Medium', 'Low']
+/* ─── Compact "Latest Alerts" row ─── */
+function LatestAlertRow({ alert, onClick }) {
+  const dot = SEV_DOT[alert.severity] || '#9ca3af'
+  return (
+    <button className="dash-alert-row" onClick={() => onClick(alert.id)}>
+      <span className="dash-alert-row-dot" style={{ background: dot }} />
+      <div className="dash-alert-row-body">
+        <span className="dash-alert-row-title">{alert.title}</span>
+        <span className="dash-alert-row-meta">
+          <span className="dash-alert-row-sev" style={{ color: dot }}>{alert.severity}</span>
+          <span className="dash-alert-row-sep">•</span>
+          <span>{alert.confidence}%</span>
+        </span>
+        <span className="dash-alert-row-location">{alert.location}</span>
+      </div>
+      <ChevronRight size={14} className="dash-alert-row-chevron" />
+    </button>
+  )
+}
 
 /* ─── Main Dashboard ─── */
 export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [activeChip, setActiveChip]         = useState('All')
-  const [activeMarker, setActiveMarker]     = useState(null)
-  const [sevFilter, setSevFilter]           = useState('All severities')
-  const [showSevDrop, setShowSevDrop]       = useState(false)
-  const [showLayersDrop, setShowLayersDrop] = useState(false)
+  const [activeMarker, setActiveMarker] = useState(null)
+  const [mapExpanded, setMapExpanded]   = useState(false)
 
-  // Apply light theme + full-width layout while on dashboard
-  useEffect(() => {
-    document.documentElement.classList.add('hl-light')
-    return () => document.documentElement.classList.remove('hl-light')
-  }, [])
+  const activeAlerts = MOCK_ALERTS.filter(a => a.status !== 'resolved')
 
-  /* Filter alerts by chip and severity */
-  const activeAlerts = MOCK_ALERTS.filter(a => {
-    if (a.status === 'resolved') return false
-    const chipOk = activeChip === 'All'
-      || (activeChip === 'Weather'        && a.type === 'weather')
-      || (activeChip === 'River'          && a.type === 'river')
-      || (activeChip === 'Seismic'        && a.type === 'seismic')
-      || (activeChip === 'Fire'           && a.type === 'fire')
-      || (activeChip === 'Infrastructure' && a.type === 'infrastructure')
-      || (activeChip === 'Reports'        && a.status === 'pending')
-    const sevOk = sevFilter === 'All severities' || a.severity === sevFilter.toLowerCase()
-    return chipOk && sevOk
-  })
+  const latestAlerts = [...activeAlerts]
+    .sort((a, b) => {
+      const order = { critical: 0, high: 1, medium: 2, low: 3 }
+      return order[a.severity] - order[b.severity]
+    })
+    .slice(0, 4)
 
-  const sortedAlerts = [...activeAlerts].sort((a, b) => {
-    const order = { critical: 0, high: 1, medium: 2, low: 3 }
-    return order[a.severity] - order[b.severity]
-  })
+  // Assumes each alert carries a `reportedAt` date — adjust this one
+  // field name if your mock data calls it something else.
+  const todayStr = new Date().toDateString()
+  const reportsToday = MOCK_ALERTS.filter(
+    a => a.reportedAt && new Date(a.reportedAt).toDateString() === todayStr
+  ).length
+
+  const risk = computeRisk(MOCK_ALERTS)
 
   return (
-    <div className="dash-v2" onClick={() => { setShowSevDrop(false); setShowLayersDrop(false) }}>
+    <div className="dash-page animate-fade-in">
 
-      {/* ── Filter bar ── */}
-      <div className="dash-filterbar">
-        {/* Layers dropdown */}
-        <div className="dash-layers-wrap" onClick={e => e.stopPropagation()}>
-          <button
-            id="layers-btn"
-            className={`dash-layers-btn ${showLayersDrop ? 'dash-layers-btn--open' : ''}`}
-            onClick={() => setShowLayersDrop(v => !v)}
-          >
-            <Layers size={14} /> Layers <ChevronDown size={12} />
-          </button>
-          {showLayersDrop && (
-            <div className="dash-layers-dropdown">
-              {['Satellite', 'Street', 'Terrain', 'Heat Map', 'Risk Zones'].map(l => (
-                <button key={l} className="dash-layer-option">{l}</button>
-              ))}
-            </div>
-          )}
+      {/* Greeting header */}
+      <div className="dash-greeting-row">
+        <div>
+          <h1 className="dash-greeting-title">
+            {getGreeting()}, {user?.name?.split(' ')[0] || 'there'}!
+          </h1>
+          <p className="dash-greeting-sub">Stay informed. Stay prepared.</p>
         </div>
-
-        {/* Chips */}
-        <div className="dash-chips">
-          {FILTER_CHIPS.map(chip => (
-            <button
-              key={chip}
-              id={`chip-${chip.toLowerCase()}`}
-              className={`dash-chip ${activeChip === chip ? 'dash-chip--active' : ''}`}
-              onClick={() => setActiveChip(chip)}
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
-
-        {/* Filter icon */}
-        <button className="dash-filter-icon-btn" aria-label="Advanced filter">
-          <Filter size={14} />
+        <button className="btn btn-primary" onClick={() => navigate('/dashboard/report/new')}>
+          Quick Report <ArrowRight size={15} />
         </button>
       </div>
 
-      {/* ── Main split: map + alerts ── */}
-      <div className="dash-main">
+      {/* Stat cards */}
+      <div className="dash-stats">
+        <StatCard icon={AlertTriangle} value={activeAlerts.length} label="Active Alerts" tone="critical" />
+        <StatCard icon={FileText}      value={reportsToday}        label="Reports Today" tone="verified" />
+        <StatCard icon={Shield}        value={risk.label}          label="Current Risk"  tone={risk.tone} />
+        <StatCard icon={Sun}           value="28°C"                label="Local Weather" tone="neutral" />
+      </div>
 
-        {/* MAP PANEL */}
-        <div className="dash-map-panel">
-          {/* Location chip — top-left */}
-          <div className="dash-map-location">
-            <span className="dash-map-loc-name">Riverdale</span>
-            <span className="dash-map-loc-sub">Midvale County ▾</span>
+      {/* Map preview + latest alerts */}
+      <div className={`dash-panels ${mapExpanded ? 'dash-panels--map-expanded' : ''}`}>
+
+        <div className="dash-map-card">
+          <div className="dash-map-card-header">
+            <h2 className="dash-map-card-title">Live Hazard Map <span>Overview</span></h2>
+            <button
+              className="dash-map-expand-btn"
+              onClick={() => setMapExpanded(v => !v)}
+              aria-label={mapExpanded ? 'Collapse map' : 'Expand map'}
+            >
+              <Maximize2 size={14} />
+            </button>
           </div>
 
-          {/* Map SVG */}
-          <div className="dash-map-svg-wrap">
+          <div className="dash-map-preview">
             <MockMap
               activeMarker={activeMarker}
               onMarkerClick={id => setActiveMarker(prev => prev === id ? null : id)}
             />
-          </div>
-
-          {/* Map controls — bottom left */}
-          <div className="dash-map-controls">
-            <button className="dash-map-ctrl-btn" aria-label="Compass"><Compass size={16} /></button>
-            <div className="dash-map-ctrl-divider" />
-            <button className="dash-map-ctrl-btn" aria-label="Zoom in"><Plus size={16} /></button>
-            <button className="dash-map-ctrl-btn" aria-label="Zoom out"><Minus size={16} /></button>
-            <div className="dash-map-ctrl-divider" />
-            <button className="dash-map-ctrl-btn" aria-label="My location"><Navigation size={16} /></button>
+            <div className="dash-map-zoom">
+              <button className="dash-map-zoom-btn" aria-label="Zoom in"><Plus size={14} /></button>
+              <button className="dash-map-zoom-btn" aria-label="Zoom out"><Minus size={14} /></button>
+            </div>
           </div>
         </div>
 
-        {/* ALERTS PANEL */}
-        <div className="dash-alerts-panel">
-          {/* Alerts header */}
-          <div className="dash-alerts-header">
-            <h2 className="dash-alerts-title">
-              Active Alerts
-              <span className="dash-alerts-count">{sortedAlerts.length}</span>
-            </h2>
-
-            {/* Severity filter dropdown */}
-            <div className="dash-sev-wrap" onClick={e => e.stopPropagation()}>
-              <button
-                id="sev-filter-btn"
-                className="dash-sev-btn"
-                onClick={() => setShowSevDrop(v => !v)}
-              >
-                Filter: {sevFilter} <ChevronDown size={12} />
-              </button>
-              {showSevDrop && (
-                <div className="dash-sev-dropdown">
-                  {SEV_FILTERS.map(s => (
-                    <button
-                      key={s}
-                      className={`dash-sev-option ${sevFilter === s ? 'dash-sev-option--active' : ''}`}
-                      onClick={() => { setSevFilter(s); setShowSevDrop(false) }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+        <div className="dash-alerts-card">
+          <div className="dash-alerts-card-header">
+            <h2 className="dash-alerts-card-title">Latest Alerts</h2>
           </div>
 
-          {/* Alert list */}
-          <div className="dash-alerts-list">
-            {sortedAlerts.length === 0 ? (
-              <div className="dash-alerts-empty">
-                <Shield size={32} />
-                <p>No active alerts match your filters</p>
-              </div>
+          <div className="dash-alerts-card-list">
+            {latestAlerts.length === 0 ? (
+              <p className="dash-alerts-empty">No active alerts right now.</p>
             ) : (
-              sortedAlerts.map(alert => (
-                <AlertCardV2
+              latestAlerts.map(alert => (
+                <LatestAlertRow
                   key={alert.id}
                   alert={alert}
                   onClick={id => navigate(`/dashboard/alert/${id}`)}
-                  onCorrect={id => navigate(`/dashboard/alert/${id}/correct`)}
-                  canCorrect={user && (user.role === 'corrector' || user.role === 'admin')}
                 />
               ))
             )}
           </div>
+
+          <button className="dash-view-all-link" onClick={() => navigate('/dashboard/my-reports')}>
+            View All Alerts <ChevronRight size={13} />
+          </button>
         </div>
+
       </div>
 
-      {/* ── Bottom status bar ── */}
-      <div className="dash-statusbar">
-        <div className="dash-statusbar-left">
-          <span className="dash-status-text">
-            Data updated: <strong>8 min ago</strong>
-          </span>
-          <button className="dash-status-refresh" aria-label="Refresh data">
-            <RefreshCw size={13} />
-          </button>
-          <span className="dash-status-sep">•</span>
-          <span className="dash-status-text">All times MDT</span>
-          <span className="dash-status-sep">•</span>
-          <span className="dash-status-text">
-            Sources: City of Riverdale, USGS, NWS, ShakeMap, Local Sensors
-          </span>
-        </div>
-        <div className="dash-statusbar-right">
-          <Shield size={13} />
-          <span className="dash-status-text">Information is monitored 24/7. Report hazards at 311.</span>
-        </div>
-      </div>
     </div>
   )
 }
