@@ -27,42 +27,37 @@
   font-family: 'Inter', system-ui, sans-serif;
 }
 
-/* ── Responsive show/hide helpers ── */
-.nr-mobile-only  { display: flex;  flex-direction: column; }
-.nr-desktop-only { display: none; }
-
 /* ================================================================
-   MOBILE (default — ≤767px)
-   Full-screen override matching the reference image exactly
+   RESPONSIVE LAYOUT SYSTEM
    ================================================================ */
 
-/* On mobile the shell fills the viewport (no AppLayout) */
-@media (max-width: 767px) {
-  .nr-shell {
-    min-height: 100vh;
-    background: var(--nr-bg);
-    display: flex;
-    flex-direction: column;
-  }
+.nr-shell {
+  min-height: 100vh;
+  background: var(--nr-bg);
+  display: flex;
+  flex-direction: column;
+}
 
-  /* Undo the app-content padding that AppLayout applies */
+/* Undo AppLayout content area padding on mobile viewport */
+@media (max-width: 767px) {
   .app-content:has(.nr-shell) {
     padding: 0 !important;
     background: var(--nr-bg);
   }
 }
 
-/* ── Mobile Header ── */
-.nr-header {
+/* ── Unified Page Header ── */
+.nr-page-header {
+  display: flex;
   align-items: center;
   gap: 14px;
-  padding: 18px 20px 14px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--nr-border);
   background: var(--nr-bg);
   flex-shrink: 0;
 }
 
-.nr-back {
+.nr-back-btn {
   width: 36px;
   height: 36px;
   border: none;
@@ -75,123 +70,114 @@
   border-radius: 8px;
   transition: background 150ms var(--nr-ease);
 }
-.nr-back:hover { background: var(--nr-border); }
+.nr-back-btn:hover { background: var(--nr-border); }
 
-.nr-title {
+.nr-page-title {
   font-size: 1.125rem;
   font-weight: 700;
   color: var(--nr-text);
   letter-spacing: -0.01em;
 }
 
-/* ── Mobile body ── */
-.nr-body {
-  flex: 1;
-  gap: 16px;
-  padding: 16px 16px 0;
-  overflow-y: auto;
+.nr-page-sub {
+  display: none;
 }
 
-/* ================================================================
-   TABLET (768px – 1023px)
-   Centered card, single column, warmer feel
-   ================================================================ */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .nr-shell {
-    background: var(--nr-bg);
-    min-height: 100%;
-  }
+/* ── Layout grid and columns ── */
+.nr-layout-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
 
-  /* Undo dark AppLayout background for this page content area */
+.nr-layout-left,
+.nr-layout-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nr-home-indicator-mobile {
+  width: 134px;
+  height: 5px;
+  background: var(--nr-text);
+  border-radius: 99px;
+  margin: 12px auto 8px;
+  opacity: 0.18;
+}
+
+/* ── Tablet adjustments (768px – 1023px) ── */
+@media (min-width: 768px) {
   .app-content:has(.nr-shell) {
     background: var(--nr-bg);
   }
 
-  .nr-mobile-only {
-    max-width: 560px;
-    margin: 0 auto;
-    width: 100%;
-    padding: 24px 0 32px;
+  .nr-page-header {
+    border-bottom: none;
+    padding: 24px 32px 0;
   }
 
-  /* hide the mobile-only header on tablet — use desktop header instead */
-  .nr-header.nr-mobile-only { display: none; }
+  .nr-page-title {
+    font-size: 1.625rem;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
 
-  .nr-desktop-only {
+  .nr-page-sub {
     display: block;
-    max-width: 560px;
-    margin: 0 auto;
-    width: 100%;
+    font-size: 0.9375rem;
+    color: var(--nr-text-sub);
+    margin-top: 6px;
   }
 
-  .nr-body {
-    padding: 0;
+  .nr-layout-container {
+    padding: 24px 32px 32px;
+    max-width: 580px;
+    margin: 0 auto;
+    width: 100%;
   }
 }
 
-/* ================================================================
-   DESKTOP (≥1024px)
-   Two-column layout inside AppLayout shell
-   ================================================================ */
+/* ── Desktop two-column grid (≥1024px) ── */
 @media (min-width: 1024px) {
   .nr-shell {
-    background: var(--nr-bg);
     border-radius: var(--nr-radius-xl);
-    padding: 32px;
+    padding: 0;
     min-height: 100%;
   }
 
-  /* Undo dark AppLayout background for this content area */
   .app-content:has(.nr-shell) {
     background: hsl(38, 20%, 90%);
   }
 
-  /* Hide mobile layout */
-  .nr-mobile-only { display: none !important; }
+  .nr-page-header {
+    padding: 32px 32px 0;
+  }
 
-  /* Show desktop layout */
-  .nr-desktop-only { display: block; }
-}
+  .nr-layout-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+    max-width: 1200px;
+    margin: 0;
+    width: 100%;
+    padding: 24px 32px 32px;
+  }
 
-/* ── Desktop page title ── */
-.nr-desktop-header {
-  margin-bottom: 28px;
-}
-
-.nr-desktop-title {
-  font-size: 1.625rem;
-  font-weight: 700;
-  color: var(--nr-text);
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.nr-desktop-sub {
-  font-size: 0.9375rem;
-  color: var(--nr-text-sub);
-  margin-top: 6px;
-}
-
-/* ── Desktop two-column grid ── */
-.nr-desktop-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px;
-  align-items: start;
-}
-
-@media (min-width: 1280px) {
-  .nr-desktop-grid {
-    grid-template-columns: 1.1fr 0.9fr;
-    gap: 36px;
+  .nr-home-indicator-mobile {
+    display: none;
   }
 }
 
-.nr-desktop-left,
-.nr-desktop-right {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+@media (min-width: 1280px) {
+  .nr-layout-container {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 36px;
+  }
 }
 
 /* ── Viewfinder ── */
@@ -563,3 +549,189 @@
   margin: 12px auto 8px;
   opacity: 0.18;
 }
+
+/* ================================================================
+   LIVE CAMERA AND GEOLOCATION WATERMARK STYLING
+   ================================================================ */
+
+.nr-video-stream-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nr-video-stream {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nr-camera-crosshair {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  pointer-events: none;
+}
+
+.nr-camera-crosshair .nr-ch-corner {
+  width: 16px;
+  height: 16px;
+  border-color: rgba(34, 197, 94, 0.85); /* Green crosshair corner */
+  border-style: solid;
+}
+
+.nr-camera-crosshair .nr-ch-tl { top: 0; left: 0; border-width: 3px 0 0 3px; }
+.nr-camera-crosshair .nr-ch-tr { top: 0; right: 0; border-width: 3px 3px 0 0; }
+.nr-camera-crosshair .nr-ch-bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
+.nr-camera-crosshair .nr-ch-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
+
+.nr-camera-crosshair .nr-ch-plus {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nr-camera-crosshair .nr-ch-plus span {
+  position: absolute;
+  background: rgba(34, 197, 94, 0.7);
+}
+
+.nr-camera-crosshair .nr-ch-plus span:nth-child(1) { width: 14px; height: 2px; }
+.nr-camera-crosshair .nr-ch-plus span:nth-child(2) { width: 2px; height: 14px; }
+
+/* GPS Live Telemetry overlay */
+.live-gps-telemetry {
+  position: absolute;
+  bottom: 96px; /* High enough to clear shutter bar */
+  left: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.78);
+  border-left: 3px solid var(--text-success);
+  padding: 8px 12px;
+  border-radius: 4px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.live-gps-telemetry .gps-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.68rem;
+  color: #fff;
+  flex-wrap: wrap;
+}
+
+/* Watermark on Captured Image Ingest */
+.nr-photo-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.nr-photo-watermark {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(15, 23, 42, 0.85);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 16px;
+  color: #fff;
+  z-index: 1;
+  pointer-events: none;
+  text-align: left;
+}
+
+.nr-photo-watermark .live-pill {
+  display: inline-block;
+  background: var(--text-success);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  letter-spacing: 0.02em;
+}
+
+.nr-photo-watermark .watermark-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: Courier New, monospace;
+  font-size: 0.68rem;
+  opacity: 0.9;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Gallery ingestion upload area */
+.nr-gallery-upload-card {
+  width: 90%;
+  height: 80%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.25);
+  border-radius: var(--nr-radius-md);
+  color: #fff;
+  padding: 24px;
+  text-align: center;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+
+.nr-gallery-upload-card:hover {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nr-upload-cloud {
+  color: var(--accent);
+}
+
+.nr-gallery-upload-card strong {
+  font-size: 0.9rem;
+}
+
+.nr-gallery-upload-card span {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.nr-camera-alert {
+  background: hsla(0, 80%, 50%, 0.15);
+  border: 1px solid var(--sev-critical);
+  color: var(--sev-critical);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.nr-ctrl-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px hsla(25, 95%, 53%, 0.4);
+}
+
+.nr-shutter-ring.select-file {
+  border-color: var(--accent);
+  background: repeating-linear-gradient(45deg, transparent, transparent 4px, var(--accent-glow) 4px, var(--accent-glow) 8px);
+}
+
+.nr-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+

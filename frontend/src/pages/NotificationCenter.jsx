@@ -5,7 +5,7 @@ import './NotificationCenter.css'
 /* ─── Static notification data matching reference image ─── */
 const NEEDS_ATTENTION = [
   {
-    id: 'n-att-1',
+    id: 'a-001',
     title: 'Flash Flood Warning',
     area: 'Downtown Metro District',
     chips: [
@@ -24,7 +24,7 @@ const NEEDS_ATTENTION = [
     badgeText: '#c0392b',
   },
   {
-    id: 'n-att-2',
+    id: 'a-002',
     title: 'Wildfire Smoke Advisory',
     area: 'Riverside County',
     chips: [
@@ -43,7 +43,7 @@ const NEEDS_ATTENTION = [
     badgeText: '#c05a00',
   },
   {
-    id: 'n-att-3',
+    id: 'a-004',
     title: 'High Wind Watch',
     area: 'Coastal Hills Region',
     chips: [

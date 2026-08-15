@@ -230,9 +230,9 @@
 .dash-alerts-card-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
 
-  padding: 0.5rem;
+  padding: 0.25rem 0.5rem;
   max-height: 360px;
   overflow-y: auto;
 }
@@ -242,11 +242,15 @@
   align-items: flex-start;
   gap: 10px;
 
-  padding: 0.7rem 0.6rem;
-  border-radius: var(--radius-md);
+  padding: 0.85rem 0.6rem;
+  border-bottom: 1px solid var(--border-subtle);
   text-align: left;
 
   transition: background var(--dur-fast) var(--ease);
+}
+
+.dash-alert-row:last-child {
+  border-bottom: none;
 }
 
 .dash-alert-row:hover { background: var(--bg-card); }
@@ -342,3 +346,178 @@
   .dash-map-preview { height: 220px; }
   .dash-panels--map-expanded .dash-map-preview { height: 380px; }
 }
+
+/* =========================================================
+   SHELTERS AND ROUTES ADDITIONAL STYLING
+   ========================================================= */
+
+.dash-side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.map-layers-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  margin-left: auto;
+}
+
+.layer-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.layer-checkbox-label input {
+  cursor: pointer;
+  accent-color: var(--text-success);
+  width: 13px;
+  height: 13px;
+}
+
+/* Evacuation flow animation */
+@keyframes routeFlowAnimation {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -26; }
+}
+
+.evac-route-flow {
+  animation: routeFlowAnimation 1.2s linear infinite;
+}
+
+/* Shelter map hover tooltip */
+.shelter-hover-label {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+g[transform]:hover .shelter-hover-label {
+  opacity: 1;
+}
+
+/* Shelter Directory Card */
+.dash-shelters-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.dash-shelters-card-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.dash-shelters-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.shelter-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+.shelter-list-item:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.shelter-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shelter-name {
+  font-size: 0.825rem;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.shelter-address {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.shelter-type {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.shelter-status-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.shelter-status-pill.open {
+  background: hsla(145,55%,36%,0.1);
+  color: var(--text-success);
+}
+
+.shelter-status-pill.full {
+  background: hsla(0,80%,50%,0.1);
+  color: var(--text-danger);
+}
+
+.shelter-capacity-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.capacity-text {
+  display: flex;
+  justify-content: justify-between;
+  align-items: center;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+.capacity-text span {
+  flex: 1;
+}
+
+.capacity-text strong {
+  color: var(--text-primary);
+}
+
+.capacity-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.capacity-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s var(--ease);
+}

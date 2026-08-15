@@ -57,7 +57,7 @@
 
 .sidebar-logo-name span { color: var(--accent); }
 
-.sidebar-close { display: none; }
+.sidebar-close { display: none !important; }
 
 /* User card — clickable button */
 .sidebar-user {
@@ -237,12 +237,5 @@
     box-shadow: var(--shadow-lg);
     opacity: 1;
   }
-  .sidebar--closed {
-    width: min(var(--sidebar-w), 82vw);
-    min-width: min(var(--sidebar-w), 82vw);
-    transform: translateX(-100%);
-    opacity: 1;
-    pointer-events: none;
-  }
-  .sidebar-close { display: flex; }
+  .sidebar-close { display: flex !important; }
 }

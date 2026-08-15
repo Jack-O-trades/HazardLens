@@ -134,7 +134,12 @@ export function AuthProvider({ children }) {
       localStorage.removeItem(SESSION_KEY)
       return null
     }
-    return mergeUserWithProfile(base)
+    const merged = mergeUserWithProfile(base)
+    if (session.customName) {
+      merged.name = session.customName
+      merged.avatar = getInitials(session.customName)
+    }
+    return merged
   })
 
   const [preferences, setPreferences] = useState(() => {
@@ -149,11 +154,24 @@ export function AuthProvider({ children }) {
     setPreferences({ ...DEFAULT_PREFERENCES, ...(all[user.id] || {}) })
   }, [user?.id])
 
-  const login = useCallback((roleKey) => {
+  const login = useCallback((args) => {
+    let roleKey = 'community'
+    let customName = ''
+    if (args && typeof args === 'object') {
+      roleKey = args.role || 'community'
+      customName = args.name || ''
+    } else if (typeof args === 'string') {
+      roleKey = args
+    }
+
     const base = MOCK_USERS[roleKey] || MOCK_USERS.community
     const merged = mergeUserWithProfile(base)
+    if (customName) {
+      merged.name = customName
+      merged.avatar = getInitials(customName)
+    }
     setUser(merged)
-    saveJson(SESSION_KEY, { roleKey })
+    saveJson(SESSION_KEY, { roleKey, customName })
     const all = loadJson(PREFS_KEY, {})
     setPreferences({ ...DEFAULT_PREFERENCES, ...(all[merged.id] || {}) })
   }, [])

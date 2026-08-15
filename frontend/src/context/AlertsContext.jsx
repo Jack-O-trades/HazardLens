@@ -93,6 +93,79 @@ export function AlertsProvider({ children }) {
     }))
   }, [alerts, persist])
 
+  const addEvidenceToAlert = useCallback((id, image, notes, username) => {
+    const now = new Date().toISOString()
+    persist(alerts.map(a => {
+      if (a.id !== id) return a
+      return {
+        ...a,
+        updatedAt: now,
+        images: [
+          ...(a.images || []),
+          {
+            url: image,
+            caption: notes || 'Additional evidence submitted',
+            uploader: username || 'Citizen Observer',
+            timestamp: now,
+            lat: a.coordinates?.lat || 45.523,
+            lng: a.coordinates?.lng || -122.676
+          }
+        ],
+        timeline: [
+          ...(a.timeline || []),
+          { time: now, actor: username || 'Citizen Observer', action: `Additional evidence uploaded: "${notes || 'No notes'}"`, type: 'report' }
+        ]
+      }
+    }))
+  }, [alerts, persist])
+
+  const submitCommunityVote = useCallback((id, isTrue, image, notes, username) => {
+    const now = new Date().toISOString()
+    persist(alerts.map(a => {
+      if (a.id !== id) return a
+      
+      let nextConf = a.confidence ?? 70
+      if (isTrue) {
+        nextConf = Math.min(nextConf + 5, 100)
+      } else {
+        nextConf = Math.max(nextConf - 15, 0)
+      }
+
+      let nextStatus = a.status
+      if (nextConf < 35 && nextStatus === 'pending') {
+        nextStatus = 'disputed'
+      }
+
+      const timelineAction = isTrue 
+        ? `Report validated as TRUE by community: "${notes || 'Confirmed active'}"`
+        : `Report disputed as FALSE by community: "${notes || 'Reported inaccurate'}"`
+
+      const updatedImages = [...(a.images || [])]
+      if (image) {
+        updatedImages.push({
+          url: image,
+          caption: notes || (isTrue ? 'Validation photo' : 'Dispute proof photo'),
+          uploader: username || 'Citizen Verifier',
+          timestamp: now,
+          lat: a.coordinates?.lat || 45.523,
+          lng: a.coordinates?.lng || -122.676
+        })
+      }
+
+      return {
+        ...a,
+        confidence: nextConf,
+        status: nextStatus,
+        updatedAt: now,
+        images: updatedImages,
+        timeline: [
+          ...(a.timeline || []),
+          { time: now, actor: username || 'Citizen Verifier', action: timelineAction, type: isTrue ? 'verify' : 'correct' }
+        ]
+      }
+    }))
+  }, [alerts, persist])
+
   const resolveAlert = useCallback((id, actorName) => {
     const now = new Date().toISOString()
     persist(alerts.map(a => a.id !== id ? a : {
@@ -146,6 +219,8 @@ export function AlertsProvider({ children }) {
       loadDraft,
       clearDraft,
       unreadNotificationCount,
+      addEvidenceToAlert,
+      submitCommunityVote,
     }}>
       {children}
     </AlertsContext.Provider>

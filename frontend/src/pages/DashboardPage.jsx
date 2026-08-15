@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, Shield, FileText, Sun,
-  Plus, Minus, Maximize2, ChevronRight, ArrowRight
+  Plus, Minus, Maximize2, ChevronRight, ArrowRight, Home
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { MOCK_ALERTS } from '../data/mockData'
+import { MOCK_ALERTS, MOCK_SHELTERS, MOCK_ROUTES } from '../data/mockData'
 import './DashboardPage.css'
 
 /* ─── Severity dot colour map — exact image colours ─── */
@@ -69,7 +69,7 @@ const MAP_MARKERS = [
 ]
 
 /* ─── Mock Map SVG — light terrain matching reference image ─── */
-function MockMap({ activeMarker, onMarkerClick }) {
+function MockMap({ activeMarker, onMarkerClick, showShelters, showRoutes }) {
   return (
     <svg
       viewBox="0 0 800 620"
@@ -190,6 +190,65 @@ function MockMap({ activeMarker, onMarkerClick }) {
         </text>
       ))}
 
+      {/* Evacuation Routes Layer */}
+      {showRoutes && MOCK_ROUTES.map(r => {
+        const dStr = r.points.map((p, idx) => {
+          const px = (p[0] / 100) * 800
+          const py = (p[1] / 100) * 620
+          return `${idx === 0 ? 'M' : 'L'} ${px} ${py}`
+        }).join(' ')
+        return (
+          <g key={r.id}>
+            {/* Glowing background */}
+            <path d={dStr} fill="none" stroke="var(--text-success)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" opacity="0.15" />
+            {/* Dashed directional flow line */}
+            <path
+              d={dStr}
+              fill="none"
+              stroke="var(--text-success)"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray="14, 12"
+              className="evac-route-flow"
+            />
+          </g>
+        )
+      })}
+
+      {/* Safe Shelters Layer */}
+      {showShelters && MOCK_SHELTERS.map(s => {
+        const px = (s.x / 100) * 800
+        const py = (s.y / 100) * 620
+        const isFull = s.status === 'full'
+        const color = isFull ? 'var(--sev-critical)' : 'var(--text-success)'
+        const occupancy = Math.round((s.capacity / s.maxCapacity) * 100)
+        return (
+          <g key={s.id} transform={`translate(${px}, ${py})`} style={{ cursor: 'pointer' }}>
+            {/* Pulsing ring for active shelters */}
+            <circle cx="0" cy="0" r="19" fill={color} opacity="0.12">
+              {!isFull && <animate attributeName="r" from="14" to="24" dur="2s" repeatCount="indefinite" />}
+              {!isFull && <animate attributeName="opacity" from="0.35" to="0" dur="2s" repeatCount="indefinite" />}
+            </circle>
+            {/* Shelter badge shield */}
+            <circle cx="0" cy="0" r="11" fill="white" stroke={color} strokeWidth="2.5" />
+            {/* Hospital/Shelter Medical Cross */}
+            <path d="M-4 -1.5 H-1.5 V-4 H1.5 V-1.5 H4 V1.5 H1.5 V4 H-1.5 V1.5 H-4 Z" fill={color} />
+            
+            {/* Shelter details popup on hover/label */}
+            <g className="shelter-hover-label" transform="translate(0, -32)">
+              <rect x="-65" y="0" width="130" height="26" rx="4" fill="#0f172a" opacity="0.92" filter="url(#markerGlow)" />
+              <text x="0" y="11" textAnchor="middle" fill="white" fontSize="8.5" fontWeight="600" fontFamily="Inter, sans-serif">
+                {s.name}
+              </text>
+              <text x="0" y="20" textAnchor="middle" fill={isFull ? '#f87171' : '#4ade80'} fontSize="7.5" fontWeight="700" fontFamily="Inter, sans-serif">
+                {isFull ? 'FULL' : `${occupancy}% Capacity (${s.capacity}/${s.maxCapacity})`}
+              </text>
+            </g>
+          </g>
+        )
+      })}
+
       {/* Map markers */}
       {MAP_MARKERS.map(m => {
         const px = (m.x / 100) * 800
@@ -297,6 +356,10 @@ export default function DashboardPage() {
 
   const [activeMarker, setActiveMarker] = useState(null)
   const [mapExpanded, setMapExpanded]   = useState(false)
+  
+  // Layer toggles
+  const [showShelters, setShowShelters] = useState(true)
+  const [showRoutes, setShowRoutes]     = useState(true)
 
   const activeAlerts = MOCK_ALERTS.filter(a => a.status !== 'resolved')
 
@@ -307,8 +370,6 @@ export default function DashboardPage() {
     })
     .slice(0, 4)
 
-  // Assumes each alert carries a `reportedAt` date — adjust this one
-  // field name if your mock data calls it something else.
   const todayStr = new Date().toDateString()
   const reportsToday = MOCK_ALERTS.filter(
     a => a.reportedAt && new Date(a.reportedAt).toDateString() === todayStr
@@ -346,6 +407,27 @@ export default function DashboardPage() {
         <div className="dash-map-card">
           <div className="dash-map-card-header">
             <h2 className="dash-map-card-title">Live Hazard Map <span>Overview</span></h2>
+            
+            {/* Map layers toolbar */}
+            <div className="map-layers-toolbar">
+              <label className="layer-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={showShelters}
+                  onChange={e => setShowShelters(e.target.checked)}
+                />
+                🏥 Safe Shelters
+              </label>
+              <label className="layer-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={showRoutes}
+                  onChange={e => setShowRoutes(e.target.checked)}
+                />
+                🟢 Evacuation Routes
+              </label>
+            </div>
+
             <button
               className="dash-map-expand-btn"
               onClick={() => setMapExpanded(v => !v)}
@@ -359,6 +441,8 @@ export default function DashboardPage() {
             <MockMap
               activeMarker={activeMarker}
               onMarkerClick={id => setActiveMarker(prev => prev === id ? null : id)}
+              showShelters={showShelters}
+              showRoutes={showRoutes}
             />
             <div className="dash-map-zoom">
               <button className="dash-map-zoom-btn" aria-label="Zoom in"><Plus size={14} /></button>
@@ -367,28 +451,80 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="dash-alerts-card">
-          <div className="dash-alerts-card-header">
-            <h2 className="dash-alerts-card-title">Latest Alerts</h2>
+        {/* Side Panels Stack: Latest Alerts + Safe Shelters Directory */}
+        <div className="dash-side-column">
+          
+          {/* Latest Alerts Panel */}
+          <div className="dash-alerts-card">
+            <div className="dash-alerts-card-header">
+              <h2 className="dash-alerts-card-title">Latest Alerts</h2>
+            </div>
+
+            <div className="dash-alerts-card-list">
+              {latestAlerts.length === 0 ? (
+                <p className="dash-alerts-empty">No active alerts right now.</p>
+              ) : (
+                latestAlerts.map(alert => (
+                  <LatestAlertRow
+                    key={alert.id}
+                    alert={alert}
+                    onClick={id => navigate(`/dashboard/alert/${id}`)}
+                  />
+                ))
+              )}
+            </div>
+
+            <button className="dash-view-all-link" onClick={() => navigate('/dashboard/my-reports')}>
+              View All Alerts <ChevronRight size={13} />
+            </button>
           </div>
 
-          <div className="dash-alerts-card-list">
-            {latestAlerts.length === 0 ? (
-              <p className="dash-alerts-empty">No active alerts right now.</p>
-            ) : (
-              latestAlerts.map(alert => (
-                <LatestAlertRow
-                  key={alert.id}
-                  alert={alert}
-                  onClick={id => navigate(`/dashboard/alert/${id}`)}
-                />
-              ))
-            )}
+          {/* Safe Shelters Directory Panel */}
+          <div className="dash-shelters-card">
+            <div className="dash-shelters-card-header">
+              <h2 className="dash-alerts-card-title flex items-center gap-2">
+                <Home size={15} />
+                Safe Shelters Directory
+              </h2>
+            </div>
+            <div className="dash-shelters-list">
+              {MOCK_SHELTERS.map(s => {
+                const isFull = s.status === 'full'
+                const occupancy = Math.round((s.capacity / s.maxCapacity) * 100)
+                const color = isFull ? 'var(--sev-critical)' : 'var(--text-success)'
+                return (
+                  <div key={s.id} className="shelter-list-item">
+                    <div className="shelter-info">
+                      <div className="flex items-center justify-between">
+                        <strong className="shelter-name">{s.name}</strong>
+                        <span className={`shelter-status-pill ${isFull ? 'full' : 'open'}`}>
+                          {isFull ? 'FULL' : 'OPEN'}
+                        </span>
+                      </div>
+                      <span className="shelter-address">{s.address}</span>
+                      <span className="shelter-type">{s.type}</span>
+                    </div>
+                    <div className="shelter-capacity-bar-wrap">
+                      <div className="capacity-text">
+                        <span>Capacity Occupancy</span>
+                        <strong>{occupancy}% ({s.capacity}/{s.maxCapacity})</strong>
+                      </div>
+                      <div className="capacity-bar">
+                        <div
+                          className="capacity-fill"
+                          style={{
+                            width: `${occupancy}%`,
+                            background: color
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
-          <button className="dash-view-all-link" onClick={() => navigate('/dashboard/my-reports')}>
-            View All Alerts <ChevronRight size={13} />
-          </button>
         </div>
 
       </div>

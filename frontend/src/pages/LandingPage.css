@@ -48,10 +48,10 @@
   font-family: var(--font-heading);
   font-size: 1.2rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: #ffffff; /* Hazard white */
   letter-spacing: -0.03em;
 }
-.lp-nav-brand span { color: var(--text-accent); }
+.lp-nav-brand span { color: var(--accent); } /* Lens orange */
 
 .lp-nav-links {
   display: flex;
@@ -63,21 +63,23 @@
 .lp-nav-link {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: #ffffff; /* other links white */
+  opacity: 0.8;
   text-decoration: none;
   padding: 0.4rem 0.9rem;
   border-radius: var(--radius-md);
-  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
 }
 .lp-nav-link:hover {
-  color: var(--text-primary);
+  color: #ffffff;
+  opacity: 1;
   background: var(--bg-card);
 }
 
 .lp-nav-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-left: auto;
 }
 
@@ -85,15 +87,16 @@
 .lp-btn-primary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 0.9rem 1.7rem;
+  padding: 0.55rem 1.25rem; /* optimized from 0.9rem 1.7rem */
   background: var(--accent);
   color: hsl(220, 25%, 7%);
   font-family: var(--font-body);
-  font-size: 1.05rem;
+  font-size: 0.875rem; /* optimized from 1.05rem */
   font-weight: 700;
   border: none;
-  border-radius: 0.9rem;
+  border-radius: 6px;
   cursor: pointer;
   box-shadow: 0 0 0 1px hsla(35, 95%, 55%, 0.15), 0 8px 30px hsla(35, 95%, 55%, 0.2);
   transition: background var(--dur-fast) var(--ease), transform 120ms var(--ease), box-shadow var(--dur-fast) var(--ease);
@@ -109,37 +112,41 @@
 .lp-btn-ghost {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 0.625rem 1.25rem;
+  padding: 0.5rem 1rem; /* optimized from 0.625rem 1.25rem */
   background: transparent;
-  color: var(--text-secondary);
+  color: #ffffff;
+  opacity: 0.8;
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 0.8125rem; /* optimized from 0.9rem */
   font-weight: 600;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease);
   white-space: nowrap;
 }
 .lp-btn-ghost:hover {
   background: var(--bg-card);
-  color: var(--text-primary);
+  color: #190e0e;
+  opacity: 1;
   border-color: var(--border-accent);
 }
 
 .lp-btn-outline {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 0.9rem 1.7rem;
+  padding: 0.55rem 1.25rem; /* optimized from 0.9rem 1.7rem */
   background: rgba(255, 255, 255, 0.02);
   color: var(--text-primary);
   font-family: var(--font-body);
-  font-size: 1.05rem;
+  font-size: 0.875rem; /* optimized from 1.05rem */
   font-weight: 600;
   border: 1.5px solid var(--border);
-  border-radius: 0.9rem;
+  border-radius: 6px;
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease);
   white-space: nowrap;
@@ -152,15 +159,15 @@
 .lp-btn-ghost-light {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 0.625rem 1.375rem;
+  padding: 0.55rem 1.25rem;
   background: hsla(0, 0%, 100%, 0.1);
   color: white;
   font-family: var(--font-body);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.875rem;
   border: 1.5px solid hsla(0, 0%, 100%, 0.25);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease);
   white-space: nowrap;
@@ -171,9 +178,9 @@
 }
 
 .lp-btn-lg {
-  padding: 0.85rem 1.875rem;
-  font-size: 1rem;
-  border-radius: var(--radius-lg);
+  padding: 0.625rem 1.375rem; /* optimized from 0.85rem 1.875rem */
+  font-size: 0.875rem; /* optimized from 1rem */
+  border-radius: 6px;
 }
 
 /* ================================================================
@@ -976,7 +983,9 @@
 @media (max-width: 600px) {
   .lp-roles-grid { grid-template-columns: 1fr; }
   .lp-steps      { grid-template-columns: 1fr; }
-  .lp-hero-ctas  { flex-direction: column; }
+  .lp-hero-ctas  { flex-direction: column; align-items: stretch; width: 100%; gap: 10px; }
+  .lp-hero-ctas .lp-btn-primary,
+  .lp-hero-ctas .lp-btn-outline { width: 100%; }
   .lp-hero-trust { flex-direction: column; gap: 0.5rem; }
   .lp-stats      { flex-direction: column; align-items: stretch; }
   .lp-stat       { border-right: none; border-bottom: 1px solid var(--border-subtle); }

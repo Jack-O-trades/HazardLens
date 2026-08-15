@@ -303,6 +303,12 @@
   .topbar-chevron { display: none; }
 }
 
+@media (min-width: 769px) {
+  .topbar-menu-btn {
+    display: none !important;
+  }
+}
+
 @media (max-width: 480px) {
   .topbar-search-wrap { display: none; }
 }
