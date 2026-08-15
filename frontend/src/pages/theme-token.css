@@ -1,0 +1,32 @@
+:root {
+  /* Type */
+  --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  /* Text */
+  --text-primary: hsl(0, 0%, 98%);        /* near-white */
+  --text-secondary: hsl(215, 15%, 75%);
+  --text-muted: hsl(215, 12%, 58%);       /* "EMAIL" / "PASSWORD" labels, subtitle */
+  --text-danger: hsl(5, 70%, 60%);
+
+  /* Surfaces */
+  --bg-page: hsl(220, 26%, 8%);           /* outer page — near-black navy */
+  --bg-card: hsl(218, 24%, 11%);          /* card behind form */
+  --bg-card-hover: hsl(218, 22%, 15%);
+  --bg-input: hsl(218, 22%, 14%);         /* role buttons, text inputs */
+
+  /* Borders */
+  --border: hsl(216, 18%, 22%);
+  --border-strong: hsl(216, 16%, 30%);
+
+  /* Accents */
+  --accent: hsl(36, 92%, 55%);            /* orange — Sign in button, logo */
+  --accent-hover: hsl(36, 92%, 47%);
+  --accent-dim: hsl(203, 45%, 55%);       /* focus ring blue */
+
+  /* Radius / motion */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --dur-fast: 0.15s;
+  --ease: ease;
+}

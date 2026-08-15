@@ -162,7 +162,7 @@ export default function TopBar({ onMenuClick }) {
                 className="topbar-drop-item"
                 role="menuitem"
                 id="drop-profile"
-                onClick={() => { setDropOpen(false); navigate('/dashboard/settings') }}
+                onClick={() => { setDropOpen(false); navigate('/dashboard/profile') }}
               >
                 <User size={15} />
                 <span>View Profile</span>

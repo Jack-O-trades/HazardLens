@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import {
   Shield, Zap, MapPin, Eye, Wrench, Bell, ArrowRight,
-  CheckCircle, ChevronRight, Lock, Globe, Users
+  CheckCircle, ChevronRight, Lock, Users
 } from 'lucide-react'
 import './LandingPage.css'
 
@@ -251,12 +251,8 @@ export default function LandingPage() {
             <div className="lp-hero-trust">
               <div className="lp-trust-item"><CheckCircle size={14} />No credit card required</div>
               <div className="lp-trust-item"><Lock size={14} />SOC 2 compliant</div>
-              <div className="lp-trust-item"><Globe size={14} />Used in 12+ cities</div>
+              <div className="lp-trust-item"><Shield size={14} />Used in 12+ cities</div>
             </div>
-          </div>
-
-          <div className="lp-hero-visual">
-            <AlertPreview />
           </div>
         </div>
       </section>

@@ -5,7 +5,7 @@ import TopBar from './TopBar'
 import './AppLayout.css'
 
 export default function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   return (
     <div className="app-layout">
@@ -17,7 +17,7 @@ export default function AppLayout() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="app-main">
-        <TopBar onMenuClick={() => setSidebarOpen(true)} />
+        <TopBar onMenuClick={() => setSidebarOpen(prev => !prev)} />
         <main className="app-content">
           <Outlet />
         </main>

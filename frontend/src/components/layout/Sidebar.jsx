@@ -37,7 +37,7 @@ export default function Sidebar({ isOpen, onClose }) {
   const roleStyle = ROLE_COLORS[user.role] || ROLE_COLORS.reporter
 
   return (
-    <aside className={`sidebar ${isOpen ? 'sidebar--open' : ''}`}>
+    <aside className={`sidebar ${isOpen ? 'sidebar--open' : 'sidebar--closed'}`}>
       {/* Header */}
       <div className="sidebar-header">
         <div className="sidebar-logo">

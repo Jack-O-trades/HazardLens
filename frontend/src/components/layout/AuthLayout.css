@@ -1,47 +1,48 @@
-/* AuthLayout */
+/* AuthLayout — Light Theme */
 .auth-layout {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, hsla(35, 95%, 55%, 0.08) 0%, transparent 70%),
-    var(--bg-base);
+  background: var(--bg-base);
   position: relative;
   overflow: hidden;
 }
 
+/* Subtle dot grid texture */
 .auth-layout::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 60px,
-      hsla(220, 15%, 30%, 0.04) 60px,
-      hsla(220, 15%, 30%, 0.04) 61px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 60px,
-      hsla(220, 15%, 30%, 0.04) 60px,
-      hsla(220, 15%, 30%, 0.04) 61px
-    );
+    radial-gradient(circle, hsl(220, 13%, 82%) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Soft orange glow top-center */
+.auth-layout::after {
+  content: '';
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(ellipse, hsla(25, 95%, 53%, 0.07) 0%, transparent 70%);
   pointer-events: none;
 }
 
 .auth-card {
   width: 100%;
-  max-width: 480px;
-  background: var(--bg-card);
+  max-width: 520px;
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  padding: 2.5rem;
-  box-shadow: var(--shadow-lg);
+  border-radius: 18px;
+  padding: 2rem 2rem 1.75rem;
+  box-shadow: 0 4px 24px hsla(220, 20%, 40%, 0.1), 0 1px 4px hsla(220, 20%, 40%, 0.06);
   animation: fadeIn 0.4s var(--ease) both;
   position: relative;
   z-index: 1;
@@ -51,22 +52,23 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 2rem;
+  margin: 0 0 2rem;
 }
 
 .auth-logo-icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
 }
 
 .auth-logo-name {
   font-family: var(--font-heading);
-  font-size: 1.375rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 .auth-logo-name span {
-  color: var(--text-accent);
+  color: var(--accent);
 }

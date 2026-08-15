@@ -1,168 +1,122 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Check, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { ArrowRight, Eye, EyeOff } from 'lucide-react'
 import './LoginPage.css'
 
 const ROLES = [
-  {
-    id: 'community',
-    label: 'Community',
-    icon: '👥',
-    desc: 'Receive local hazard alerts and report observations',
-    color: 'hsl(210,65%,55%)',
-    email: 'maya.chen@riverdale.gov',
-    pass: 'community123',
-  },
-  {
-    id: 'reporter',
-    label: 'Reporter',
-    icon: '📋',
-    desc: 'Submit hazard reports from the field',
-    color: 'hsl(42,95%,55%)',
-    email: 'jordan.lee@hazardlens.io',
-    pass: 'reporter123',
-  },
-  {
-    id: 'verifier',
-    label: 'Verifier',
-    icon: '🔍',
-    desc: 'Review and verify submitted incidents',
-    color: 'hsl(195,70%,55%)',
-    email: 'sam.rivera@hazardlens.io',
-    pass: 'verifier123',
-  },
-  {
-    id: 'corrector',
-    label: 'Corrector',
-    icon: '🛠️',
-    desc: 'Implement and document corrections',
-    color: 'hsl(145,60%,48%)',
-    email: 'alex.morgan@hazardlens.io',
-    pass: 'corrector123',
-  },
-  {
-    id: 'admin',
-    label: 'Admin',
-    icon: '🛡️',
-    desc: 'Full platform administration',
-    color: 'hsl(280,70%,68%)',
-    email: 'priya.nair@hazardlens.io',
-    pass: 'admin123',
-  },
+  { value: 'community',  name: 'Community Member', desc: 'Browse alerts and stay informed in your area',   icon: '👥' },
+  { value: 'reporter',   name: 'Reporter',         desc: 'Submit hazard reports from the field',           icon: '📢' },
+  { value: 'verifier',   name: 'Verifier',         desc: 'Review and confirm submitted reports',           icon: '🔍' },
+  { value: 'corrector',  name: 'Corrector',        desc: 'Apply corrections to verified alerts',           icon: '🛠️' },
+  { value: 'admin',      name: 'Admin',            desc: 'Full platform oversight and management',         icon: '🛡️' },
 ]
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login } = useAuth() // assumed signature: login({ name, role })
   const navigate = useNavigate()
-  const [selectedRole, setSelectedRole] = useState(null)
-  const [email, setEmail] = useState('')
+
+  const [selectedRole, setSelectedRole] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
-  const [showPass, setShowPass] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
 
-  function selectRole(role) {
-    setSelectedRole(role)
-    setEmail(role.email)
-    setPassword(role.pass)
-    setError('')
-  }
-
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault()
-    if (!selectedRole) { setError('Please select a role to continue.'); return }
-    setLoading(true)
-    // Simulate network delay
-    await new Promise(r => setTimeout(r, 600))
-    login(selectedRole.id)
+    setError('')
+
+    if (!selectedRole) {
+      setError('Please select a role to continue.')
+      return
+    }
+    if (!name.trim()) {
+      setError('Please enter your name.')
+      return
+    }
+
+    login({ name: name.trim(), role: selectedRole })
     navigate('/dashboard')
   }
 
   return (
     <div className="login-page">
-      <h2 className="login-title">Welcome Back</h2>
-      <p className="login-subtitle">Select your role to sign in</p>
 
-      {/* Role selection */}
+      <div>
+        <h1 className="login-title">Sign In</h1>
+        <p className="login-subtitle">Select your role, then enter your details to continue.</p>
+      </div>
+
       <div className="login-roles">
-        {ROLES.map((role) => (
+        {ROLES.map(r => (
           <button
-            key={role.id}
-            id={`role-btn-${role.id}`}
-            className={`login-role-btn ${selectedRole?.id === role.id ? 'login-role-btn--active' : ''}`}
-            style={selectedRole?.id === role.id ? { borderColor: role.color, boxShadow: `0 0 0 3px ${role.color}22` } : {}}
-            onClick={() => selectRole(role)}
+            key={r.value}
             type="button"
+            className={`login-role-btn ${selectedRole === r.value ? 'login-role-btn--active' : ''}`}
+            onClick={() => setSelectedRole(r.value)}
+            aria-pressed={selectedRole === r.value}
           >
-            <span className="login-role-icon">{role.icon}</span>
+            <span className="login-role-icon">{r.icon}</span>
             <div>
-              <p className="login-role-name" style={selectedRole?.id === role.id ? { color: role.color } : {}}>
-                {role.label}
-              </p>
-              <p className="login-role-desc">{role.desc}</p>
+              <p className="login-role-name">{r.name}</p>
+              <p className="login-role-desc">{r.desc}</p>
             </div>
-            {selectedRole?.id === role.id && (
-              <span className="login-role-check" style={{ background: role.color }}>✓</span>
+            {selectedRole === r.value && (
+              <span className="login-role-check">
+                <Check size={10} strokeWidth={3} />
+              </span>
             )}
           </button>
         ))}
       </div>
 
-      {/* Credentials form */}
-      <form className="login-form" onSubmit={handleSubmit} id="login-form">
-        <div className="input-group">
-          <label className="input-label" htmlFor="login-email">Email</label>
+      <form className="login-form" onSubmit={handleSubmit}>
+
+        <div className="login-field">
+          <label className="login-field-label" htmlFor="login-name">Full name</label>
           <input
-            id="login-email"
-            type="email"
+            id="login-name"
             className="input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            required
+            type="text"
+            placeholder="Enter your name"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            autoComplete="name"
           />
         </div>
 
-        <div className="input-group">
-          <label className="input-label" htmlFor="login-password">Password</label>
+        <div className="login-field">
+          <label className="login-field-label" htmlFor="login-password">Password</label>
           <div className="login-pass-wrap">
             <input
               id="login-password"
-              type={showPass ? 'text' : 'password'}
               className="input"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Enter your password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
             />
             <button
               type="button"
               className="login-pass-toggle"
-              onClick={() => setShowPass(!showPass)}
-              aria-label={showPass ? 'Hide password' : 'Show password'}
+              onClick={() => setShowPassword(v => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
         </div>
 
         {error && <p className="login-error">{error}</p>}
 
-        <button
-          id="login-submit-btn"
-          type="submit"
-          className="btn btn-primary"
-          style={{ width: '100%', marginTop: 4, justifyContent: 'center' }}
-          disabled={loading}
-        >
-          {loading ? <span className="spinner" /> : <>Sign In <ArrowRight size={16} /></>}
+        <button type="submit" className="btn btn-primary login-submit-btn">
+          Sign In
+          <ArrowRight size={16} />
         </button>
+
       </form>
 
-      <p className="login-hint">
-        💡 Click any role above to auto-fill demo credentials
-      </p>
     </div>
   )
 }

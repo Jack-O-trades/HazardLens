@@ -17,6 +17,7 @@ import NewReportPage from './pages/NewReportPage'
 import AddContextPage from './pages/AddContextPage'
 import SubmissionSuccessPage from './pages/SubmissionSuccessPage'
 import MyReportsPage from './pages/MyReportsPage'
+import ProfilePage from './pages/ProfilePage'
 import SettingsPage from './pages/SettingsPage'
 import QueuePage from './pages/QueuePage'
 import QueueCorrectionPage from './pages/QueueCorrectionPage'
@@ -52,6 +53,7 @@ function AppRoutes() {
         <Route path="report/context" element={<AddContextPage />} />
         <Route path="report/success" element={<SubmissionSuccessPage />} />
         <Route path="my-reports" element={<MyReportsPage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="queue" element={<ProtectedRoute requireCap="canQueue"><QueuePage /></ProtectedRoute>} />
         <Route path="queue/correct/:id" element={<ProtectedRoute requireCap="canCorrect"><QueueCorrectionPage /></ProtectedRoute>} />
