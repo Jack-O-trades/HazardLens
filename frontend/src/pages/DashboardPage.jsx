@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, Shield, FileText, Sun,
-  Plus, Minus, Maximize2, ChevronRight, ArrowRight, Home
+  Plus, Minus, Maximize2, ChevronRight, ArrowRight, Home, Bell
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { MOCK_ALERTS, MOCK_SHELTERS, MOCK_ROUTES } from '../data/mockData'
@@ -317,9 +317,9 @@ function computeRisk(alerts) {
 }
 
 /* ─── Stat card ─── */
-function StatCard({ icon: Icon, value, label, tone }) {
+function StatCard({ icon: Icon, value, label, tone, delay = 0 }) {
   return (
-    <div className={`dash-stat-card dash-stat-card--${tone}`}>
+    <div className={`dash-stat-card dash-stat-card--${tone}`} style={{ animationDelay: `${delay}ms` }}>
       <div className="dash-stat-icon"><Icon size={19} /></div>
       <div>
         <p className="dash-stat-value">{value}</p>
@@ -334,7 +334,7 @@ function LatestAlertRow({ alert, onClick }) {
   const dot = SEV_DOT[alert.severity] || '#9ca3af'
   return (
     <button className="dash-alert-row" onClick={() => onClick(alert.id)}>
-      <span className="dash-alert-row-dot" style={{ background: dot }} />
+      <span className="dash-alert-row-dot" style={{ background: dot, color: dot }} />
       <div className="dash-alert-row-body">
         <span className="dash-alert-row-title">{alert.title}</span>
         <span className="dash-alert-row-meta">
@@ -395,10 +395,10 @@ export default function DashboardPage() {
 
       {/* Stat cards */}
       <div className="dash-stats">
-        <StatCard icon={AlertTriangle} value={activeAlerts.length} label="Active Alerts" tone="critical" />
-        <StatCard icon={FileText}      value={reportsToday}        label="Reports Today" tone="verified" />
-        <StatCard icon={Shield}        value={risk.label}          label="Current Risk"  tone={risk.tone} />
-        <StatCard icon={Sun}           value="28°C"                label="Local Weather" tone="neutral" />
+        <StatCard icon={AlertTriangle} value={activeAlerts.length} label="Active Alerts" tone="critical" delay={0} />
+        <StatCard icon={FileText}      value={reportsToday}        label="Reports Today" tone="verified" delay={60} />
+        <StatCard icon={Shield}        value={risk.label}          label="Current Risk"  tone={risk.tone} delay={120} />
+        <StatCard icon={Sun}           value="28°C"                label="Local Weather" tone="neutral" delay={180} />
       </div>
 
       {/* Map preview + latest alerts */}
@@ -457,7 +457,10 @@ export default function DashboardPage() {
           {/* Latest Alerts Panel */}
           <div className="dash-alerts-card">
             <div className="dash-alerts-card-header">
-              <h2 className="dash-alerts-card-title">Latest Alerts</h2>
+              <h2 className="dash-alerts-card-title">
+                <Bell size={15} />
+                Latest Alerts
+              </h2>
             </div>
 
             <div className="dash-alerts-card-list">
@@ -482,7 +485,7 @@ export default function DashboardPage() {
           {/* Safe Shelters Directory Panel */}
           <div className="dash-shelters-card">
             <div className="dash-shelters-card-header">
-              <h2 className="dash-alerts-card-title flex items-center gap-2">
+              <h2 className="dash-alerts-card-title">
                 <Home size={15} />
                 Safe Shelters Directory
               </h2>
