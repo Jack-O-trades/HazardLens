@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardList, CheckCircle, Eye, Wrench, ArrowRight } from 'lucide-react'
+import { ClipboardList, CheckCircle, Eye, Wrench } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { MOCK_ALERTS, timeAgo } from '../data/mockData'
 import { SeverityBadge, StatusBadge } from '../components/shared/StatusBadge'

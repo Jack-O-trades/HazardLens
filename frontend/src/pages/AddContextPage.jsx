@@ -18,7 +18,6 @@ export default function AddContextPage() {
 
   const passedPhoto   = location.state?.photo      ?? null
   const passedHazard  = location.state?.hazardType ?? 'flood'
-  const passedSev     = location.state?.severity   ?? null
   const passedDesc    = location.state?.description ?? ''
 
   // photos array
@@ -43,8 +42,9 @@ export default function AddContextPage() {
   const createdUrls = useRef(new Set())
 
   useEffect(() => {
+    const urls = createdUrls.current
     return () => {
-      createdUrls.current.forEach(url => URL.revokeObjectURL(url))
+      urls.forEach(url => URL.revokeObjectURL(url))
     }
   }, [])
 

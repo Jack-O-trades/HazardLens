@@ -51,7 +51,7 @@ export default function Sidebar({ isOpen, onClose }) {
       </div>
 
       {/* User card — click to view profile */}
-      <button className="sidebar-user" onClick={() => { navigate('/dashboard/settings'); onClose() }}>
+      <button className="sidebar-user" onClick={() => { navigate('/dashboard/profile'); onClose() }}>
         <div className="sidebar-avatar">{user.avatar}</div>
         <div className="sidebar-user-info">
           <p className="sidebar-user-name">{user.name}</p>
@@ -131,10 +131,9 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <p className="sidebar-nav-label">Account</p>
 
-        {/* Profile currently points at the same Settings page as the
-            user card above — there's no page dedicated to just profile
-            info yet, so this avoids a second dead link. */}
-        <NavLink to="/dashboard/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+        {/* Confirmed against the real router: ProfilePage lives at
+            /dashboard/profile, separate from Settings. */}
+        <NavLink to="/dashboard/profile" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
           <User size={18} />
           <span>Profile</span>
         </NavLink>
