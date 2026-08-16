@@ -5,6 +5,10 @@
   padding-bottom: 2rem;
 }
 
+/* =========================================================
+   HEADER ACTIONS
+   ========================================================= */
+
 .analytics-header-actions {
   display: flex;
   align-items: center;
@@ -28,7 +32,11 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease);
 }
+
+.analytics-date-select:hover { border-color: var(--border-accent); }
+.analytics-date-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 
 .analytics-date-chevron {
   position: absolute;
@@ -37,38 +45,52 @@
   color: var(--text-muted);
 }
 
+/* =========================================================
+   TABS
+   ========================================================= */
+
 .analytics-tabs {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   margin-bottom: 1.5rem;
-  padding: 0.25rem;
-  background: var(--bg-surface);
+  padding: 0.3rem;
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   width: fit-content;
 }
 
 .analytics-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  padding: 0.625rem 1rem;
+  padding: 0.6rem 1.05rem;
   border-radius: var(--radius-md);
-  transition: all var(--dur-fast) var(--ease);
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 
-.analytics-tab:hover {
-  color: var(--text-primary);
-}
+.analytics-tab svg { opacity: 0.75; }
+
+.analytics-tab:hover { color: var(--text-primary); }
 
 .analytics-tab--active {
-  background: var(--bg-card-hover);
-  color: var(--text-primary);
-  box-shadow: inset 0 0 0 1px var(--border);
+  background: var(--bg-surface);
+  color: var(--accent-text);
+  box-shadow: var(--shadow-sm);
 }
+
+.analytics-tab--active svg { opacity: 1; }
+
+/* =========================================================
+   STAT CARDS
+   ========================================================= */
 
 .analytics-stats {
   display: grid;
@@ -78,19 +100,49 @@
 }
 
 .analytics-stat-card {
+  position: relative;
+  overflow: hidden;
+
   display: flex;
   align-items: center;
   gap: 0.9rem;
+
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 1rem 1.1rem;
+  padding: 1.1rem 1.15rem;
   box-shadow: var(--shadow-sm);
+
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+
+  animation: analytics-stat-in 420ms var(--ease) both;
+}
+
+@keyframes analytics-stat-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.analytics-stat-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+
+.analytics-stat-card--critical::before { background: var(--sev-critical); }
+.analytics-stat-card--medium::before   { background: var(--sev-medium); }
+.analytics-stat-card--safe::before     { background: var(--sev-safe); }
+
+.analytics-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border);
 }
 
 .analytics-stat-icon {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -99,8 +151,8 @@
 }
 
 .analytics-stat-icon--critical { background: hsla(0, 80%, 50%, 0.12); color: var(--sev-critical); }
-.analytics-stat-icon--medium { background: hsla(42, 95%, 42%, 0.12); color: var(--sev-medium); }
-.analytics-stat-icon--safe { background: hsla(145, 55%, 36%, 0.12); color: var(--sev-safe); }
+.analytics-stat-icon--medium   { background: hsla(42, 95%, 42%, 0.12); color: var(--sev-medium); }
+.analytics-stat-icon--safe     { background: hsla(145, 55%, 36%, 0.12); color: var(--sev-safe); }
 
 .analytics-stat-label {
   font-size: 0.72rem;
@@ -108,20 +160,25 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.3rem;
 }
 
 .analytics-stat-value {
   font-family: var(--font-heading);
-  font-size: 1.75rem;
+  font-size: 1.85rem;
   font-weight: 800;
   line-height: 1.1;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
 .analytics-stat-value--critical { color: var(--sev-critical); }
-.analytics-stat-value--medium { color: var(--sev-medium); }
-.analytics-stat-value--safe { color: var(--sev-safe); }
+.analytics-stat-value--medium   { color: var(--sev-medium); }
+.analytics-stat-value--safe     { color: var(--sev-safe); }
+
+/* =========================================================
+   CHART CARDS
+   ========================================================= */
 
 .analytics-charts {
   display: grid;
@@ -130,14 +187,14 @@
 }
 
 .analytics-chart-card {
-  padding: 1.25rem;
+  padding: 1.35rem 1.35rem 1.25rem;
 }
 
 .analytics-chart-title {
   font-family: var(--font-heading);
   font-size: 1rem;
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: 1.1rem;
   color: var(--text-primary);
 }
 
@@ -150,8 +207,10 @@
 .analytics-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 1rem;
-  margin-top: 1rem;
+  gap: 0.75rem 1.15rem;
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .analytics-legend-item {
@@ -169,6 +228,71 @@
   border-radius: 50%;
 }
 
+/* =========================================================
+   TREND CHART — hover crosshair + tooltip
+   ========================================================= */
+
+.trend-chart-wrap {
+  position: relative;
+}
+
+.trend-tooltip {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-50%);
+
+  min-width: 130px;
+  padding: 0.6rem 0.7rem;
+
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+
+  pointer-events: none;
+  z-index: 2;
+}
+
+.trend-tooltip-day {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.trend-tooltip-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  padding: 2px 0;
+}
+
+.trend-tooltip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.trend-tooltip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trend-tooltip-val {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* =========================================================
+   DONUT CHART
+   ========================================================= */
+
 .analytics-chart-card--donut {
   min-width: 0;
 }
@@ -177,9 +301,41 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.25rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
   min-height: 200px;
+}
+
+.analytics-donut-svg-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.analytics-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.analytics-donut-center-val {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.analytics-donut-center-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 3px;
 }
 
 .analytics-donut-legend {
@@ -207,6 +363,10 @@
   font-weight: 700;
 }
 
+/* =========================================================
+   PLACEHOLDER
+   ========================================================= */
+
 .analytics-placeholder {
   padding: 2rem 1.5rem;
   text-align: center;
@@ -218,6 +378,10 @@
   color: var(--text-muted);
   font-size: 0.875rem;
 }
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
 
 @media (max-width: 1024px) {
   .analytics-stats {
@@ -241,6 +405,7 @@
 
   .analytics-tab {
     flex: 1;
+    justify-content: center;
     text-align: center;
   }
 

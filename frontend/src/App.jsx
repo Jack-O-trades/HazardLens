@@ -23,6 +23,7 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import QueuePage from './pages/QueuePage'
 import QueueCorrectionPage from './pages/QueueCorrectionPage'
 import AdminPage from './pages/AdminPage'
+import ResourcesPage from './pages/ResourcesPage'
 
 function ProtectedRoute({ children, requireCap }) {
   const { user, caps } = useAuth()
@@ -57,6 +58,7 @@ function AppRoutes() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="resources" element={<ResourcesPage />} />
         <Route path="queue" element={<ProtectedRoute requireCap="canQueue"><QueuePage /></ProtectedRoute>} />
         <Route path="queue/correct/:id" element={<ProtectedRoute requireCap="canCorrect"><QueueCorrectionPage /></ProtectedRoute>} />
         <Route path="admin" element={<ProtectedRoute requireCap="canAdmin"><AdminPage /></ProtectedRoute>} />

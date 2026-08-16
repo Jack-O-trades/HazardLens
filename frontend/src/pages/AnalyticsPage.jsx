@@ -1,10 +1,17 @@
 import { useState } from 'react'
-import { AlertTriangle, Users, Bell, Percent, Download, ChevronDown } from 'lucide-react'
+import {
+  AlertTriangle, Users, Bell, Percent, Download, ChevronDown,
+  PieChart, TrendingUp, BookOpen
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { MOCK_ALERTS } from '../data/mockData'
 import './AnalyticsPage.css'
 
-const TABS = ['Risk Overview', 'Trends', 'Resources']
+const TABS = [
+  { id: 'Risk Overview', icon: PieChart },
+  { id: 'Trends',        icon: TrendingUp },
+  { id: 'Resources',     icon: BookOpen },
+]
 const DATE_RANGES = ['Last 7 Days', 'Last 30 Days', 'Last 90 Days']
 
 /* ─── Static reference numbers — matches the mockup exactly.
@@ -37,42 +44,77 @@ const RISK_DISTRIBUTION = [
   { label: 'Low',        value: 20, color: '#22c55e' },
 ]
 
-/* ─── Donut chart — plain SVG, no dependency ─── */
-function DonutChart({ data, size = 148, strokeWidth = 24 }) {
+/* ─── Smooth a set of [x,y] points into a quadratic-curve path ─── */
+function smoothPath(pts) {
+  if (pts.length < 3) return `M ${pts.map(p => p.join(',')).join(' L ')}`
+  let d = `M ${pts[0][0]},${pts[0][1]}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i]
+    const [x1, y1] = pts[i + 1]
+    d += ` Q ${x0},${y0} ${(x0 + x1) / 2},${(y0 + y1) / 2}`
+  }
+  const last = pts[pts.length - 1]
+  d += ` L ${last[0]},${last[1]}`
+  return d
+}
+
+/* ─── Donut chart — plain SVG, no dependency. Center label shows the
+   dominant (largest) slice; hovering a segment emphasizes it. ─── */
+function DonutChart({ data, size = 152, strokeWidth = 24 }) {
+  const [hovered, setHovered] = useState(null)
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
   const total = data.reduce((sum, d) => sum + d.value, 0)
+  const dominant = [...data].sort((a, b) => b.value - a.value)[0]
+  const gap = 3 // px gap between segments
   let cumulative = 0
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border-subtle)" strokeWidth={strokeWidth} />
-        {data.map(d => {
-          const fraction = d.value / total
-          const dash = fraction * circumference
-          const offset = -(cumulative / total) * circumference
-          cumulative += d.value
-          return (
-            <circle
-              key={d.label}
-              cx={size / 2} cy={size / 2} r={radius}
-              fill="none"
-              stroke={d.color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={`${dash} ${circumference - dash}`}
-              strokeDashoffset={offset}
-              strokeLinecap="butt"
-            />
-          )
-        })}
-      </g>
-    </svg>
+    <div className="analytics-donut-svg-wrap">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border-subtle)" strokeWidth={strokeWidth} />
+          {data.map(d => {
+            const fraction = d.value / total
+            const dash = Math.max(fraction * circumference - gap, 0)
+            const offset = -(cumulative / total) * circumference
+            cumulative += d.value
+            const isHovered = hovered === d.label
+            const isDimmed = hovered && !isHovered
+            return (
+              <circle
+                key={d.label}
+                cx={size / 2} cy={size / 2} r={radius}
+                fill="none"
+                stroke={d.color}
+                strokeWidth={isHovered ? strokeWidth + 4 : strokeWidth}
+                strokeDasharray={`${dash} ${circumference - dash}`}
+                strokeDashoffset={offset}
+                strokeLinecap="round"
+                opacity={isDimmed ? 0.35 : 1}
+                style={{ transition: 'stroke-width 150ms ease, opacity 150ms ease', cursor: 'pointer' }}
+                onMouseEnter={() => setHovered(d.label)}
+                onMouseLeave={() => setHovered(null)}
+              />
+            )
+          })}
+        </g>
+      </svg>
+      <div className="analytics-donut-center">
+        <span className="analytics-donut-center-val">
+          {hovered ? `${data.find(d => d.label === hovered).value}%` : `${dominant.value}%`}
+        </span>
+        <span className="analytics-donut-center-label">{hovered || dominant.label}</span>
+      </div>
+    </div>
   )
 }
 
-/* ─── Line chart — plain SVG, no dependency ─── */
-function TrendChart({ series, days, height = 230, maxY = 500 }) {
+/* ─── Line chart — plain SVG, no dependency. Smoothed curves with a
+   soft gradient fill under each line, plus an interactive hover
+   crosshair + tooltip. ─── */
+function TrendChart({ series, days, height = 230, maxY = 500, uid = 'a' }) {
+  const [hoverIdx, setHoverIdx] = useState(null)
   const width = 600
   const pad = { top: 12, right: 14, bottom: 26, left: 34 }
   const chartW = width - pad.left - pad.right
@@ -80,38 +122,90 @@ function TrendChart({ series, days, height = 230, maxY = 500 }) {
   const xStep = chartW / (days.length - 1)
   const yTicks = [0, 100, 200, 300, 400, 500].filter(t => t <= maxY)
 
-  function points(values) {
-    return values
-      .map((v, i) => `${pad.left + i * xStep},${pad.top + chartH - (v / maxY) * chartH}`)
-      .join(' ')
+  function xy(i, v) {
+    return [pad.left + i * xStep, pad.top + chartH - (v / maxY) * chartH]
   }
 
+  function handleMove(e) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const relX = (e.clientX - rect.left) / rect.width
+    const svgX = relX * width
+    const idx = Math.round((svgX - pad.left) / xStep)
+    setHoverIdx(Math.max(0, Math.min(days.length - 1, idx)))
+  }
+
+  const hoverLeftPct = hoverIdx === null ? 0 : ((pad.left + hoverIdx * xStep) / width) * 100
+
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} preserveAspectRatio="none">
-      {yTicks.map(t => {
-        const y = pad.top + chartH - (t / maxY) * chartH
-        return (
-          <g key={t}>
-            <line x1={pad.left} y1={y} x2={width - pad.right} y2={y} stroke="var(--border-subtle)" strokeWidth="1" />
-            <text x={pad.left - 8} y={y + 3} textAnchor="end" fontSize="9.5" fill="var(--text-muted)">{t}</text>
-          </g>
-        )
-      })}
-      <text x={width - pad.right} y={height - 6} textAnchor="end" fontSize="9.5" fill="var(--text-muted)">
-        {days[days.length - 1]}
-      </text>
-      {series.map(s => (
-        <polyline
-          key={s.label}
-          points={points(s.values)}
-          fill="none"
-          stroke={s.color}
-          strokeWidth="2.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ))}
-    </svg>
+    <div
+      className="trend-chart-wrap"
+      onMouseMove={handleMove}
+      onMouseLeave={() => setHoverIdx(null)}
+    >
+      <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} preserveAspectRatio="none">
+        <defs>
+          {series.map(s => (
+            <linearGradient key={s.label} id={`trend-fill-${uid}-${s.label}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={s.color} stopOpacity="0.16" />
+              <stop offset="100%" stopColor={s.color} stopOpacity="0" />
+            </linearGradient>
+          ))}
+        </defs>
+
+        {yTicks.map(t => {
+          const y = pad.top + chartH - (t / maxY) * chartH
+          return (
+            <g key={t}>
+              <line x1={pad.left} y1={y} x2={width - pad.right} y2={y} stroke="var(--border-subtle)" strokeWidth="1" />
+              <text x={pad.left - 8} y={y + 3} textAnchor="end" fontSize="9.5" fill="var(--text-muted)">{t}</text>
+            </g>
+          )
+        })}
+
+        {hoverIdx !== null && (
+          <line
+            x1={pad.left + hoverIdx * xStep} y1={pad.top}
+            x2={pad.left + hoverIdx * xStep} y2={pad.top + chartH}
+            stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"
+          />
+        )}
+
+        {series.map(s => {
+          const pts = s.values.map((v, i) => xy(i, v))
+          const linePath = smoothPath(pts)
+          const areaPath = `${linePath} L ${pts[pts.length - 1][0]},${pad.top + chartH} L ${pts[0][0]},${pad.top + chartH} Z`
+          return (
+            <g key={s.label}>
+              <path d={areaPath} fill={`url(#trend-fill-${uid}-${s.label})`} stroke="none" />
+              <path d={linePath} fill="none" stroke={s.color} strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
+              {hoverIdx !== null && (
+                <circle cx={pts[hoverIdx][0]} cy={pts[hoverIdx][1]} r="4" fill="var(--bg-surface)" stroke={s.color} strokeWidth="2.25" />
+              )}
+            </g>
+          )
+        })}
+
+        <text x={width - pad.right} y={height - 6} textAnchor="end" fontSize="9.5" fill="var(--text-muted)">
+          {days[days.length - 1]}
+        </text>
+      </svg>
+
+      {hoverIdx !== null && (
+        <div
+          className="trend-tooltip"
+          style={{ left: `${hoverLeftPct}%` }}
+        >
+          <p className="trend-tooltip-day">{days[hoverIdx]}</p>
+          {series.map(s => (
+            <div key={s.label} className="trend-tooltip-row">
+              <span className="trend-tooltip-dot" style={{ background: s.color }} />
+              <span className="trend-tooltip-label">{s.label}</span>
+              <span className="trend-tooltip-val">{s.values[hoverIdx]}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -180,11 +274,12 @@ export default function AnalyticsPage() {
       <div className="analytics-tabs">
         {TABS.map(tab => (
           <button
-            key={tab}
-            className={`analytics-tab ${activeTab === tab ? 'analytics-tab--active' : ''}`}
-            onClick={() => setActiveTab(tab)}
+            key={tab.id}
+            className={`analytics-tab ${activeTab === tab.id ? 'analytics-tab--active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
           >
-            {tab}
+            <tab.icon size={14} />
+            {tab.id}
           </button>
         ))}
       </div>
@@ -192,8 +287,8 @@ export default function AnalyticsPage() {
       {activeTab === 'Risk Overview' && (
         <>
           <div className="analytics-stats">
-            {stats.map(s => (
-              <div key={s.key} className="analytics-stat-card">
+            {stats.map((s, i) => (
+              <div key={s.key} className={`analytics-stat-card analytics-stat-card--${s.tone}`} style={{ animationDelay: `${i * 60}ms` }}>
                 <div className={`analytics-stat-icon analytics-stat-icon--${s.tone}`}>
                   <s.icon size={18} />
                 </div>
@@ -210,7 +305,7 @@ export default function AnalyticsPage() {
               <h3 className="analytics-chart-title">
                 Hazard Trends <span>({dateRange})</span>
               </h3>
-              <TrendChart series={TREND_SERIES} days={TREND_DAYS} />
+              <TrendChart series={TREND_SERIES} days={TREND_DAYS} uid="overview" />
               <div className="analytics-legend">
                 {TREND_SERIES.map(s => (
                   <span key={s.label} className="analytics-legend-item">
@@ -245,7 +340,7 @@ export default function AnalyticsPage() {
           <h3 className="analytics-chart-title">
             Hazard Trends — Expanded View <span>({dateRange})</span>
           </h3>
-          <TrendChart series={TREND_SERIES} days={TREND_DAYS} height={320} />
+          <TrendChart series={TREND_SERIES} days={TREND_DAYS} height={320} uid="expanded" />
           <div className="analytics-legend">
             {TREND_SERIES.map(s => (
               <span key={s.label} className="analytics-legend-item">
