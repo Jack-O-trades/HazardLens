@@ -131,8 +131,17 @@ function formatJoinDate(dateStr) {
 }
 
 /* ── Main Settings Page ── */
+const LOCATION_OPTIONS = ['Southbank', 'Westgate', 'Eastvale', 'Northwood', 'Riverview']
+const PERSONAS = [
+  { id: 'resident', label: 'Resident', description: 'Local updates for my area' },
+  { id: 'worker', label: 'Worker', description: 'Route and infrastructure alerts' },
+  { id: 'traveler', label: 'Traveler', description: 'Road closures and detours' },
+  { id: 'official', label: 'Official', description: 'Operational and verified advisories' },
+]
+const LANGUAGES = ['English', 'Spanish', 'Arabic', 'French']
+
 export default function SettingsPage() {
-  const { user } = useAuth()
+  const { user, preferences, updatePreferences } = useAuth()
   const navigate = useNavigate()
 
   // Hide sidebar, use full-width layout like dashboard
@@ -154,17 +163,98 @@ export default function SettingsPage() {
   }
 
   /* ── Alert settings state ── */
-  const [role, setRole]               = useState('citizen')
-  const [distance, setDistance]       = useState(15)
-  const [severity, setSeverity]       = useState(2)
-  const [quietHours, setQuietHours]   = useState(false)
-  const [highConfOnly, setHighConfOnly] = useState(true)
+  const [role, setRole] = useState('citizen')
+  const [distance, setDistance] = useState(preferences?.distance ?? 15)
+  const [severity, setSeverity] = useState(preferences?.severity ?? 2)
+  const [quietHours, setQuietHours] = useState(preferences?.quietHours ?? false)
+  const [highConfOnly, setHighConfOnly] = useState(preferences?.highConfOnly ?? true)
+  const [locationSubscriptions, setLocationSubscriptions] = useState(preferences?.locationSubscriptions ?? ['Southbank', 'Westgate'])
+  const [mutedHazardTypes, setMutedHazardTypes] = useState(preferences?.mutedHazardTypes ?? [])
+  const [mutedAreas, setMutedAreas] = useState(preferences?.mutedAreas ?? [])
+  const [persona, setPersona] = useState(preferences?.persona ?? 'resident')
+  const [language, setLanguage] = useState(preferences?.language ?? 'English')
+  const [notifMode, setNotifMode] = useState(preferences?.notifMode ?? 'digest')
+
+  useEffect(() => {
+    if (!preferences) return
+    setDistance(preferences.distance ?? 15)
+    setSeverity(preferences.severity ?? 2)
+    setQuietHours(Boolean(preferences.quietHours))
+    setHighConfOnly(Boolean(preferences.highConfOnly))
+    setLocationSubscriptions(preferences.locationSubscriptions ?? ['Southbank', 'Westgate'])
+    setMutedHazardTypes(preferences.mutedHazardTypes ?? [])
+    setMutedAreas(preferences.mutedAreas ?? [])
+    setPersona(preferences.persona ?? 'resident')
+    setLanguage(preferences.language ?? 'English')
+    setNotifMode(preferences.notifMode ?? 'digest')
+  }, [preferences])
 
   const ROLES = [
-    { id: 'citizen',   label: 'Citizen',   Icon: CitizenIcon   },
-    { id: 'responder', label: 'Responder', Icon: ResponderIcon  },
-    { id: 'official',  label: 'Official',  Icon: OfficialIcon   },
+    { id: 'citizen', label: 'Citizen', Icon: CitizenIcon },
+    { id: 'responder', label: 'Responder', Icon: ResponderIcon },
+    { id: 'official', label: 'Official', Icon: OfficialIcon },
   ]
+
+  const handleDistanceChange = (value) => {
+    setDistance(value)
+    updatePreferences({ distance: value })
+  }
+
+  const handleSeverityChange = (value) => {
+    setSeverity(value)
+    updatePreferences({ severity: value })
+  }
+
+  const handleQuietToggle = () => {
+    const next = !quietHours
+    setQuietHours(next)
+    updatePreferences({ quietHours: next })
+  }
+
+  const handleHighConfToggle = () => {
+    const next = !highConfOnly
+    setHighConfOnly(next)
+    updatePreferences({ highConfOnly: next })
+  }
+
+  const toggleLocationSubscription = (loc) => {
+    const next = locationSubscriptions.includes(loc)
+      ? locationSubscriptions.filter(item => item !== loc)
+      : [...locationSubscriptions, loc]
+    setLocationSubscriptions(next)
+    updatePreferences({ locationSubscriptions: next })
+  }
+
+  const toggleMutedHazardType = (hazardType) => {
+    const next = mutedHazardTypes.includes(hazardType)
+      ? mutedHazardTypes.filter(type => type !== hazardType)
+      : [...mutedHazardTypes, hazardType]
+    setMutedHazardTypes(next)
+    updatePreferences({ mutedHazardTypes: next })
+  }
+
+  const toggleMutedArea = (area) => {
+    const next = mutedAreas.includes(area)
+      ? mutedAreas.filter(item => item !== area)
+      : [...mutedAreas, area]
+    setMutedAreas(next)
+    updatePreferences({ mutedAreas: next })
+  }
+
+  const setPersonaMode = (nextPersona) => {
+    setPersona(nextPersona)
+    updatePreferences({ persona: nextPersona })
+  }
+
+  const setLanguageMode = (nextLanguage) => {
+    setLanguage(nextLanguage)
+    updatePreferences({ language: nextLanguage })
+  }
+
+  const setAlertMode = (mode) => {
+    setNotifMode(mode)
+    updatePreferences({ notifMode: mode })
+  }
 
   const SEV_LABELS = ['Low', 'Moderate', 'High', 'Extreme']
   const sevLabel = SEV_LABELS[severity]
@@ -399,7 +489,7 @@ export default function SettingsPage() {
                 className="sp-slider sp-slider--sev"
                 min={0} max={3} step={1}
                 value={severity}
-                onChange={e => setSeverity(Number(e.target.value))}
+                onChange={e => handleSeverityChange(Number(e.target.value))}
                 style={{ '--fill-pct': `${sevPct}%` }}
               />
             </div>
@@ -429,7 +519,7 @@ export default function SettingsPage() {
               <h2 className="sp-card-title">Quiet Hours</h2>
               <p className="sp-card-desc">Pause non-critical notifications during these hours.</p>
             </div>
-            <Toggle id="quiet-toggle" on={quietHours} onChange={() => setQuietHours(v => !v)} />
+            <Toggle id="quiet-toggle" on={quietHours} onChange={handleQuietToggle} />
           </div>
           <div className="sp-card-divider" />
           <div className="sp-sub-row">
@@ -450,12 +540,96 @@ export default function SettingsPage() {
               <h2 className="sp-card-title">High-Confidence Only</h2>
               <p className="sp-card-desc">Receive alerts only when system confidence is high. Reduces noise.</p>
             </div>
-            <Toggle id="confidence-toggle" on={highConfOnly} onChange={() => setHighConfOnly(v => !v)} />
+            <Toggle id="confidence-toggle" on={highConfOnly} onChange={handleHighConfToggle} />
           </div>
           <div className="sp-card-divider" />
           <div className="sp-sub-row sp-sub-row--info">
             <BarChart2 size={14} className="sp-sub-icon" />
             <span className="sp-sub-label">Fewer alerts, higher accuracy. Ideal for reducing alarm fatigue.</span>
+          </div>
+        </div>
+
+        {/* ── Personalization + subscriptions ── */}
+        <div className="sp-card sp-card--compact">
+          <div className="sp-card-header">
+            <span className="sp-card-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#5a6475" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3v18M3 12h18" />
+              </svg>
+            </span>
+            <div>
+              <h2 className="sp-card-title">Preferences</h2>
+              <p className="sp-card-desc">Keep alerts relevant without creating notification overload.</p>
+            </div>
+          </div>
+
+          <div className="sp-pref-section">
+            <div className="sp-section-label">Location subscriptions</div>
+            <div className="sp-chip-grid">
+              {LOCATION_OPTIONS.map(location => (
+                <button
+                  key={location}
+                  type="button"
+                  className={`sp-chip ${locationSubscriptions.includes(location) ? 'sp-chip--active' : ''}`}
+                  onClick={() => toggleLocationSubscription(location)}
+                >
+                  {location}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="sp-pref-section">
+            <div className="sp-section-label">Persona</div>
+            <div className="sp-persona-grid">
+              {PERSONAS.map(option => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`sp-persona-card ${persona === option.id ? 'sp-persona-card--active' : ''}`}
+                  onClick={() => setPersonaMode(option.id)}
+                >
+                  <span className="sp-persona-name">{option.label}</span>
+                  <span className="sp-persona-desc">{option.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="sp-pref-section sp-pref-section--inline">
+            <div className="sp-inline-field">
+              <label htmlFor="language-select" className="sp-section-label">Language</label>
+              <select
+                id="language-select"
+                className="sp-language-select"
+                value={language}
+                onChange={(e) => setLanguageMode(e.target.value)}
+              >
+                {LANGUAGES.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sp-inline-field">
+              <label className="sp-section-label">Alert cadence</label>
+              <div className="sp-mode-toggle" role="tablist" aria-label="Notification cadence">
+                <button
+                  type="button"
+                  className={`sp-mode-toggle-btn ${notifMode === 'immediate' ? 'sp-mode-toggle-btn--active' : ''}`}
+                  onClick={() => setAlertMode('immediate')}
+                >
+                  Immediate
+                </button>
+                <button
+                  type="button"
+                  className={`sp-mode-toggle-btn ${notifMode === 'digest' ? 'sp-mode-toggle-btn--active' : ''}`}
+                  onClick={() => setAlertMode('digest')}
+                >
+                  Digest
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -479,6 +653,55 @@ export default function SettingsPage() {
             <PrefRow id="pref-sms"    icon={<SMSIcon />}    label="SMS Fallback" />
             <PrefRow id="pref-email"  icon={<EmailIcon />}  label="Email Summary" />
             <PrefRow id="pref-digest" icon={<DigestIcon />} label="In-App Digest" />
+          </div>
+        </div>
+
+        {/* ── Alarm fatigue controls ── */}
+        <div className="sp-card sp-card--compact">
+          <div className="sp-row-main sp-row-main--header">
+            <span className="sp-card-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#5a6475" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2l9 16H3L12 2z" />
+                <path d="M12 8v5" />
+                <circle cx="12" cy="16" r="1" fill="currentColor" stroke="none" />
+              </svg>
+            </span>
+            <div>
+              <h2 className="sp-card-title">Alarm Fatigue Controls</h2>
+              <p className="sp-card-desc">Hide low-signal noise and reduce repeated alerts from the same area.</p>
+            </div>
+          </div>
+
+          <div className="sp-pref-section">
+            <div className="sp-section-label">Mute hazard types</div>
+            <div className="sp-chip-grid">
+              {['river', 'fire', 'infrastructure', 'weather', 'seismic'].map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  className={`sp-chip ${mutedHazardTypes.includes(type) ? 'sp-chip--active' : ''}`}
+                  onClick={() => toggleMutedHazardType(type)}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="sp-pref-section">
+            <div className="sp-section-label">Mute areas</div>
+            <div className="sp-chip-grid">
+              {LOCATION_OPTIONS.map(location => (
+                <button
+                  key={location}
+                  type="button"
+                  className={`sp-chip ${mutedAreas.includes(location) ? 'sp-chip--active' : ''}`}
+                  onClick={() => toggleMutedArea(location)}
+                >
+                  {location}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

@@ -19,6 +19,7 @@ const TYPE_ICONS = {
 export default function AlertCard({ alert, compact = false }) {
   const navigate = useNavigate()
   const icon = TYPE_ICONS[alert.type] || '⚠️'
+  const confidenceTone = alert.confidence >= 75 ? 'high' : alert.confidence >= 50 ? 'medium' : 'low'
 
   return (
     <div
@@ -32,7 +33,10 @@ export default function AlertCard({ alert, compact = false }) {
         <span className="alert-card-icon" role="img" aria-hidden>{icon}</span>
         <div className="alert-card-meta">
           <SeverityBadge severity={alert.severity} />
-          <StatusBadge status={alert.status} />
+          <span className={`alert-card-confidence alert-card-confidence--${confidenceTone}`}>
+            {alert.confidence}%
+          </span>
+          {!compact && <StatusBadge status={alert.status} />}
         </div>
         <ChevronRight size={16} className="alert-card-arrow" />
       </div>
@@ -43,7 +47,7 @@ export default function AlertCard({ alert, compact = false }) {
         <p className="alert-card-desc">{alert.description}</p>
       )}
 
-      <div className="alert-card-footer">
+      <div className={compact ? 'alert-card-compact-meta' : 'alert-card-footer'}>
         <span className="alert-card-location">
           <MapPin size={12} />
           {alert.location}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, Shield, FileText, Sun,
@@ -332,8 +332,10 @@ function StatCard({ icon: Icon, value, label, tone, delay = 0 }) {
 /* ─── Compact "Latest Alerts" row ─── */
 function LatestAlertRow({ alert, onClick }) {
   const dot = SEV_DOT[alert.severity] || '#9ca3af'
+  const quiet = alert.severity === 'low' || alert.confidence < 55
+
   return (
-    <button className="dash-alert-row" onClick={() => onClick(alert.id)}>
+    <button className={`dash-alert-row ${quiet ? 'dash-alert-row--quiet' : ''}`} onClick={() => onClick(alert.id)}>
       <span className="dash-alert-row-dot" style={{ background: dot, color: dot }} />
       <div className="dash-alert-row-body">
         <span className="dash-alert-row-title">{alert.title}</span>
@@ -341,6 +343,9 @@ function LatestAlertRow({ alert, onClick }) {
           <span className="dash-alert-row-sev" style={{ color: dot }}>{alert.severity}</span>
           <span className="dash-alert-row-sep">•</span>
           <span>{alert.confidence}%</span>
+          {alert.duplicateCount > 1 && (
+            <><span className="dash-alert-row-sep">•</span><span>{alert.duplicateCount} grouped</span></>
+          )}
         </span>
         <span className="dash-alert-row-location">{alert.location}</span>
       </div>
@@ -351,7 +356,7 @@ function LatestAlertRow({ alert, onClick }) {
 
 /* ─── Main Dashboard ─── */
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user, preferences } = useAuth()
   const navigate = useNavigate()
 
   const [activeMarker, setActiveMarker] = useState(null)
@@ -361,14 +366,59 @@ export default function DashboardPage() {
   const [showShelters, setShowShelters] = useState(true)
   const [showRoutes, setShowRoutes]     = useState(true)
 
-  const activeAlerts = MOCK_ALERTS.filter(a => a.status !== 'resolved')
+  const filteredAlerts = useMemo(() => {
+    const threshold = preferences?.severity ?? 2
+    const levelOrder = { low: 0, medium: 1, high: 2, critical: 3 }
+    const minLevel = ['low', 'medium', 'high', 'critical'][threshold] || 'high'
+    const mutedTypes = new Set(preferences?.mutedHazardTypes ?? [])
+    const mutedAreas = (preferences?.mutedAreas ?? []).map(area => area.toLowerCase())
+    const subscribed = new Set((preferences?.locationSubscriptions ?? []).map(area => area.toLowerCase()))
 
-  const latestAlerts = [...activeAlerts]
-    .sort((a, b) => {
+    return MOCK_ALERTS.filter((alert) => {
+      if (alert.status === 'resolved') return false
+      if (mutedTypes.has(alert.type)) return false
+      if (mutedAreas.some(area => alert.location?.toLowerCase().includes(area))) return false
+      if (preferences?.highConfOnly && (alert.confidence ?? 0) < 70) return false
+      const rank = levelOrder[alert.severity] ?? 0
+      const minRank = levelOrder[minLevel] ?? 2
+      if (rank < minRank) return false
+      if (subscribed.size > 0 && !alert.affectedAreas?.some(area => subscribed.has(area.toLowerCase()))) {
+        const locationText = (alert.location || '').toLowerCase()
+        const matchesSub = [...subscribed].some(area => locationText.includes(area))
+        if (!matchesSub && !locationText.includes('citywide')) return false
+      }
+      return true
+    })
+  }, [preferences])
+
+  const dedupedAlerts = useMemo(() => {
+    const grouped = new Map()
+    for (const alert of filteredAlerts) {
+      const areaKey = (alert.affectedAreas?.[0] || alert.location?.split(',')[0] || 'general').trim().toLowerCase()
+      const key = `${alert.type}|${areaKey}`
+      const existing = grouped.get(key)
+      if (!existing) {
+        grouped.set(key, { ...alert, duplicateCount: 1 })
+      } else {
+        const currentRank = { low: 0, medium: 1, high: 2, critical: 3 }[alert.severity] ?? 0
+        const existingRank = { low: 0, medium: 1, high: 2, critical: 3 }[existing.severity] ?? 0
+        if (currentRank > existingRank || (currentRank === existingRank && (alert.confidence ?? 0) > (existing.confidence ?? 0))) {
+          grouped.set(key, { ...alert, duplicateCount: (existing.duplicateCount || 1) + 1 })
+        } else {
+          grouped.set(key, { ...existing, duplicateCount: (existing.duplicateCount || 1) + 1 })
+        }
+      }
+    }
+
+    return [...grouped.values()].sort((a, b) => {
       const order = { critical: 0, high: 1, medium: 2, low: 3 }
       return order[a.severity] - order[b.severity]
     })
-    .slice(0, 4)
+  }, [filteredAlerts])
+
+  const priorityAlerts = dedupedAlerts.filter(a => ['critical', 'high'].includes(a.severity))
+  const lowPriorityAlerts = dedupedAlerts.filter(a => !['critical', 'high'].includes(a.severity))
+  const latestAlerts = priorityAlerts.length > 0 ? priorityAlerts.slice(0, 4) : lowPriorityAlerts.slice(0, 3)
 
   const todayStr = new Date().toDateString()
   const reportsToday = MOCK_ALERTS.filter(
@@ -376,6 +426,7 @@ export default function DashboardPage() {
   ).length
 
   const risk = computeRisk(MOCK_ALERTS)
+  const digestSummary = lowPriorityAlerts.length > 0 ? `Digest view: ${lowPriorityAlerts.length} quiet updates grouped across ${[...new Set(lowPriorityAlerts.map(a => a.affectedAreas?.[0] || a.location?.split(',')[0]))].slice(0, 2).join(' / ')}` : null
 
   return (
     <div className="dash-page animate-fade-in">
@@ -395,11 +446,21 @@ export default function DashboardPage() {
 
       {/* Stat cards */}
       <div className="dash-stats">
-        <StatCard icon={AlertTriangle} value={activeAlerts.length} label="Active Alerts" tone="critical" delay={0} />
+        <StatCard icon={AlertTriangle} value={dedupedAlerts.length} label="Active Alerts" tone="critical" delay={0} />
         <StatCard icon={FileText}      value={reportsToday}        label="Reports Today" tone="verified" delay={60} />
         <StatCard icon={Shield}        value={risk.label}          label="Current Risk"  tone={risk.tone} delay={120} />
         <StatCard icon={Sun}           value="28°C"                label="Local Weather" tone="neutral" delay={180} />
       </div>
+
+      {priorityAlerts.length > 0 ? (
+        <div className="dash-priority-banner">
+          High-priority alert cluster: {priorityAlerts.length} active incident{priorityAlerts.length > 1 ? 's' : ''} require attention.
+        </div>
+      ) : digestSummary ? (
+        <div className="dash-priority-banner dash-priority-banner--digest">
+          {digestSummary}
+        </div>
+      ) : null}
 
       {/* Map preview + latest alerts */}
       <div className={`dash-panels ${mapExpanded ? 'dash-panels--map-expanded' : ''}`}>
@@ -469,7 +530,7 @@ export default function DashboardPage() {
               ) : (
                 latestAlerts.map(alert => (
                   <LatestAlertRow
-                    key={alert.id}
+                    key={`${alert.type}-${alert.affectedAreas?.[0] || alert.location}`}
                     alert={alert}
                     onClick={id => navigate(`/dashboard/alert/${id}`)}
                   />

@@ -199,6 +199,23 @@
   flex-shrink: 0;
 }
 
+.dash-priority-banner {
+  margin: 0 0 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-md);
+  background: hsla(5, 75%, 48%, 0.1);
+  border: 1px solid hsla(5, 75%, 48%, 0.2);
+  color: var(--sev-critical);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.dash-priority-banner--digest {
+  background: hsla(230, 20%, 45%, 0.08);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+
 .dash-map-card-title span {
   font-size: 0.75rem;
   font-weight: 500;
@@ -325,6 +342,11 @@
 }
 
 .dash-alert-row:hover { background: var(--bg-card); }
+
+.dash-alert-row--quiet {
+  opacity: 0.82;
+  background: rgba(148, 163, 184, 0.04);
+}
 
 .dash-alert-row-dot {
   width: 8px;

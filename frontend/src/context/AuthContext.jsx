@@ -81,6 +81,12 @@ const DEFAULT_PREFERENCES = {
   notifSms: false,
   notifEmail: true,
   notifDigest: true,
+  locationSubscriptions: ['Southbank', 'Westgate'],
+  mutedHazardTypes: [],
+  mutedAreas: [],
+  persona: 'resident',
+  language: 'English',
+  notifMode: 'digest',
 }
 
 const SESSION_KEY = 'hl_session'
