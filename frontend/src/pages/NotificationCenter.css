@@ -1,16 +1,94 @@
 /* ============================================================
-   NotificationCenter — Exact match to reference image
+   NotificationCenter — Theme-aware styles
    Warm off-white background, white cards, dark navy text
    ============================================================ */
 
 /* ── Page shell ── */
 .nc-page {
+  --nc-bg: #edecea;
+  --nc-header-bg: #edecea;
+  --nc-card-bg: #ffffff;
+  --nc-item-bg: #f5f4f0;
+  --nc-item-hover: #edecea;
+  --nc-tabbar-bg: #f8f7f4;
+  --nc-border: #e0ded9;
+  --nc-border-subtle: #e8e6e2;
+  --nc-text-title: #1a2640;
+  --nc-text-body: #2d3748;
+  --nc-text-muted: #64748b;
+  --nc-text-label: #6b778a;
+  --nc-scroll-thumb: #c8c6c2;
+  --nc-scroll-track: #edecea;
+  --nc-toggle-off: #c8cbd4;
+  --nc-toggle-on: #1a2640;
+  
+  --nc-chip-critical-bg: #fce8e6;
+  --nc-chip-critical-text: #c0392b;
+  --nc-chip-critical-border: #f5c6c2;
+  --nc-chip-warning-bg: #fff3e0;
+  --nc-chip-warning-text: #b05a00;
+  --nc-chip-warning-border: #f5ddb8;
+
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--topbar-h));
-  background: #edecea;
+  background: var(--nc-bg);
   margin: -1.75rem -2rem;
   overflow: hidden;
+}
+
+[data-theme="dark"] .nc-page {
+  --nc-bg: hsl(220, 20%, 8%);
+  --nc-header-bg: hsl(220, 20%, 8%);
+  --nc-card-bg: hsl(220, 18%, 11%);
+  --nc-item-bg: hsl(220, 16%, 13%);
+  --nc-item-hover: hsl(220, 16%, 17%);
+  --nc-tabbar-bg: hsl(220, 18%, 11%);
+  --nc-border: hsl(220, 14%, 22%);
+  --nc-border-subtle: hsl(220, 14%, 18%);
+  --nc-text-title: hsl(210, 20%, 96%);
+  --nc-text-body: hsl(210, 12%, 78%);
+  --nc-text-muted: hsl(210, 10%, 65%);
+  --nc-text-label: hsl(210, 10%, 55%);
+  --nc-scroll-thumb: hsl(220, 14%, 30%);
+  --nc-scroll-track: hsl(220, 20%, 8%);
+  --nc-toggle-off: hsl(220, 14%, 22%);
+  --nc-toggle-on: hsl(34, 92%, 55%);
+
+  --nc-chip-critical-bg: hsla(0, 78%, 62%, 0.15);
+  --nc-chip-critical-text: hsl(0, 78%, 62%);
+  --nc-chip-critical-border: hsla(0, 78%, 62%, 0.3);
+  --nc-chip-warning-bg: hsla(42, 95%, 55%, 0.15);
+  --nc-chip-warning-text: hsl(42, 95%, 55%);
+  --nc-chip-warning-border: hsla(42, 95%, 55%, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .nc-page {
+    --nc-bg: hsl(220, 20%, 8%);
+    --nc-header-bg: hsl(220, 20%, 8%);
+    --nc-card-bg: hsl(220, 18%, 11%);
+    --nc-item-bg: hsl(220, 16%, 13%);
+    --nc-item-hover: hsl(220, 16%, 17%);
+    --nc-tabbar-bg: hsl(220, 18%, 11%);
+    --nc-border: hsl(220, 14%, 22%);
+    --nc-border-subtle: hsl(220, 14%, 18%);
+    --nc-text-title: hsl(210, 20%, 96%);
+    --nc-text-body: hsl(210, 12%, 78%);
+    --nc-text-muted: hsl(210, 10%, 65%);
+    --nc-text-label: hsl(210, 10%, 55%);
+    --nc-scroll-thumb: hsl(220, 14%, 30%);
+    --nc-scroll-track: hsl(220, 20%, 8%);
+    --nc-toggle-off: hsl(220, 14%, 22%);
+    --nc-toggle-on: hsl(34, 92%, 55%);
+
+    --nc-chip-critical-bg: hsla(0, 78%, 62%, 0.15);
+    --nc-chip-critical-text: hsl(0, 78%, 62%);
+    --nc-chip-critical-border: hsla(0, 78%, 62%, 0.3);
+    --nc-chip-warning-bg: hsla(42, 95%, 55%, 0.15);
+    --nc-chip-warning-text: hsl(42, 95%, 55%);
+    --nc-chip-warning-border: hsla(42, 95%, 55%, 0.3);
+  }
 }
 
 /* ── Header ── */
@@ -19,17 +97,19 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 18px 14px;
-  background: #edecea;
+  background: var(--nc-header-bg);
   flex-shrink: 0;
+  transition: background var(--dur-med) var(--ease);
 }
 
 .nc-title {
   font-size: 1.9rem;
   font-weight: 800;
-  color: #1a2640;
+  color: var(--nc-text-title);
   font-family: var(--font-heading, 'Inter', sans-serif);
   letter-spacing: -0.02em;
   line-height: 1.1;
+  transition: color var(--dur-med) var(--ease);
 }
 
 /* Digest mode toggle */
@@ -41,7 +121,7 @@
 
 .nc-digest-label {
   font-size: 0.875rem;
-  color: #4a5568;
+  color: var(--nc-text-body);
   font-weight: 500;
 }
 
@@ -49,17 +129,17 @@
   width: 50px;
   height: 30px;
   border-radius: 99px;
-  background: #c8cbd4;
+  background: var(--nc-toggle-off);
   border: none;
   position: relative;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background var(--dur-med) var(--ease);
   padding: 0;
   flex-shrink: 0;
 }
 
 .nc-toggle--on {
-  background: #1a2640;
+  background: var(--nc-toggle-on);
 }
 
 .nc-toggle-thumb {
@@ -67,10 +147,10 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--nc-card-bg);
   top: 3px;
   left: 3px;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, background var(--dur-med) var(--ease);
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
@@ -85,14 +165,14 @@
   gap: 12px;
   margin: 0 14px 10px;
   padding: 14px 16px;
-  background: #f5f4f0;
+  background: var(--nc-item-bg);
   border-radius: 12px;
-  border: 1px solid #e0ded9;
+  border: 1px solid var(--nc-border);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s;
+  transition: background var(--dur-fast), border-color var(--dur-med) var(--ease);
 }
-.nc-quiet-banner:hover { background: #efeee9; }
+.nc-quiet-banner:hover { background: var(--nc-item-hover); }
 
 .nc-quiet-icon {
   width: 36px;
@@ -108,19 +188,21 @@
 .nc-quiet-title {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #1a2640;
+  color: var(--nc-text-title);
+  transition: color var(--dur-med) var(--ease);
 }
 
 .nc-quiet-sub {
   font-size: 0.76rem;
-  color: #64748b;
+  color: var(--nc-text-muted);
   margin-top: 2px;
+  transition: color var(--dur-med) var(--ease);
 }
 
 .nc-quiet-chevron {
-  color: #64748b;
+  color: var(--nc-text-muted);
   flex-shrink: 0;
-  transition: transform 0.2s;
+  transition: transform 0.2s, color var(--dur-med) var(--ease);
 }
 .nc-quiet-chevron--up { transform: rotate(0deg); }
 
@@ -130,20 +212,22 @@
   overflow-y: auto;
   padding: 0 14px 8px;
   scrollbar-width: thin;
-  scrollbar-color: #c8c6c2 #edecea;
+  scrollbar-color: var(--nc-scroll-thumb) var(--nc-scroll-track);
+  transition: scrollbar-color var(--dur-med) var(--ease);
 }
 .nc-scroll::-webkit-scrollbar { width: 4px; }
 .nc-scroll::-webkit-scrollbar-track { background: transparent; }
-.nc-scroll::-webkit-scrollbar-thumb { background: #c8c6c2; border-radius: 99px; }
+.nc-scroll::-webkit-scrollbar-thumb { background: var(--nc-scroll-thumb); border-radius: 99px; }
 
 /* ── Section labels ── */
 .nc-section-label {
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: #6b778a;
+  color: var(--nc-text-label);
   text-transform: uppercase;
   padding: 14px 4px 8px;
+  transition: color var(--dur-med) var(--ease);
 }
 
 /* ── NEEDS ATTENTION cards ── */
@@ -151,23 +235,24 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  background: #f5f4f0;
+  background: var(--nc-item-bg);
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid #e0ded9;
+  border: 1px solid var(--nc-border);
+  transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
 }
 
 .nc-att-card {
   position: relative;
   padding: 14px 14px 12px 18px;
-  border-left: 4px solid var(--border-color, #e0ded9);
-  border-bottom: 1px solid #e8e6e2;
+  border-left: 4px solid var(--border-color, var(--nc-border));
+  border-bottom: 1px solid var(--nc-border-subtle);
   cursor: pointer;
-  transition: background 0.12s;
-  background: #f5f4f0;
+  transition: background 0.12s, border-color var(--dur-med) var(--ease);
+  background: var(--nc-item-bg);
 }
 .nc-att-card:last-child { border-bottom: none; }
-.nc-att-card:hover { background: #edecea; }
+.nc-att-card:hover { background: var(--nc-item-hover); }
 
 /* Title row */
 .nc-att-title-row {
@@ -188,10 +273,11 @@
 .nc-att-title {
   font-size: 0.9375rem;
   font-weight: 700;
-  color: #1a2640;
+  color: var(--nc-text-title);
   flex: 1;
   min-width: 0;
   font-family: var(--font-heading, 'Inter', sans-serif);
+  transition: color var(--dur-med) var(--ease);
 }
 
 /* Confidence badge */
@@ -207,19 +293,20 @@
 /* Affected area */
 .nc-att-area {
   font-size: 0.78rem;
-  color: #4a5568;
+  color: var(--nc-text-body);
   margin-bottom: 8px;
   display: flex;
   gap: 6px;
+  transition: color var(--dur-med) var(--ease);
 }
 
 .nc-att-area-label {
   font-weight: 500;
-  color: #64748b;
+  color: var(--nc-text-muted);
 }
 
 .nc-att-area-value {
-  color: #2d3748;
+  color: var(--nc-text-body);
   font-weight: 500;
 }
 
@@ -239,21 +326,22 @@
   border-radius: 7px;
   font-size: 0.72rem;
   font-weight: 500;
-  background: #edecea;
-  color: #3d4a5c;
-  border: 1px solid #d8d6d2;
+  background: var(--nc-bg);
+  color: var(--nc-text-body);
+  border: 1px solid var(--nc-border);
+  transition: all var(--dur-med) var(--ease);
 }
 
 .nc-chip--critical {
-  background: #fce8e6;
-  color: #c0392b;
-  border-color: #f5c6c2;
+  background: var(--nc-chip-critical-bg);
+  color: var(--nc-chip-critical-text);
+  border-color: var(--nc-chip-critical-border);
 }
 
 .nc-chip--warning {
-  background: #fff3e0;
-  color: #b05a00;
-  border-color: #f5ddb8;
+  background: var(--nc-chip-warning-bg);
+  color: var(--nc-chip-warning-text);
+  border-color: var(--nc-chip-warning-border);
 }
 
 .nc-chip-dot {
@@ -275,8 +363,9 @@
 
 .nc-att-issued {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--nc-text-muted);
   flex-shrink: 0;
+  transition: color var(--dur-med) var(--ease);
 }
 
 .nc-att-action {
@@ -294,18 +383,20 @@
 
 .nc-att-action-text {
   font-size: 0.76rem;
-  color: #4a5568;
+  color: var(--nc-text-body);
   text-align: right;
   line-height: 1.4;
+  transition: color var(--dur-med) var(--ease);
 }
 
 /* ── Simple rows (Earlier Today / This Week) ── */
 .nc-simple-list {
-  background: #f5f4f0;
+  background: var(--nc-item-bg);
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid #e0ded9;
+  border: 1px solid var(--nc-border);
   margin-bottom: 2px;
+  transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
 }
 
 .nc-simple-row {
@@ -316,7 +407,7 @@
   cursor: pointer;
   transition: background 0.12s;
 }
-.nc-simple-row:hover { background: #edecea; }
+.nc-simple-row:hover { background: var(--nc-item-hover); }
 
 .nc-simple-icon {
   width: 36px;
@@ -332,14 +423,16 @@
 .nc-simple-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #1a2640;
+  color: var(--nc-text-title);
   line-height: 1.3;
+  transition: color var(--dur-med) var(--ease);
 }
 
 .nc-simple-sub {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--nc-text-muted);
   margin-top: 2px;
+  transition: color var(--dur-med) var(--ease);
 }
 
 .nc-simple-right {
@@ -358,18 +451,20 @@
 
 .nc-simple-time {
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--nc-text-muted);
   white-space: nowrap;
+  transition: color var(--dur-med) var(--ease);
 }
 
 /* ── Bottom tab bar ── */
 .nc-tabbar {
   display: flex;
   align-items: center;
-  background: #f8f7f4;
-  border-top: 1px solid #e0ded9;
+  background: var(--nc-tabbar-bg);
+  border-top: 1px solid var(--nc-border);
   flex-shrink: 0;
   padding: 4px 0 max(4px, env(safe-area-inset-bottom));
+  transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
 }
 
 .nc-tab {
@@ -394,8 +489,9 @@
 }
 
 .nc-tab--active .nc-tab-label {
-  color: #1a2640;
+  color: var(--nc-text-title);
   font-weight: 700;
+  transition: color var(--dur-med) var(--ease);
 }
 
 /* ── Responsive ── */

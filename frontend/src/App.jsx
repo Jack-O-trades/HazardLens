@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AlertsProvider } from './context/AlertsContext'
+import { ThemeProvider } from './context/ThemeContext'
 
 // Layouts
 import AppLayout from './components/layout/AppLayout'
@@ -57,6 +58,7 @@ function AppRoutes() {
         <Route path="report/context" element={<AddContextPage />} />
         <Route path="report/success" element={<SubmissionSuccessPage />} />
         <Route path="my-reports" element={<MyReportsPage />} />
+        <Route path="my-reports-own" element={<MyReportsPage showOnlyOwn={true} />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
@@ -74,12 +76,14 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AlertsProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AlertsProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AlertsProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </AlertsProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }

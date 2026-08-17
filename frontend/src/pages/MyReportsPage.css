@@ -111,15 +111,57 @@
 .my-reports-filter-label {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-
-  font-size: 0.72rem;
+  gap: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8125rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted);
-
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  height: 34px;
+  box-sizing: border-box;
   flex-shrink: 0;
+}
+
+/* Dashboard Filter system classes */
+.dashboard-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dashboard-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 1.1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+  height: 34px;
+  box-sizing: border-box;
+}
+
+.dashboard-filter-btn:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.dashboard-filter-btn--active {
+  background: var(--accent) !important;
+  color: hsl(220, 25%, 7%) !important;
+  border-color: var(--accent) !important;
+  box-shadow: var(--shadow-sm);
 }
 
 /* =========================================================

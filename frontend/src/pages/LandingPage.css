@@ -20,10 +20,11 @@
   position: sticky;
   top: 0;
   z-index: 200;
-  background: hsla(220, 25%, 7%, 0.88);
+  background: var(--bg-nav, hsla(220, 25%, 7%, 0.88));
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
 }
 
 .lp-nav-inner {
@@ -48,8 +49,9 @@
   font-family: var(--font-heading);
   font-size: 1.2rem;
   font-weight: 800;
-  color: #ffffff; /* Hazard white */
+  color: var(--text-primary);
   letter-spacing: -0.03em;
+  transition: color var(--dur-med) var(--ease);
 }
 .lp-nav-brand span { color: var(--accent); } /* Lens orange */
 
@@ -63,7 +65,7 @@
 .lp-nav-link {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #ffffff; /* other links white */
+  color: var(--text-primary);
   opacity: 0.8;
   text-decoration: none;
   padding: 0.4rem 0.9rem;
@@ -71,7 +73,7 @@
   transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
 }
 .lp-nav-link:hover {
-  color: #ffffff;
+  color: var(--text-primary);
   opacity: 1;
   background: var(--bg-card);
 }
@@ -83,13 +85,34 @@
   margin-left: auto;
 }
 
+/* ── Theme Toggle Button ── */
+.lp-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+}
+.lp-theme-toggle:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-hover);
+  transform: scale(1.05);
+}
+
 /* ── Shared button primitives ── */
 .lp-btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0.55rem 1.25rem; /* optimized from 0.9rem 1.7rem */
+  padding: 0 1.25rem;
+  height: 38px;
   background: var(--accent);
   color: hsl(220, 25%, 7%);
   font-family: var(--font-body);
@@ -114,12 +137,13 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0.5rem 1rem; /* optimized from 0.625rem 1.25rem */
+  padding: 0 1.1rem;
+  height: 38px;
   background: transparent;
-  color: #ffffff;
-  opacity: 0.8;
+  color: var(--text-primary);
+  opacity: 0.85;
   font-family: var(--font-body);
-  font-size: 0.8125rem; /* optimized from 0.9rem */
+  font-size: 0.875rem; /* optimized from 0.9rem */
   font-weight: 600;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -128,10 +152,10 @@
   white-space: nowrap;
 }
 .lp-btn-ghost:hover {
-  background: var(--bg-card);
-  color: #190e0e;
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
   opacity: 1;
-  border-color: var(--border-accent);
+  border-color: var(--border-hover);
 }
 
 .lp-btn-outline {
@@ -990,4 +1014,29 @@
   .lp-stats      { flex-direction: column; align-items: stretch; }
   .lp-stat       { border-right: none; border-bottom: 1px solid var(--border-subtle); }
   .lp-stat:last-child { border-bottom: none; }
+}
+
+@media (max-width: 480px) {
+  .lp-nav-brand {
+    font-size: 1rem !important;
+  }
+  .lp-nav-logo svg {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  .lp-nav-actions {
+    gap: 6px !important;
+  }
+  .lp-theme-toggle {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .lp-btn-primary, .lp-btn-ghost {
+    padding: 0 0.75rem !important;
+    font-size: 0.75rem !important;
+    height: 32px !important;
+  }
+  .lp-btn-primary svg {
+    display: none !important;
+  }
 }

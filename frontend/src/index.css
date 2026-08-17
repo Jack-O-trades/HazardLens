@@ -21,6 +21,7 @@
   --bg-card-hover:  hsl(210, 18%, 96%);
   --bg-input:       hsl(210, 16%, 97%);
   --bg-overlay:     hsla(220, 25%, 15%, 0.55);
+  --bg-nav:         hsla(0, 0%, 100%, 0.85);
 
   /* Borders */
   --border:         hsl(220, 13%, 88%);
@@ -119,6 +120,7 @@
   --bg-card-hover:  hsl(220, 16%, 17%);
   --bg-input:       hsl(220, 16%, 12%);
   --bg-overlay:     hsla(220, 30%, 3%, 0.65);
+  --bg-nav:         hsla(220, 18%, 11%, 0.85);
 
   --border:         hsl(220, 14%, 22%);
   --border-subtle:  hsl(220, 14%, 18%);
@@ -174,6 +176,7 @@
     --bg-card-hover:  hsl(220, 16%, 17%);
     --bg-input:       hsl(220, 16%, 12%);
     --bg-overlay:     hsla(220, 30%, 3%, 0.65);
+    --bg-nav:         hsla(220, 18%, 11%, 0.85);
 
     --border:         hsl(220, 14%, 22%);
     --border-subtle:  hsl(220, 14%, 18%);

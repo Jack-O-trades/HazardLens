@@ -1,26 +1,27 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useAlerts } from '../context/AlertsContext'
 import { FileText, Search, Filter } from 'lucide-react'
-import { MOCK_ALERTS } from '../data/mockData'
 import AlertCard from '../components/shared/AlertCard'
 import EmptyState from '../components/shared/EmptyState'
 import './MyReportsPage.css'
 
 const STATUS_FILTERS = ['all', 'pending', 'verified', 'resolved', 'rejected']
 
-export default function MyReportsPage() {
+export default function MyReportsPage({ showOnlyOwn = false }) {
   const { user } = useAuth()
+  const { alerts } = useAlerts()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
   // Community and Reporter: show only their own submissions
-  // Verifier / Corrector / Admin: show all reports (they review all)
+  // Verifier / Corrector / Admin: show all reports unless showOnlyOwn is requested
   const isFieldRole = user.role === 'community' || user.role === 'reporter'
-  const myReports = isFieldRole
-    ? MOCK_ALERTS.filter(a => a.reportedBy === user.name)
-    : MOCK_ALERTS
+  const myReports = (showOnlyOwn || isFieldRole)
+    ? alerts.filter(a => a.reportedBy === user.name)
+    : alerts
 
   const filtered = myReports.filter(a => {
     const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -44,10 +45,10 @@ export default function MyReportsPage() {
         <div>
           <h1 className="page-title">
             <FileText size={22} className="my-reports-title-icon" />
-            {isFieldRole ? 'My Reports' : 'All Reports'}
+            {(showOnlyOwn || isFieldRole) ? 'My Reports' : 'All Reports'}
           </h1>
           <p className="page-subtitle">
-            {isFieldRole
+            {(showOnlyOwn || isFieldRole)
               ? `${myReports.length} report${myReports.length !== 1 ? 's' : ''} submitted by you`
               : `${myReports.length} total reports across all reporters`
             }
@@ -75,7 +76,7 @@ export default function MyReportsPage() {
 
       {/* Search & filters */}
       <div className="my-reports-controls">
-        <div className="topbar-search my-reports-search">
+        <div className="topbar-search-wrap my-reports-search">
           <Search size={15} className="topbar-search-icon" />
           <input
             id="my-reports-search"

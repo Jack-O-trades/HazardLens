@@ -98,6 +98,11 @@ export default function Sidebar({ isOpen, onClose }) {
           <span>Reports</span>
         </NavLink>
 
+        <NavLink to="/dashboard/my-reports-own" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+          <ClipboardList size={18} />
+          <span>My Reports</span>
+        </NavLink>
+
         <p className="sidebar-nav-label">Insights</p>
 
         {/* NOTE: /dashboard/analytics and /dashboard/resources don't
