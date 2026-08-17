@@ -103,7 +103,7 @@ export default function TopBar({ onMenuClick }) {
       </div>
 
       {/* Center — Search */}
-      <div className="topbar-search-wrap">
+      <div id="topbar-search-target" className="topbar-search-wrap">
         <Search size={15} className="topbar-search-icon" />
         <input
           type="search"

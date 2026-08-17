@@ -10,6 +10,7 @@ import AuthLayout from './components/layout/AuthLayout'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import LiveMapPage from './pages/LiveMapPage'
 import AlertDetailPage from './pages/AlertDetailPage'
 import CorrectionPage from './pages/CorrectionPage'
 import NotificationCenter from './pages/NotificationCenter'
@@ -48,6 +49,7 @@ function AppRoutes() {
       {/* Protected — App Shell */}
       <Route path="/dashboard" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route index element={<DashboardPage />} />
+        <Route path="live-map" element={<LiveMapPage />} />
         <Route path="alert/:id" element={<AlertDetailPage />} />
         <Route path="alert/:id/correct" element={<ProtectedRoute requireCap="canCorrect"><CorrectionPage /></ProtectedRoute>} />
         <Route path="notifications" element={<NotificationCenter />} />
