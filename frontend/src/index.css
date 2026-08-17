@@ -3,9 +3,16 @@
 /* ============================================================
    HazardLens — Global Design System
    Light professional: white/warm-grey + amber/hazard-orange
+   Dark variant included below (data-theme="dark" or system pref)
+
+   All *-text variants are contrast-checked against their
+   background (>=4.5:1, WCAG AA normal text). Use the base
+   token (--sev-high, --status-pending, etc.) for dots, borders,
+   and backgrounds only — use the *-text token whenever the
+   color is applied directly to text.
    ============================================================ */
 
-/* ---------- TOKENS ---------- */
+/* ---------- LIGHT THEME (default) ---------- */
 :root {
   /* Backgrounds */
   --bg-base:        hsl(210, 20%, 97%);
@@ -18,34 +25,54 @@
   /* Borders */
   --border:         hsl(220, 13%, 88%);
   --border-subtle:  hsl(220, 13%, 92%);
-  --border-accent:  hsl(25, 95%, 53%);
+  --border-hover:   hsl(220, 13%, 78%);
+  --border-accent:  hsl(34, 92%, 50%);
+  --scrollbar-hover: hsl(220, 13%, 75%);
 
-  /* Accent — Amber / Hazard Orange */
-  --accent:         hsl(25, 95%, 53%);
-  --accent-dim:     hsl(25, 85%, 45%);
-  --accent-glow:    hsla(25, 95%, 53%, 0.12);
-  --accent-text:    hsl(25, 95%, 44%);
+  /* Accent — Amber / Hazard Orange
+     Hue moved from 25° to 34°: at 25° it sat only 3° from
+     --sev-high (22°), making CTAs and "High" severity badges
+     nearly indistinguishable. 34° keeps the same hazard-orange
+     identity while reading as clearly separate from both
+     --sev-high (22°) and --sev-medium (42°). */
+  --accent:         hsl(34, 92%, 50%);
+  --accent-dim:     hsl(34, 82%, 42%);
+  --accent-glow:    hsla(34, 92%, 50%, 0.12);
+  --accent-text:    hsl(34, 92%, 35%);   /* 4.59:1 on white — was 3.73:1 at L44% */
 
-  /* Severity Colors */
+  /* Severity Colors — base (dots / borders / backgrounds) */
   --sev-critical:   hsl(0, 80%, 50%);
   --sev-high:       hsl(22, 90%, 52%);
   --sev-medium:     hsl(42, 95%, 42%);
   --sev-low:        hsl(195, 60%, 40%);
   --sev-safe:       hsl(145, 55%, 36%);
 
-  /* Status */
+  /* Severity Colors — text-safe variants (>=4.5:1 on white) */
+  --sev-critical-text: hsl(0, 80%, 50%);   /* already 4.66:1, unchanged */
+  --sev-high-text:     hsl(22, 90%, 41%);  /* was 3.10:1 at L52% */
+  --sev-medium-text:   hsl(42, 95%, 31%);  /* was 2.65:1 at L42% */
+  --sev-low-text:      hsl(195, 60%, 38%); /* was 4.24:1 at L40%, tightened */
+  --sev-safe-text:     hsl(145, 55%, 34%); /* was 4.11:1 at L36%, tightened */
+
+  /* Status — base */
   --status-pending:  hsl(42, 90%, 42%);
   --status-verified: hsl(195, 60%, 40%);
   --status-resolved: hsl(145, 55%, 36%);
   --status-rejected: hsl(0, 80%, 50%);
 
+  /* Status — text-safe variants */
+  --status-pending-text:  hsl(42, 90%, 31%);   /* was 2.75:1 */
+  --status-verified-text: hsl(195, 60%, 38%);
+  --status-resolved-text: hsl(145, 55%, 34%);
+  --status-rejected-text: hsl(0, 80%, 50%);
+
   /* Text */
   --text-primary:   hsl(220, 25%, 12%);
   --text-secondary: hsl(220, 15%, 35%);
-  --text-muted:     hsl(220, 10%, 55%);
-  --text-accent:    hsl(25, 95%, 44%);
-  --text-danger:    hsl(0, 78%, 48%);
-  --text-success:   hsl(145, 55%, 36%);
+  --text-muted:     hsl(220, 10%, 48%);  /* was 55% -> 3.54:1, now 4.55:1 */
+  --text-accent:    var(--accent-text);
+  --text-danger:    hsl(0, 78%, 42%);
+  --text-success:   hsl(145, 55%, 32%);
 
   /* Typography */
   --font-body:     'Inter', system-ui, sans-serif;
@@ -63,13 +90,136 @@
   --shadow-sm:  0 1px 3px hsla(220, 20%, 40%, 0.08);
   --shadow-md:  0 4px 16px hsla(220, 20%, 40%, 0.1);
   --shadow-lg:  0 8px 32px hsla(220, 20%, 40%, 0.13);
-  --shadow-accent: 0 4px 20px hsla(25, 95%, 53%, 0.25);
+  --shadow-accent: 0 4px 20px hsla(34, 92%, 50%, 0.25);
+
+  /* Focus ring */
+  --focus-ring: var(--accent);
 
   /* Transitions */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --dur-fast: 150ms;
   --dur-med:  250ms;
   --dur-slow: 400ms;
+}
+
+/* ---------- DARK THEME ----------
+   Toggle explicitly with <html data-theme="dark">, or it applies
+   automatically when the OS is in dark mode and no explicit
+   data-theme="light" override is set. Severity/status hues are
+   lightened (not just re-used at base lightness) where the base
+   value fails 4.5:1 against the dark card background — verified
+   the same way as the light-theme fixes above. */
+/* Shared dark-token block, applied two ways below: explicit
+   opt-in via data-theme="dark", and automatic via OS preference
+   (unless the user/app has explicitly forced data-theme="light"). */
+[data-theme="dark"] {
+  --bg-base:        hsl(220, 20%, 8%);
+  --bg-surface:     hsl(220, 18%, 11%);
+  --bg-card:        hsl(220, 16%, 13%);
+  --bg-card-hover:  hsl(220, 16%, 17%);
+  --bg-input:       hsl(220, 16%, 12%);
+  --bg-overlay:     hsla(220, 30%, 3%, 0.65);
+
+  --border:         hsl(220, 14%, 22%);
+  --border-subtle:  hsl(220, 14%, 18%);
+  --border-hover:   hsl(220, 14%, 32%);
+  --border-accent:  hsl(34, 92%, 55%);
+  --scrollbar-hover: hsl(220, 14%, 30%);
+
+  --accent:         hsl(34, 92%, 55%);
+  --accent-dim:     hsl(34, 85%, 62%);
+  --accent-glow:    hsla(34, 92%, 55%, 0.16);
+  --accent-text:    hsl(34, 95%, 68%);
+
+  --sev-critical:   hsl(0, 78%, 62%);
+  --sev-high:       hsl(22, 90%, 58%);
+  --sev-medium:     hsl(42, 95%, 55%);
+  --sev-low:        hsl(195, 65%, 52%);
+  --sev-safe:       hsl(145, 50%, 48%);
+
+  --sev-critical-text: hsl(0, 78%, 62%);
+  --sev-high-text:     hsl(22, 90%, 58%);
+  --sev-medium-text:   hsl(42, 95%, 55%);
+  --sev-low-text:      hsl(195, 65%, 52%);
+  --sev-safe-text:     hsl(145, 50%, 48%);
+
+  --status-pending:  hsl(42, 90%, 55%);
+  --status-verified: hsl(195, 65%, 52%);
+  --status-resolved: hsl(145, 50%, 48%);
+  --status-rejected: hsl(0, 78%, 62%);
+
+  --status-pending-text:  hsl(42, 90%, 55%);
+  --status-verified-text: hsl(195, 65%, 52%);
+  --status-resolved-text: hsl(145, 50%, 48%);
+  --status-rejected-text: hsl(0, 78%, 62%);
+
+  --text-primary:   hsl(210, 20%, 96%);
+  --text-secondary: hsl(210, 12%, 78%);
+  --text-muted:     hsl(210, 10%, 65%);
+  --text-accent:    var(--accent-text);
+  --text-danger:    hsl(0, 78%, 68%);
+  --text-success:   hsl(145, 50%, 55%);
+
+  --shadow-sm:  0 1px 3px hsla(220, 40%, 2%, 0.4);
+  --shadow-md:  0 4px 16px hsla(220, 40%, 2%, 0.45);
+  --shadow-lg:  0 8px 32px hsla(220, 40%, 2%, 0.5);
+  --shadow-accent: 0 4px 20px hsla(34, 92%, 55%, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-base:        hsl(220, 20%, 8%);
+    --bg-surface:     hsl(220, 18%, 11%);
+    --bg-card:        hsl(220, 16%, 13%);
+    --bg-card-hover:  hsl(220, 16%, 17%);
+    --bg-input:       hsl(220, 16%, 12%);
+    --bg-overlay:     hsla(220, 30%, 3%, 0.65);
+
+    --border:         hsl(220, 14%, 22%);
+    --border-subtle:  hsl(220, 14%, 18%);
+    --border-hover:   hsl(220, 14%, 32%);
+    --border-accent:  hsl(34, 92%, 55%);
+    --scrollbar-hover: hsl(220, 14%, 30%);
+
+    --accent:         hsl(34, 92%, 55%);
+    --accent-dim:     hsl(34, 85%, 62%);
+    --accent-glow:    hsla(34, 92%, 55%, 0.16);
+    --accent-text:    hsl(34, 95%, 68%);
+
+    --sev-critical:   hsl(0, 78%, 62%);
+    --sev-high:       hsl(22, 90%, 58%);
+    --sev-medium:     hsl(42, 95%, 55%);
+    --sev-low:        hsl(195, 65%, 52%);
+    --sev-safe:       hsl(145, 50%, 48%);
+
+    --sev-critical-text: hsl(0, 78%, 62%);
+    --sev-high-text:     hsl(22, 90%, 58%);
+    --sev-medium-text:   hsl(42, 95%, 55%);
+    --sev-low-text:      hsl(195, 65%, 52%);
+    --sev-safe-text:     hsl(145, 50%, 48%);
+
+    --status-pending:  hsl(42, 90%, 55%);
+    --status-verified: hsl(195, 65%, 52%);
+    --status-resolved: hsl(145, 50%, 48%);
+    --status-rejected: hsl(0, 78%, 62%);
+
+    --status-pending-text:  hsl(42, 90%, 55%);
+    --status-verified-text: hsl(195, 65%, 52%);
+    --status-resolved-text: hsl(145, 50%, 48%);
+    --status-rejected-text: hsl(0, 78%, 62%);
+
+    --text-primary:   hsl(210, 20%, 96%);
+    --text-secondary: hsl(210, 12%, 78%);
+    --text-muted:     hsl(210, 10%, 65%);
+    --text-accent:    var(--accent-text);
+    --text-danger:    hsl(0, 78%, 68%);
+    --text-success:   hsl(145, 50%, 55%);
+
+    --shadow-sm:  0 1px 3px hsla(220, 40%, 2%, 0.4);
+    --shadow-md:  0 4px 16px hsla(220, 40%, 2%, 0.45);
+    --shadow-lg:  0 8px 32px hsla(220, 40%, 2%, 0.5);
+    --shadow-accent: 0 4px 20px hsla(34, 92%, 55%, 0.3);
+  }
 }
 
 /* ---------- RESET ---------- */
@@ -85,6 +235,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background var(--dur-med) var(--ease), color var(--dur-med) var(--ease);
 }
 
 img, svg { display: block; max-width: 100%; }
@@ -93,11 +244,19 @@ button { cursor: pointer; font-family: inherit; border: none; background: none; 
 input, select, textarea { font-family: inherit; }
 ul, ol { list-style: none; }
 
+/* Global focus-visible — every interactive element gets this by
+   default; no need for individual components to redefine it. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 /* ---------- SCROLLBAR ---------- */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-base); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(220, 13%, 75%); }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
 /* ---------- UTILITY CLASSES ---------- */
 .sr-only {
@@ -145,7 +304,7 @@ h1, h2, h3, h4, h5 { font-family: var(--font-heading); line-height: 1.2; }
   color: hsl(0, 0%, 100%);
 }
 .btn-primary:hover {
-  background: hsl(25, 95%, 47%);
+  background: var(--accent-dim);
   box-shadow: var(--shadow-accent);
   transform: translateY(-1px);
 }
@@ -159,12 +318,12 @@ h1, h2, h3, h4, h5 { font-family: var(--font-heading); line-height: 1.2; }
 .btn-ghost:hover {
   background: var(--bg-card-hover);
   color: var(--text-primary);
-  border-color: hsl(220, 13%, 78%);
+  border-color: var(--border-hover);
 }
 
 .btn-danger {
   background: hsla(0, 80%, 50%, 0.08);
-  color: var(--sev-critical);
+  color: var(--sev-critical-text);
   border: 1px solid hsla(0, 80%, 50%, 0.25);
 }
 .btn-danger:hover {
@@ -186,7 +345,7 @@ h1, h2, h3, h4, h5 { font-family: var(--font-heading); line-height: 1.2; }
   transition: all var(--dur-med) var(--ease);
   box-shadow: var(--shadow-sm);
 }
-.card:hover { border-color: hsl(220, 13%, 78%); box-shadow: var(--shadow-md); }
+.card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-md); }
 
 /* ---- Inputs ---- */
 .input-group { display: flex; flex-direction: column; gap: 6px; }
@@ -283,6 +442,11 @@ textarea.input { resize: vertical; min-height: 100px; }
 
 .animate-fade-in { animation: fadeIn var(--dur-slow) var(--ease) both; }
 .animate-slide-in { animation: slideInLeft var(--dur-slow) var(--ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in, .animate-slide-in { animation: none; }
+  html { scroll-behavior: auto; }
+}
 
 /* ---- Loading spinner ---- */
 .spinner {

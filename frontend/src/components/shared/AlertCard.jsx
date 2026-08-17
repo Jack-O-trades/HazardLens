@@ -14,11 +14,17 @@ const TYPE_ICONS = {
   biological:  '🧫',
   mechanical:  '⚙️',
   other:       '⚠️',
+  flood:       '💧',
+  fire:        '🔥',
+  seismic:     '📳',
+  infrastructure: '🏗️',
+  weather:     '🌩️',
+  river:       '💧',
 }
 
 export default function AlertCard({ alert, compact = false }) {
   const navigate = useNavigate()
-  const icon = TYPE_ICONS[alert.type] || '⚠️'
+  const icon = TYPE_ICONS[alert.type] || TYPE_ICONS[alert.hazardType] || '⚠️'
   const confidenceTone = alert.confidence >= 75 ? 'high' : alert.confidence >= 50 ? 'medium' : 'low'
 
   return (
