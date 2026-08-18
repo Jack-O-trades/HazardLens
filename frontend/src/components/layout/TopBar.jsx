@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, Search, ChevronDown, Menu, User, Settings, LogOut } from 'lucide-react'
+import { Bell, Search, ChevronDown, Menu, User, Settings, LogOut, Sun, Moon } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import './TopBar.css'
 
 /* Shield icon matching the dark navy shield in the reference image */
@@ -58,6 +59,7 @@ function UserAvatar({ user }) {
 
 export default function TopBar({ onMenuClick }) {
   const { user, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [dropOpen, setDropOpen] = useState(false)
   const dropRef = useRef(null)
@@ -117,6 +119,15 @@ export default function TopBar({ onMenuClick }) {
 
       {/* Right — Bell + User */}
       <div className="topbar-right">
+        <button
+          className="topbar-theme-btn"
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+          id="topbar-theme-toggle"
+        >
+          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+        </button>
+
         <button
           className="topbar-bell-btn"
           onClick={() => navigate('/dashboard/notifications')}

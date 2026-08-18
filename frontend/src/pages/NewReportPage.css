@@ -27,6 +27,34 @@
   font-family: 'Inter', system-ui, sans-serif;
 }
 
+[data-theme="dark"] .nr-shell {
+  --nr-bg:         hsl(220, 20%, 8%);
+  --nr-surface:    hsl(220, 18%, 11%);
+  --nr-border:     hsl(220, 14%, 22%);
+  --nr-text:       hsl(210, 20%, 96%);
+  --nr-text-sub:   hsl(210, 10%, 65%);
+  --nr-amber:      hsl(34, 92%, 55%);
+  --nr-amber-bg:   hsla(34, 92%, 55%, 0.16);
+  --nr-amber-text: hsl(34, 95%, 68%);
+  --nr-slate:      hsl(220, 16%, 13%);
+  --nr-finder-bg:  hsl(220, 14%, 32%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .nr-shell {
+    --nr-bg:         hsl(220, 20%, 8%);
+    --nr-surface:    hsl(220, 18%, 11%);
+    --nr-border:     hsl(220, 14%, 22%);
+    --nr-text:       hsl(210, 20%, 96%);
+    --nr-text-sub:   hsl(210, 10%, 65%);
+    --nr-amber:      hsl(34, 92%, 55%);
+    --nr-amber-bg:   hsla(34, 92%, 55%, 0.16);
+    --nr-amber-text: hsl(34, 95%, 68%);
+    --nr-slate:      hsl(220, 16%, 13%);
+    --nr-finder-bg:  hsl(220, 14%, 32%);
+  }
+}
+
 /* ================================================================
    RESPONSIVE LAYOUT SYSTEM
    ================================================================ */
@@ -150,7 +178,7 @@
   }
 
   .app-content:has(.nr-shell) {
-    background: hsl(38, 20%, 90%);
+    background: var(--bg-base);
   }
 
   .nr-page-header {
@@ -734,4 +762,255 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ============================================================
+   New confirmation actions, simulator, and status screen CSS
+   ============================================================ */
+
+/* Retake / Cancel / Upload actions overlay on captured photo */
+.nr-photo-actions-overlay {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  z-index: 5;
+}
+
+.nr-photo-act-btn {
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  transition: all 150ms var(--nr-ease);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.nr-photo-act-btn:active {
+  transform: scale(0.96);
+}
+
+.nr-btn-cancel {
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+}
+.nr-btn-cancel:hover {
+  background: rgba(15, 23, 42, 0.96);
+}
+
+.nr-btn-retake {
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+}
+.nr-btn-retake:hover {
+  background: rgba(15, 23, 42, 0.96);
+}
+
+.nr-btn-upload {
+  background: var(--nr-amber);
+  color: #1a2640 !important;
+}
+.nr-btn-upload:hover {
+  background: hsl(34, 95%, 60%);
+  box-shadow: 0 4px 15px hsla(34, 95%, 55%, 0.35);
+}
+
+/* Simulation overlay controls */
+.nr-sim-toggle-container {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.78);
+  padding: 4px 8px;
+  border-radius: 6px;
+  z-index: 5;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nr-sim-toggle-container .sim-label {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.nr-sim-toggle-container .sim-toggle-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 120ms var(--nr-ease);
+}
+
+.nr-sim-toggle-container .sim-toggle-btn.active {
+  background: var(--nr-amber);
+  color: #1a2640 !important;
+}
+
+/* Loading state screen styling */
+.nr-upload-loading {
+  width: 100%;
+  height: 100%;
+  background: var(--nr-surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--nr-text);
+  text-align: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.nr-upload-loading h4 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 18px 0 6px;
+  color: var(--nr-text);
+}
+
+.nr-upload-loading p {
+  font-size: 0.82rem;
+  color: var(--nr-text-sub);
+  max-width: 260px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.nr-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3.5px solid var(--nr-border);
+  border-top-color: var(--nr-amber);
+  border-radius: 50%;
+  animation: nr-spin 0.8s linear infinite;
+}
+
+@keyframes nr-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Upload success/failure status page rendering */
+.nr-upload-status {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 28px;
+  box-sizing: border-box;
+  background: var(--nr-surface);
+}
+
+.nr-upload-status h3 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0 0 6px;
+  color: var(--nr-text);
+  letter-spacing: -0.015em;
+}
+
+.nr-upload-status p {
+  font-size: 0.875rem;
+  color: var(--nr-text-sub);
+  margin: 0;
+  max-width: 280px;
+  line-height: 1.45;
+}
+
+.status-icon-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.12);
+  border: 2.5px solid #22c55e;
+  color: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.status-icon-ring-fail {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.12);
+  border: 2.5px solid #ef4444;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.nr-telemetry-badge {
+  background: var(--nr-bg);
+  border: 1px solid var(--nr-border);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-family: monospace;
+  font-size: 0.76rem;
+  text-align: left;
+  margin: 16px 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--nr-text-sub);
+}
+
+.nr-status-btn-primary {
+  padding: 11px 26px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  background: var(--nr-amber);
+  color: #1a2640 !important;
+  cursor: pointer;
+  transition: all 140ms var(--nr-ease);
+}
+.nr-status-btn-primary:hover {
+  background: hsl(34, 95%, 60%);
+  box-shadow: 0 4px 15px hsla(34, 95%, 55%, 0.35);
+}
+
+.nr-status-btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.nr-status-btn-secondary {
+  padding: 11px 26px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1.5px solid var(--nr-border);
+  background: transparent;
+  color: var(--nr-text);
+  cursor: pointer;
+  transition: all 140ms var(--nr-ease);
+}
+.nr-status-btn-secondary:hover {
+  background: var(--nr-border);
+  color: var(--nr-text);
+}
+
 

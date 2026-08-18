@@ -1,34 +1,36 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useAlerts } from '../context/AlertsContext'
 import { FileText, Search, Filter } from 'lucide-react'
-import { MOCK_ALERTS } from '../data/mockData'
 import AlertCard from '../components/shared/AlertCard'
 import EmptyState from '../components/shared/EmptyState'
 import './MyReportsPage.css'
 
 const STATUS_FILTERS = ['all', 'pending', 'verified', 'resolved', 'rejected']
 
-export default function MyReportsPage() {
+export default function MyReportsPage({ showOnlyOwn = false }) {
   const { user } = useAuth()
+  const { alerts } = useAlerts()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
-  // Community and Reporter: show only their own submissions
-  // Verifier / Corrector / Admin: show all reports (they review all)
+  // Community and Reporter: always see only their own submissions.
+  // showOnlyOwn lets a parent route force this "own reports" view for
+  // other roles too (e.g. a "My Reports" tab for a verifier).
   const isFieldRole = user.role === 'community' || user.role === 'reporter'
+  const restrictToOwn = showOnlyOwn || isFieldRole
 
-  // NOTE: matching on a stable identifier (user.id) rather than user.name,
-  // since names aren't guaranteed unique and shouldn't be used as a key.
-  // This assumes MOCK_ALERTS entries expose a matching id field
-  // (reportedById) alongside the display name (reportedBy) — adjust the
-  // field name here if your mock data uses a different key.
+  // Matches on a stable id (user.id) rather than user.name, since names
+  // aren't guaranteed unique and shouldn't be used as a matching key.
+  // Falls back to reportedBy/user.name if an id isn't present yet, so
+  // this keeps working even before every alert record has reportedById.
   const myReports = useMemo(() => (
-    isFieldRole
-      ? MOCK_ALERTS.filter(a => (a.reportedById ?? a.reportedBy) === (user.id ?? user.name))
-      : MOCK_ALERTS
-  ), [isFieldRole, user.id, user.name])
+    restrictToOwn
+      ? alerts.filter(a => (a.reportedById ?? a.reportedBy) === (user.id ?? user.name))
+      : alerts
+  ), [alerts, restrictToOwn, user.id, user.name])
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -58,10 +60,10 @@ export default function MyReportsPage() {
         <div>
           <h1 className="page-title">
             <FileText size={22} className="my-reports-title-icon" />
-            {isFieldRole ? 'My Reports' : 'All Reports'}
+            {restrictToOwn ? 'My Reports' : 'All Reports'}
           </h1>
           <p className="page-subtitle">
-            {isFieldRole
+            {restrictToOwn
               ? `${myReports.length} report${myReports.length !== 1 ? 's' : ''} submitted by you`
               : `${myReports.length} total reports across all reporters`
             }
@@ -89,7 +91,12 @@ export default function MyReportsPage() {
 
       {/* Search & filters */}
       <div className="my-reports-controls">
-        <div className="topbar-search my-reports-search">
+        {/* NOTE: kept both "topbar-search" and "topbar-search-wrap" below
+            since the merge left it unclear which one your global CSS
+            actually defines. Run:
+              findstr /s /n "topbar-search" frontend\src\*.css
+            then delete whichever class name has no real definition. */}
+        <div className="topbar-search topbar-search-wrap my-reports-search">
           <label htmlFor="my-reports-search" className="sr-only">
             Search my reports
           </label>

@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import {
   Shield, Zap, MapPin, Eye, Wrench, Bell, ArrowRight,
-  CheckCircle, ChevronRight, Lock, Users
+  CheckCircle, ChevronRight, Lock, Users, Sun, Moon
 } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
 import './LandingPage.css'
 
 /* ── Brand logo SVG ── */
@@ -190,6 +191,7 @@ const ROLES = [
 
 export default function LandingPage() {
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
 
   return (
     <div className="lp">
@@ -207,6 +209,13 @@ export default function LandingPage() {
             <a href="#stats" className="lp-nav-link">Platform</a>
           </div>
           <div className="lp-nav-actions">
+            <button
+              className="lp-theme-toggle"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
             <button className="lp-btn-ghost" onClick={() => navigate('/login')}>Sign In</button>
             <button className="lp-btn-primary" onClick={() => navigate('/login')}>
               Get Started <ArrowRight size={15} />
