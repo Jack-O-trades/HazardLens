@@ -1,34 +1,21 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { CheckCircle, LayoutDashboard, PlusCircle, FileText } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
-import { useAlerts } from '../context/AlertsContext'
 import './SubmissionSuccessPage.css'
 
 export default function SubmissionSuccessPage() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { user } = useAuth()
-  const { addAlert } = useAlerts()
   const [reportId] = useState(() => `RPT-${Math.floor(1000 + Math.random() * 9000)}`)
   const [showContent, setShowContent] = useState(false)
 
-  // Persist the submitted report to the alerts context
-  useEffect(() => {
-    if (location.state && user) {
-      const { photos, video, hazardTag, notes, publicLoc } = location.state
-      const report = {
-        title: hazardTag || 'Hazard Report',
-        notes: notes || 'Citizen hazard report submitted via HazardLens.',
-        location: 'Riverdale (GPS pending)',
-        hazardType: hazardTag,
-        severity: 'moderate',
-        photos: photos || [],
-        reportedBy: user.name,
-      }
-      addAlert(report)
-    }
-  }, [location.state, user, addAlert])
+  // NOTE: this page used to persist the report itself (addAlert) based on
+  // location.state passed from the old multi-step flow. That's now done
+  // by NewReportPage.handleUpload before it navigates here, so this page
+  // is purely a confirmation screen — no second write. If you want to
+  // reintroduce showing details of what was submitted (photo, hazard
+  // type, etc.), pull useLocation() back in and read location.state,
+  // whose current shape is { photo, hazardType, severity, description,
+  // coordinates, timestamp, reportedBy }.
 
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 300)

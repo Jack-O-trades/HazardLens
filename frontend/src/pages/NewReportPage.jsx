@@ -41,7 +41,7 @@ export default function NewReportPage() {
   const [cameraError, setCameraError] = useState(null)
 
   // Upload simulation states
-  const [uploadStatus, setUploadStatus] = useState(null) // null | 'uploading' | 'success' | 'failed'
+  const [uploadStatus, setUploadStatus] = useState(null) // null | 'uploading' | 'failed'
   const [simulateSuccess, setSimulateSuccess] = useState(true)
 
   // Get GPS Coordinates on mount
@@ -156,7 +156,22 @@ export default function NewReportPage() {
           location: 'Riverdale Heights',
           reportedBy: user?.name || 'Citizen Reporter',
         })
-        setUploadStatus('success')
+
+        // NOTE: field names here are a best guess based on the old
+        // context-page handoff shape (photo/hazardType/severity/
+        // description/coordinates/timestamp). Adjust to match whatever
+        // SubmissionSuccessPage actually reads from location.state.
+        navigate('/dashboard/report/success', {
+          state: {
+            photo,
+            hazardType: hazard,
+            severity,
+            description: desc,
+            coordinates,
+            timestamp,
+            reportedBy: user?.name || 'Citizen Reporter',
+          },
+        })
       } else {
         setUploadStatus('failed')
       }
@@ -171,31 +186,6 @@ export default function NewReportPage() {
           <div className="nr-spinner" />
           <h4>Uploading Telemetry & Evidence...</h4>
           <p>Encrypting payload metadata for secure blockchain ingestion.</p>
-        </div>
-      ) : uploadStatus === 'success' ? (
-        <div className="nr-upload-status nr-upload-status--success">
-          <div className="status-icon-ring">
-            <svg className="success-check" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          <h3>Upload Successful!</h3>
-          <p>Verified report and signed metadata ingested securely.</p>
-          
-          <div className="nr-telemetry-badge">
-            <div>📍 GPS: {coordinates.lat}°, {coordinates.lng}°</div>
-            <div>📅 DATE: {new Date(timestamp).toLocaleDateString()} {new Date(timestamp).toLocaleTimeString()}</div>
-          </div>
-
-          <button className="nr-status-btn-primary" onClick={() => {
-            setPhoto(null);
-            setDesc('');
-            setHazard('flood');
-            setSeverity('moderate');
-            setUploadStatus(null);
-          }}>
-            Done
-          </button>
         </div>
       ) : uploadStatus === 'failed' ? (
         <div className="nr-upload-status nr-upload-status--failed">
