@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { FileText, Search, Filter } from 'lucide-react'
@@ -18,23 +18,37 @@ export default function MyReportsPage() {
   // Community and Reporter: show only their own submissions
   // Verifier / Corrector / Admin: show all reports (they review all)
   const isFieldRole = user.role === 'community' || user.role === 'reporter'
-  const myReports = isFieldRole
-    ? MOCK_ALERTS.filter(a => a.reportedBy === user.name)
-    : MOCK_ALERTS
 
-  const filtered = myReports.filter(a => {
-    const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) ||
-                        a.location.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = statusFilter === 'all' || a.status === statusFilter
-    return matchSearch && matchStatus
-  })
+  // NOTE: matching on a stable identifier (user.id) rather than user.name,
+  // since names aren't guaranteed unique and shouldn't be used as a key.
+  // This assumes MOCK_ALERTS entries expose a matching id field
+  // (reportedById) alongside the display name (reportedBy) — adjust the
+  // field name here if your mock data uses a different key.
+  const myReports = useMemo(() => (
+    isFieldRole
+      ? MOCK_ALERTS.filter(a => (a.reportedById ?? a.reportedBy) === (user.id ?? user.name))
+      : MOCK_ALERTS
+  ), [isFieldRole, user.id, user.name])
 
-  const summary = [
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return myReports.filter(a => {
+      const matchSearch = query === '' ||
+        a.title.toLowerCase().includes(query) ||
+        a.location.toLowerCase().includes(query) ||
+        a.reportedBy?.toLowerCase().includes(query)
+      const matchStatus = statusFilter === 'all' || a.status === statusFilter
+      return matchSearch && matchStatus
+    })
+  }, [myReports, search, statusFilter])
+
+  const summary = useMemo(() => ([
     { label: 'Total',    tone: 'neutral',  value: myReports.length,                                     color: 'var(--text-muted)' },
     { label: 'Pending',  tone: 'pending',  value: myReports.filter(a => a.status === 'pending').length,  color: 'var(--status-pending)' },
     { label: 'Verified', tone: 'verified', value: myReports.filter(a => a.status === 'verified').length, color: 'var(--status-verified)' },
     { label: 'Resolved', tone: 'resolved', value: myReports.filter(a => a.status === 'resolved').length, color: 'var(--status-resolved)' },
-  ]
+    { label: 'Rejected', tone: 'rejected', value: myReports.filter(a => a.status === 'rejected').length, color: 'var(--status-rejected)' },
+  ]), [myReports])
 
   return (
     <div className="my-reports animate-fade-in">
@@ -76,7 +90,10 @@ export default function MyReportsPage() {
       {/* Search & filters */}
       <div className="my-reports-controls">
         <div className="topbar-search my-reports-search">
-          <Search size={15} className="topbar-search-icon" />
+          <label htmlFor="my-reports-search" className="sr-only">
+            Search my reports
+          </label>
+          <Search size={15} className="topbar-search-icon" aria-hidden="true" />
           <input
             id="my-reports-search"
             type="search"
@@ -89,14 +106,16 @@ export default function MyReportsPage() {
 
         <div className="my-reports-filter-group">
           <span className="my-reports-filter-label">
-            <Filter size={13} />
+            <Filter size={13} aria-hidden="true" />
             Status
           </span>
-          <div className="dashboard-filters">
+          <div className="dashboard-filters" role="group" aria-label="Filter by status">
             {STATUS_FILTERS.map(s => (
               <button
                 key={s}
                 id={`my-filter-${s}`}
+                type="button"
+                aria-pressed={statusFilter === s}
                 className={`dashboard-filter-btn ${statusFilter === s ? 'dashboard-filter-btn--active' : ''}`}
                 onClick={() => setStatusFilter(s)}
               >

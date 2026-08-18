@@ -14,6 +14,21 @@ import './LiveMapPage.css'
 
 const DEMO_FALLBACK = [-122.681, 45.520]
 
+// Backend API base. Set VITE_API_URL in your .env for anything beyond local dev.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
+// Tunable thresholds / magic numbers, named so they're easy to find and adjust
+const CONFIRM_CONFIDENCE_THRESHOLD = 91     // incident confidence % that triggers a reroute
+const HAZARD_DISPLAY_THRESHOLD = 50         // min confidence % before we draw the hazard polygon
+const HEAVY_RAIN_WEATHER_CODE_THRESHOLD = 51 // open-meteo weather code that counts as "heavy precipitation"
+const WEATHER_REFRESH_INTERVAL_MS = 300000  // 5 minutes
+const GEOLOCATION_TIMEOUT_MS = 8000
+const HAZARD_POLYGON_HALF_SIZE_DEG = 0.002
+const UNSAFE_ROAD_OFFSET_DEG = 0.003
+const AVOID_OFFSET_DEG = 0.015              // how far off the hazard center we route the avoid-waypoint
+const SEARCH_DEBOUNCE_MS = 300
+const NOTICE_DURATION_MS = 4000
+
 export default function LiveMapPage() {
   const mapRef = useRef(null)
 
@@ -41,6 +56,10 @@ export default function LiveMapPage() {
   const [evidenceStream, setEvidenceStream] = useState([])
   const [recalculating, setRecalculating] = useState(false)
 
+  // Non-blocking replacement for alert() — { message, tone: 'info' | 'error' }
+  const [notice, setNotice] = useState(null)
+  const noticeTimeoutRef = useRef(null)
+
   // Map style
   const [mapBaseStyle, setMapBaseStyle] = useState(() => localStorage.getItem('s32-mapstyle') || 'hybrid')
   const [showStylePicker, setShowStylePicker] = useState(false)
@@ -55,7 +74,32 @@ export default function LiveMapPage() {
   // Mode: 'live' or 'demo'
   const [appMode, setAppMode] = useState('live')
 
-  // ΓöÇΓöÇ Theme Effect ΓöÇΓöÇ
+  // Refs mirroring the latest state, so long-lived callbacks (socket handlers,
+  // the memoized recalculateRoute) never read stale values from a closure
+  // captured at mount time.
+  const userLocationRef = useRef(null)
+  const destinationRef = useRef(null)
+  const avoidWaypointRef = useRef(null)
+  const routeDataRef = useRef(null)
+
+  useEffect(() => { userLocationRef.current = userLocation }, [userLocation])
+  useEffect(() => { destinationRef.current = destination }, [destination])
+  useEffect(() => { avoidWaypointRef.current = avoidWaypoint }, [avoidWaypoint])
+  useEffect(() => { routeDataRef.current = routeData }, [routeData])
+
+  const showNotice = useCallback((message, tone = 'info') => {
+    if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current)
+    setNotice({ message, tone })
+    noticeTimeoutRef.current = setTimeout(() => setNotice(null), NOTICE_DURATION_MS)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current)
+    }
+  }, [])
+
+  // ---- Theme Effect ----
   useEffect(() => {
     localStorage.setItem('s32-theme', theme)
     document.documentElement.classList.toggle('hl-dark', theme === 'dark')
@@ -63,16 +107,18 @@ export default function LiveMapPage() {
 
   useEffect(() => { localStorage.setItem('s32-mapstyle', mapBaseStyle) }, [mapBaseStyle])
 
-  // ΓöÇΓöÇ Map Styles ΓöÇΓöÇ
+  // ---- Map Styles ----
   const MAP_STYLES = {
-    hybrid:       { label: 'Satellite',     icon: '≡ƒ¢░∩╕Å', tile: 'hybrid',          ext: 'jpg' },
-    'streets-dk': { label: 'Streets Dark',  icon: '≡ƒîÖ', tile: 'streets-v2-dark', ext: 'png' },
-    'streets-lt': { label: 'Streets Light', icon: 'ΓÿÇ∩╕Å', tile: 'streets-v2-light', ext: 'png' },
-    outdoor:      { label: 'Outdoor',       icon: '≡ƒÅö∩╕Å', tile: 'outdoor-v2',       ext: 'png' },
-    topo:         { label: 'Topographic',   icon: '≡ƒù║∩╕Å', tile: 'topo-v2',          ext: 'png' },
+    hybrid:       { label: 'Satellite',     icon: '🛰️', tile: 'hybrid',          ext: 'jpg' },
+    'streets-dk': { label: 'Streets Dark',  icon: '🌙', tile: 'streets-v2-dark', ext: 'png' },
+    'streets-lt': { label: 'Streets Light', icon: '☀️', tile: 'streets-v2-light', ext: 'png' },
+    outdoor:      { label: 'Outdoor',       icon: '🏔️', tile: 'outdoor-v2',       ext: 'png' },
+    topo:         { label: 'Topographic',   icon: '🗺️', tile: 'topo-v2',          ext: 'png' },
   }
 
   const mapStyleUrl = useMemo(() => {
+    // TODO: this fallback key is exposed in source — move to VITE_MAPTILER_KEY
+    // in a .env file when you get a chance, so it's not sitting in the repo.
     const key = import.meta.env.VITE_MAPTILER_KEY || '8oJS7UaNGu6yuoJGxY7P'
     const s = MAP_STYLES[mapBaseStyle] || MAP_STYLES['hybrid']
     if (key) {
@@ -107,39 +153,7 @@ export default function LiveMapPage() {
     }
   }, [mapBaseStyle, theme])
 
-  // ΓöÇΓöÇ Geolocation + Socket ΓöÇΓöÇ
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lng = pos.coords.longitude
-          const lat = pos.coords.latitude
-          setUserLocation([lng, lat])
-          setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 15 }))
-          fetchWeather(lat, lng)
-        },
-        () => {
-          setUserLocation(DEMO_FALLBACK)
-          fetchWeather(DEMO_FALLBACK[1], DEMO_FALLBACK[0])
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      )
-    } else {
-      setUserLocation(DEMO_FALLBACK)
-    }
-
-    const socket = io('http://localhost:3001')
-    socket.on('incident:update', (data) => {
-      setIncident(prev => ({ ...prev, ...data }))
-      if (data.confidence >= 91 && data.status === 'CONFIRMED') recalculateRoute()
-    })
-    socket.on('evidence:new', (data) => {
-      setEvidenceStream(prev => [...prev, data])
-    })
-    return () => socket.disconnect()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ΓöÇΓöÇ Weather (OpenMeteo - free, no key needed) ΓöÇΓöÇ
+  // ---- Weather (OpenMeteo - free, no key needed) ----
   const fetchWeather = async (lat, lng) => {
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&timezone=auto`
@@ -157,10 +171,10 @@ export default function LiveMapPage() {
     } catch (e) { console.warn('Weather fetch failed', e) }
   }
 
-  // Refresh weather every 5 mins
+  // Refresh weather periodically
   useEffect(() => {
     if (!userLocation) return
-    const interval = setInterval(() => fetchWeather(userLocation[1], userLocation[0]), 300000)
+    const interval = setInterval(() => fetchWeather(userLocation[1], userLocation[0]), WEATHER_REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [userLocation])
 
@@ -171,7 +185,7 @@ export default function LiveMapPage() {
     if (code <= 67) return 'Rain'
     if (code <= 77) return 'Snow'
     if (code <= 82) return 'Showers'
-    if (code <= 99) return '⛈️ Storm'
+    if (code <= 99) return 'Storm'
     return 'Unknown'
   }
 
@@ -185,22 +199,162 @@ export default function LiveMapPage() {
     return '⛈️'
   }
 
-  // ΓöÇΓöÇ Search ΓöÇΓöÇ
+  // ---- Routing (defined early so effects below can safely reference it) ----
+  const fetchRoute = async (start, end, waypoint = null) => {
+    try {
+      if (waypoint) {
+        const [r1, r2] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${waypoint[0]}&endLat=${waypoint[1]}`).then(r => r.json()),
+          fetch(`${API_BASE_URL}/api/routes?startLng=${waypoint[0]}&startLat=${waypoint[1]}&endLng=${end[0]}&endLat=${end[1]}`).then(r => r.json()),
+        ])
+        if (r1.route && r2.route) {
+          return {
+            geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [...r1.route.geometry.coordinates, ...r2.route.geometry.coordinates] } }] },
+            distance: r1.route.distance + r2.route.distance,
+            duration: r1.route.duration + r2.route.duration,
+            steps: r1.route.steps || []
+          }
+        }
+      }
+      const res = await fetch(`${API_BASE_URL}/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${end[0]}&endLat=${end[1]}`)
+      const data = await res.json()
+      if (data.route) {
+        return {
+          geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: data.route.geometry }] },
+          distance: data.route.distance,
+          duration: data.route.duration,
+          steps: data.route.steps || []
+        }
+      }
+    } catch (err) { console.error('Route error:', err) }
+    return null
+  }
+
+  const fitMapToRoute = (geojson) => {
+    if (!mapRef.current || !geojson) return
+    try {
+      const coords = geojson.features[0]?.geometry?.coordinates
+      if (coords && coords.length > 1) {
+        const routeBbox = bbox(lineString(coords))
+        mapRef.current.fitBounds(routeBbox, { padding: 130, duration: 1500, maxZoom: 16 })
+      }
+    } catch (err) { console.warn('fitBounds error', err) }
+  }
+
+  // Reads current start/end/waypoint from refs (never stale), so it's safe
+  // to call from the socket effect below without resubscribing on every
+  // location/destination change. Pass an explicit waypoint to override the
+  // stored avoidWaypoint (used when a live incident just supplied one).
+  const recalculateRoute = useCallback(async (waypointOverride) => {
+    const start = userLocationRef.current
+    const end = destinationRef.current
+    if (!start || !end) return
+    setRecalculating(true)
+    setOldRouteData(routeDataRef.current)
+    const waypoint = waypointOverride !== undefined ? waypointOverride : avoidWaypointRef.current
+    const newRoute = await fetchRoute(start, end, waypoint)
+    setRecalculating(false)
+    if (newRoute) { setRouteData(newRoute); fitMapToRoute(newRoute.geojson) }
+    else {
+      const fallback = await fetchRoute(start, end)
+      if (fallback) setRouteData(fallback)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- Geolocation + Socket ----
+  useEffect(() => {
+    let watchId = null
+    let hasCentered = false
+
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const lng = pos.coords.longitude
+          const lat = pos.coords.latitude
+          setUserLocation([lng, lat])
+          // Only auto-center the map and pull weather on the *first* fix —
+          // otherwise every GPS update would yank the view and re-fetch weather.
+          if (!hasCentered) {
+            hasCentered = true
+            setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 15 }))
+            fetchWeather(lat, lng)
+          }
+        },
+        () => {
+          if (!hasCentered) {
+            hasCentered = true
+            setUserLocation(DEMO_FALLBACK)
+            fetchWeather(DEMO_FALLBACK[1], DEMO_FALLBACK[0])
+          }
+        },
+        { enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS }
+      )
+    } else {
+      setUserLocation(DEMO_FALLBACK)
+    }
+
+    const socket = io(API_BASE_URL)
+
+    socket.on('incident:update', (data) => {
+      setIncident(prev => ({ ...prev, ...data }))
+
+      const isConfirmedHazard = data.status === 'CONFIRMED' && data.confidence >= CONFIRM_CONFIDENCE_THRESHOLD
+      if (!isConfirmedHazard) return
+
+      if (data.hazardCenter) {
+        // Derive an avoid-waypoint from the real hazard location so live
+        // incidents actually route around the hazard (previously only the
+        // demo flow ever set avoidWaypoint).
+        const [hazardLng, hazardLat] = data.hazardCenter
+        const derivedWaypoint = [hazardLng - AVOID_OFFSET_DEG, hazardLat + AVOID_OFFSET_DEG]
+        setAvoidWaypoint(derivedWaypoint)
+        recalculateRoute(derivedWaypoint)
+      } else {
+        recalculateRoute()
+      }
+    })
+
+    socket.on('evidence:new', (data) => {
+      setEvidenceStream(prev => [...prev, data])
+    })
+
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+      socket.disconnect()
+    }
+  }, [recalculateRoute])
+
+  // ---- Search ----
+  const geocode = async (query, { limit } = {}) => {
+    const params = new URLSearchParams({ format: 'json', q: query, addressdetails: '1' })
+    if (limit) params.set('limit', String(limit))
+    // Note: Nominatim's usage policy expects a descriptive User-Agent/Referer
+    // for anything beyond light, casual use — browsers won't let JS set a
+    // custom User-Agent, so for real traffic this should be proxied through
+    // your own backend instead of called directly from the client.
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`)
+    return res.json()
+  }
+
   const handleSearch = async (e) => {
     e.preventDefault()
     if (!searchQuery.trim()) return
     setIsSearching(true)
     setShowSuggestions(false)
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`)
-      const data = await res.json()
+      const data = await geocode(searchQuery, { limit: 1 })
       if (data?.length > 0) {
         const lng = parseFloat(data[0].lon)
         const lat = parseFloat(data[0].lat)
         setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 15 }))
         fetchWeather(lat, lng)
-      } else alert('Location not found')
-    } catch (err) { console.error(err) }
+      } else {
+        showNotice('Location not found', 'error')
+      }
+    } catch (err) {
+      console.error(err)
+      showNotice('Search failed. Please try again.', 'error')
+    }
     finally { setIsSearching(false) }
   }
 
@@ -211,12 +365,18 @@ export default function LiveMapPage() {
     }
     searchDebounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=6&addressdetails=1&q=${encodeURIComponent(query)}`)
-        const data = await res.json()
+        const data = await geocode(query, { limit: 6 })
         setSearchSuggestions(data || [])
         setShowSuggestions(data?.length > 0)
       } catch (err) { console.error('Suggestion error:', err) }
-    }, 300)
+    }, SEARCH_DEBOUNCE_MS)
+  }, [])
+
+  // Clear any pending debounce on unmount so it can't call setState after unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
   }, [])
 
   const handleSearchInputChange = (e) => {
@@ -244,9 +404,11 @@ export default function LiveMapPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // ΓöÇΓöÇ Routing ΓöÇΓöÇ
   const handleMapClick = async (e) => {
-    if (!userLocation) return alert('Waiting for your location. Check browser location permissions.')
+    if (!userLocation) {
+      showNotice('Waiting for your location. Check browser location permissions.', 'error')
+      return
+    }
     const dest = [e.lngLat.lng, e.lngLat.lat]
     setDestination(dest)
     setIncident(null)
@@ -255,62 +417,6 @@ export default function LiveMapPage() {
     const rData = await fetchRoute(userLocation, dest)
     if (rData) { setRouteData(rData); fitMapToRoute(rData.geojson) }
   }
-
-  const fetchRoute = async (start, end, waypoint = null) => {
-    try {
-      if (waypoint) {
-        const [r1, r2] = await Promise.all([
-          fetch(`http://localhost:3001/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${waypoint[0]}&endLat=${waypoint[1]}`).then(r => r.json()),
-          fetch(`http://localhost:3001/api/routes?startLng=${waypoint[0]}&startLat=${waypoint[1]}&endLng=${end[0]}&endLat=${end[1]}`).then(r => r.json()),
-        ])
-        if (r1.route && r2.route) {
-          return {
-            geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [...r1.route.geometry.coordinates, ...r2.route.geometry.coordinates] } }] },
-            distance: r1.route.distance + r2.route.distance,
-            duration: r1.route.duration + r2.route.duration,
-            steps: r1.route.steps || []
-          }
-        }
-      }
-      const res = await fetch(`http://localhost:3001/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${end[0]}&endLat=${end[1]}`)
-      const data = await res.json()
-      if (data.route) {
-        return {
-          geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: data.route.geometry }] },
-          distance: data.route.distance,
-          duration: data.route.duration,
-          steps: data.route.steps || []
-        }
-      }
-    } catch (err) { console.error('Route error:', err) }
-    return null
-  }
-
-  const fitMapToRoute = (geojson) => {
-    if (!mapRef.current || !geojson) return
-    try {
-      const coords = geojson.features[0]?.geometry?.coordinates
-      if (coords && coords.length > 1) {
-        const routeBbox = bbox(lineString(coords))
-        mapRef.current.fitBounds(routeBbox, { padding: 130, duration: 1500, maxZoom: 16 })
-      }
-    } catch (err) { console.warn('fitBounds error', err) }
-  }
-
-  const recalculateRoute = async () => {
-    if (!userLocation || !destination) return
-    setRecalculating(true)
-    setOldRouteData(routeData)
-    const newRoute = await fetchRoute(userLocation, destination, avoidWaypoint)
-    setRecalculating(false)
-    if (newRoute) { setRouteData(newRoute); fitMapToRoute(newRoute.geojson) }
-    else {
-      const fallback = await fetchRoute(userLocation, destination)
-      if (fallback) setRouteData(fallback)
-    }
-  }
-
-
 
   const formatDistance = (m) => m > 1000 ? (m/1000).toFixed(1) + ' km' : Math.round(m) + ' m'
   const formatDuration = (s) => Math.round(s/60) + ' min'
@@ -322,7 +428,7 @@ export default function LiveMapPage() {
     return <ArrowUp size={16} />
   }
 
-  // ΓöÇΓöÇ Theme ΓöÇΓöÇ
+  // ---- Theme ----
   const isDark = theme === 'dark'
   const bgUI = isDark ? 'rgba(10, 17, 35, 0.96)' : 'rgba(255,255,255,0.96)'
   const borderUI = isDark ? 'rgba(51,65,85,0.8)' : '#e2e8f0'
@@ -330,7 +436,10 @@ export default function LiveMapPage() {
   const textSubUI = isDark ? '#94a3b8' : '#64748b'
 
   const startDemo = async () => {
-    if (!userLocation || !routeData) return alert('Click on the map to set a destination first, then run demo.')
+    if (!userLocation || !routeData) {
+      showNotice('Click on the map to set a destination first, then run demo.', 'error')
+      return
+    }
     try {
       setAppMode('demo')
       setIncident(null)
@@ -339,8 +448,8 @@ export default function LiveMapPage() {
       const coords = routeData.geojson.features[0].geometry.coordinates
       const hazardIndex = Math.floor(coords.length * 0.4)
       const dynamicHazardCenter = coords[hazardIndex]
-      setAvoidWaypoint([dynamicHazardCenter[0] - 0.015, dynamicHazardCenter[1] + 0.015])
-      await fetch('http://localhost:3001/api/demo/flood/start', {
+      setAvoidWaypoint([dynamicHazardCenter[0] - AVOID_OFFSET_DEG, dynamicHazardCenter[1] + AVOID_OFFSET_DEG])
+      await fetch(`${API_BASE_URL}/api/demo/flood/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -351,28 +460,29 @@ export default function LiveMapPage() {
       })
     } catch (err) {
       console.error(err)
-      alert('Failed to start demo. Is the backend running?')
+      showNotice('Failed to start demo. Is the backend running?', 'error')
     }
   }
 
-  // ΓöÇΓöÇ Map Data ΓöÇΓöÇ
+  // ---- Map Data ----
   const hazardPolygon = useMemo(() => {
-    if (!incident || incident.confidence < 50 || !incident.hazardCenter) return null
+    if (!incident || incident.confidence < HAZARD_DISPLAY_THRESHOLD || !incident.hazardCenter) return null
     const [lng, lat] = incident.hazardCenter
-    const d = 0.002
+    const d = HAZARD_POLYGON_HALF_SIZE_DEG
     return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[lng-d,lat+d],[lng+d,lat+d],[lng+d,lat-d],[lng-d,lat-d],[lng-d,lat+d]]] } }] }
   }, [incident])
 
   const unsafeRoadGeoJSON = useMemo(() => {
     if (!incident || incident.status !== 'CONFIRMED' || !incident.hazardCenter) return null
     const [lng, lat] = incident.hazardCenter
-    return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lng-0.003, lat-0.003],[lng+0.003, lat+0.003]] } }] }
+    const d = UNSAFE_ROAD_OFFSET_DEG
+    return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lng-d, lat-d],[lng+d, lat+d]] } }] }
   }, [incident])
 
   const routeLayout = { 'line-cap': 'round', 'line-join': 'round' }
   const safeRoutePaint = { 'line-color': '#06b6d4', 'line-width': 6, 'line-opacity': 1 }
   const safeRouteGlowPaint = { 'line-color': '#06b6d4', 'line-width': 14, 'line-opacity': 0.4, 'line-blur': 4 }
-  
+
   const blockedRoutePaint = { 'line-color': '#f97316', 'line-width': 6, 'line-opacity': 1 }
   const blockedRouteGlowPaint = { 'line-color': '#f97316', 'line-width': 14, 'line-opacity': 0.4, 'line-blur': 4 }
 
@@ -385,10 +495,10 @@ export default function LiveMapPage() {
           <Shield size={20} color="#3b82f6" />
           <span style={{ fontWeight: 800, letterSpacing: '1px', fontSize: '14px' }}>S32 LIVE OPS</span>
           <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
-            <button onClick={() => setAppMode('live')} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: appMode === 'live' ? '#10b981' : (isDark ? '#1e293b' : '#f1f5f9'), color: appMode === 'live' ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button onClick={() => setAppMode('live')} aria-label="Switch to live mode" aria-pressed={appMode === 'live'} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: appMode === 'live' ? '#10b981' : (isDark ? '#1e293b' : '#f1f5f9'), color: appMode === 'live' ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Radio size={10} /> LIVE
             </button>
-            <button onClick={() => setAppMode('demo')} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: appMode === 'demo' ? '#f59e0b' : (isDark ? '#1e293b' : '#f1f5f9'), color: appMode === 'demo' ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button onClick={() => setAppMode('demo')} aria-label="Switch to demo mode" aria-pressed={appMode === 'demo'} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: appMode === 'demo' ? '#f59e0b' : (isDark ? '#1e293b' : '#f1f5f9'), color: appMode === 'demo' ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Zap size={10} /> DEMO
             </button>
           </div>
@@ -402,13 +512,14 @@ export default function LiveMapPage() {
               <input
                 type="text"
                 placeholder="Search map or location..."
+                aria-label="Search map or location"
                 value={searchQuery}
                 onChange={handleSearchInputChange}
                 onFocus={() => searchSuggestions.length > 0 && setShowSuggestions(true)}
                 style={{ background: 'transparent', border: 'none', color: textUI, marginLeft: '8px', width: '100%', outline: 'none', fontSize: '14px' }}
               />
               {searchQuery && (
-                <button type="button" onClick={() => { setSearchQuery(''); setSearchSuggestions([]); setShowSuggestions(false) }} style={{ background: 'transparent', border: 'none', color: textSubUI, cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 2px' }}>×</button>
+                <button type="button" onClick={() => { setSearchQuery(''); setSearchSuggestions([]); setShowSuggestions(false) }} aria-label="Clear search" style={{ background: 'transparent', border: 'none', color: textSubUI, cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 2px' }}>×</button>
               )}
             </form>
 
@@ -460,7 +571,7 @@ export default function LiveMapPage() {
 
           {/* Map Style Picker */}
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setShowStylePicker(!showStylePicker)}
+            <button onClick={() => setShowStylePicker(!showStylePicker)} aria-label="Change map style" aria-expanded={showStylePicker}
               style={{ background: isDark ? '#1e293b' : '#f1f5f9', border: `1px solid ${borderUI}`, borderRadius: '8px', cursor: 'pointer', color: textSubUI, display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 600 }}>
               <Layers size={15} /> {MAP_STYLES[mapBaseStyle]?.icon}
             </button>
@@ -478,7 +589,7 @@ export default function LiveMapPage() {
             )}
           </div>
 
-          <button onClick={() => setTheme(isDark ? 'light' : 'dark')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: textSubUI, display: 'flex', alignItems: 'center' }}>
+          <button onClick={() => setTheme(isDark ? 'light' : 'dark')} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: textSubUI, display: 'flex', alignItems: 'center' }}>
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
@@ -489,8 +600,21 @@ export default function LiveMapPage() {
         </div>
       </div>
 
-      {/* ΓöÇΓöÇ MAP AREA ΓöÇΓöÇ */}
+      {/* ---- MAP AREA ---- */}
       <div className="dash-main" style={{ position: 'relative' }}>
+
+        {/* Non-blocking notice banner (replaces alert()) */}
+        {notice && (
+          <div role="status" style={{
+            position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 200,
+            background: notice.tone === 'error' ? 'linear-gradient(135deg,#ef4444,#dc2626)' : 'linear-gradient(135deg,#3b82f6,#2563eb)',
+            color: 'white', padding: '10px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 700,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap'
+          }}>
+            {notice.message}
+            <button onClick={() => setNotice(null)} aria-label="Dismiss notice" style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: 0 }}>×</button>
+          </div>
+        )}
 
         {/* Left Panels */}
         <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: '12px', pointerEvents: 'none', maxWidth: '340px' }}>
@@ -504,7 +628,7 @@ export default function LiveMapPage() {
                   <Thermometer size={16} color="#f59e0b" />
                   <div>
                     <div style={{ fontSize: '11px', color: textSubUI }}>Temperature</div>
-                    <div style={{ fontSize: '16px', fontWeight: 700 }}>{weather.temp}┬░C</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700 }}>{weather.temp}°C</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -529,9 +653,9 @@ export default function LiveMapPage() {
                   </div>
                 </div>
               </div>
-              {weather.code >= 51 && (
+              {weather.code >= HEAVY_RAIN_WEATHER_CODE_THRESHOLD && (
                 <div style={{ marginTop: '10px', padding: '8px', background: 'rgba(239,68,68,0.1)', borderLeft: '3px solid #ef4444', borderRadius: '4px', fontSize: '12px', color: '#ef4444', fontWeight: 600 }}>
-                  ΓÜá∩╕Å Heavy precipitation ΓÇö flood risk elevated
+                  ⚠️ Heavy precipitation — flood risk elevated
                 </div>
               )}
             </div>
@@ -546,7 +670,7 @@ export default function LiveMapPage() {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: textUI }}>{incident.title}</h3>
-                  <div style={{ fontSize: '11px', color: textSubUI, fontWeight: 600, marginTop: '1px' }}>LIVE INCIDENT {appMode === 'demo' ? '┬╖ DEMO MODE' : ''}</div>
+                  <div style={{ fontSize: '11px', color: textSubUI, fontWeight: 600, marginTop: '1px' }}>LIVE INCIDENT {appMode === 'demo' ? '· DEMO MODE' : ''}</div>
                 </div>
               </div>
 
@@ -610,7 +734,7 @@ export default function LiveMapPage() {
             ) : (
               <>
                 <div style={{ fontSize: '11px', color: textSubUI, fontWeight: 700, marginBottom: '6px' }}>
-                  {oldRouteData ? <span style={{ color: '#10b981' }}>Γ£ô SAFE ROUTE ACTIVE</span> : 'OPTIMAL ROUTE'}
+                  {oldRouteData ? <span style={{ color: '#10b981' }}>✓ SAFE ROUTE ACTIVE</span> : 'OPTIMAL ROUTE'}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                   <span style={{ fontSize: '30px', fontWeight: 900, color: '#10b981', lineHeight: 1 }}>{formatDuration(routeData.duration)}</span>
@@ -628,7 +752,7 @@ export default function LiveMapPage() {
 
         {/* Collapsible Legend */}
         <div style={{ position: 'absolute', bottom: 28, left: 16, zIndex: 10, backgroundColor: bgUI, backdropFilter: 'blur(12px)', border: `1px solid ${borderUI}`, borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)', overflow: 'hidden', minWidth: '145px' }}>
-          <button onClick={() => setLegendExpanded(!legendExpanded)}
+          <button onClick={() => setLegendExpanded(!legendExpanded)} aria-label={legendExpanded ? 'Collapse map legend' : 'Expand map legend'} aria-expanded={legendExpanded}
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'transparent', border: 'none', cursor: 'pointer', color: textSubUI, fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px' }}>
             MAP LEGEND {legendExpanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
           </button>
@@ -656,10 +780,10 @@ export default function LiveMapPage() {
         >
           {/* Controls */}
           <div style={{ position: 'absolute', bottom: 28, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <button onClick={() => setViewState(p => ({...p, zoom: p.zoom+1}))} style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Plus size={17} /></button>
-            <button onClick={() => setViewState(p => ({...p, zoom: p.zoom-1}))} style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Minus size={17} /></button>
-            <button onClick={() => setViewState(p => ({...p, bearing: 0, pitch: 45}))} style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Compass size={17} /></button>
-            <button onClick={() => userLocation && setViewState(p => ({...p, longitude: userLocation[0], latitude: userLocation[1], zoom: 15}))} style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Navigation size={17} /></button>
+            <button onClick={() => setViewState(p => ({...p, zoom: p.zoom+1}))} aria-label="Zoom in" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Plus size={17} /></button>
+            <button onClick={() => setViewState(p => ({...p, zoom: p.zoom-1}))} aria-label="Zoom out" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Minus size={17} /></button>
+            <button onClick={() => setViewState(p => ({...p, bearing: 0, pitch: 45}))} aria-label="Reset map orientation" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Compass size={17} /></button>
+            <button onClick={() => userLocation && setViewState(p => ({...p, longitude: userLocation[0], latitude: userLocation[1], zoom: 15}))} aria-label="Recenter on my location" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Navigation size={17} /></button>
           </div>
 
           {/* HAZARD POLYGON */}
@@ -737,10 +861,10 @@ export default function LiveMapPage() {
       <div className="dash-statusbar" style={{ backgroundColor: isDark ? '#060d1f' : '#f1f5f9', borderTop: `1px solid ${borderUI}`, color: textSubUI, padding: '4px 16px', fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <span>S32 Nav-Core Operational</span>
-          <span>ΓÇó</span>
+          <span>•</span>
           <span>Routing: OSRM</span>
-          <span>ΓÇó</span>
-          <span style={{ color: appMode === 'demo' ? '#f59e0b' : '#10b981', fontWeight: 700 }}>{appMode === 'demo' ? 'ΓÜí DEMO MODE' : '≡ƒƒó LIVE MODE'}</span>
+          <span>•</span>
+          <span style={{ color: appMode === 'demo' ? '#f59e0b' : '#10b981', fontWeight: 700 }}>{appMode === 'demo' ? '⚡ DEMO MODE' : '🟢 LIVE MODE'}</span>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           <Shield size={11} /> Live Multi-Hazard Monitoring
