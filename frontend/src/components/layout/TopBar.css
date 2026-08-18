@@ -134,6 +134,22 @@
   margin-left: auto;
 }
 
+/* Theme Toggle */
+.topbar-theme-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--dur-fast) var(--ease);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.topbar-theme-btn:hover { background: var(--bg-card); border-color: var(--border); color: var(--text-primary); }
+
 /* Bell */
 .topbar-bell-btn {
   width: 36px;

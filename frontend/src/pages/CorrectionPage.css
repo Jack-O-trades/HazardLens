@@ -690,3 +690,111 @@
   animation: cp-spin 0.65s linear infinite;
 }
 @keyframes cp-spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   Dark Mode variables and style overrides for Correction Page
+   ============================================================ */
+
+[data-theme="dark"] .cp-compare-col--proposed {
+  background: hsla(215, 80%, 54%, 0.08);
+  border-color: hsla(215, 80%, 54%, 0.3);
+}
+
+[data-theme="dark"] .cp-compare-col-header--proposed {
+  color: hsl(215, 90%, 68%);
+  background: hsla(215, 80%, 54%, 0.15);
+  border-bottom-color: hsla(215, 80%, 54%, 0.3);
+}
+
+[data-theme="dark"] .cp-edit-icon {
+  background: var(--bg-card);
+  color: hsl(215, 90%, 68%);
+  border-color: var(--border);
+}
+[data-theme="dark"] .cp-edit-icon:hover {
+  background: var(--bg-card-hover);
+}
+
+[data-theme="dark"] .cp-diff-dot {
+  background: hsl(215, 90%, 68%);
+}
+
+[data-theme="dark"] .cp-upload-zone:hover {
+  border-color: hsl(215, 90%, 68%);
+  background: hsla(215, 90%, 68%, 0.08);
+}
+[data-theme="dark"] .cp-upload-zone:hover .cp-upload-icon {
+  background: hsla(215, 90%, 68%, 0.18);
+  color: hsl(215, 90%, 68%);
+}
+
+[data-theme="dark"] .cp-btn-resolve {
+  background: hsla(5, 80%, 60%, 0.08);
+  color: var(--text-danger);
+  border-color: hsla(5, 80%, 60%, 0.35);
+}
+[data-theme="dark"] .cp-btn-resolve:hover:not(:disabled) {
+  background: hsla(5, 80%, 60%, 0.16);
+  border-color: var(--text-danger);
+}
+
+[data-theme="dark"] .cp-success-icon {
+  background: hsla(215, 80%, 54%, 0.15);
+  border-color: hsl(215, 90%, 68%);
+  color: hsl(215, 90%, 68%);
+}
+[data-theme="dark"] .cp-success-icon--resolve {
+  background: hsla(145, 60%, 45%, 0.15);
+  border-color: hsl(145, 60%, 55%);
+  color: hsl(145, 60%, 55%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .cp-compare-col--proposed {
+    background: hsla(215, 80%, 54%, 0.08);
+    border-color: hsla(215, 80%, 54%, 0.3);
+  }
+  :root:not([data-theme="light"]) .cp-compare-col-header--proposed {
+    color: hsl(215, 90%, 68%);
+    background: hsla(215, 80%, 54%, 0.15);
+    border-bottom-color: hsla(215, 80%, 54%, 0.3);
+  }
+  :root:not([data-theme="light"]) .cp-edit-icon {
+    background: var(--bg-card);
+    color: hsl(215, 90%, 68%);
+    border-color: var(--border);
+  }
+  :root:not([data-theme="light"]) .cp-edit-icon:hover {
+    background: var(--bg-card-hover);
+  }
+  :root:not([data-theme="light"]) .cp-diff-dot {
+    background: hsl(215, 90%, 68%);
+  }
+  :root:not([data-theme="light"]) .cp-upload-zone:hover {
+    border-color: hsl(215, 90%, 68%);
+    background: hsla(215, 90%, 68%, 0.08);
+  }
+  :root:not([data-theme="light"]) .cp-upload-zone:hover .cp-upload-icon {
+    background: hsla(215, 90%, 68%, 0.18);
+    color: hsl(215, 90%, 68%);
+  }
+  :root:not([data-theme="light"]) .cp-btn-resolve {
+    background: hsla(5, 80%, 60%, 0.08);
+    color: var(--text-danger);
+    border-color: hsla(5, 80%, 60%, 0.35);
+  }
+  :root:not([data-theme="light"]) .cp-btn-resolve:hover:not(:disabled) {
+    background: hsla(5, 80%, 60%, 0.16);
+    border-color: var(--text-danger);
+  }
+  :root:not([data-theme="light"]) .cp-success-icon {
+    background: hsla(215, 80%, 54%, 0.15);
+    border-color: hsl(215, 90%, 68%);
+    color: hsl(215, 90%, 68%);
+  }
+  :root:not([data-theme="light"]) .cp-success-icon--resolve {
+    background: hsla(145, 60%, 45%, 0.15);
+    border-color: hsl(145, 60%, 55%);
+    color: hsl(145, 60%, 55%);
+  }
+}

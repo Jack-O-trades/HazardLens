@@ -29,6 +29,38 @@
   color: var(--ad-text-primary);
 }
 
+[data-theme="dark"] .alert-detail {
+  --ad-bg-page:      hsl(220, 20%, 8%);
+  --ad-bg-surface:   hsl(220, 18%, 11%);
+  --ad-bg-card:      hsl(220, 16%, 13%);
+  --ad-border:       hsl(220, 14%, 22%);
+  --ad-border-subtle: hsl(220, 14%, 18%);
+  --ad-text-primary: hsl(210, 20%, 96%);
+  --ad-text-secondary: hsl(210, 12%, 78%);
+  --ad-text-muted:   hsl(210, 10%, 65%);
+  --ad-accent:       hsl(34, 92%, 55%);
+  --ad-accent-glow:  hsla(34, 92%, 55%, 0.16);
+  --ad-accent-dim:   hsla(34, 92%, 55%, 0.35);
+  --ad-accent-text:  hsl(34, 95%, 68%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .alert-detail {
+    --ad-bg-page:      hsl(220, 20%, 8%);
+    --ad-bg-surface:   hsl(220, 18%, 11%);
+    --ad-bg-card:      hsl(220, 16%, 13%);
+    --ad-border:       hsl(220, 14%, 22%);
+    --ad-border-subtle: hsl(220, 14%, 18%);
+    --ad-text-primary: hsl(210, 20%, 96%);
+    --ad-text-secondary: hsl(210, 12%, 78%);
+    --ad-text-muted:   hsl(210, 10%, 65%);
+    --ad-accent:       hsl(34, 92%, 55%);
+    --ad-accent-glow:  hsla(34, 92%, 55%, 0.16);
+    --ad-accent-dim:   hsla(34, 92%, 55%, 0.35);
+    --ad-accent-text:  hsl(34, 95%, 68%);
+  }
+}
+
 /* =========================================================
    TOP NAVIGATION
    ========================================================= */
