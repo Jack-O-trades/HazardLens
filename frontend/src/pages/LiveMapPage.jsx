@@ -171,18 +171,18 @@ export default function LiveMapPage() {
     if (code <= 67) return 'Rain'
     if (code <= 77) return 'Snow'
     if (code <= 82) return 'Showers'
-    if (code <= 99) return 'Γ¢ê Storm'
+    if (code <= 99) return '⛈️ Storm'
     return 'Unknown'
   }
 
   const weatherIcon = (code) => {
-    if (code === 0) return 'ΓÿÇ∩╕Å'
-    if (code <= 3) return 'Γ¢à'
-    if (code <= 48) return '≡ƒî½∩╕Å'
-    if (code <= 67) return '≡ƒîº∩╕Å'
-    if (code <= 77) return 'Γ¥ä∩╕Å'
-    if (code <= 82) return '≡ƒîª∩╕Å'
-    return 'Γ¢ê∩╕Å'
+    if (code === 0) return '☀️'
+    if (code <= 3) return '⛅'
+    if (code <= 48) return '🌫️'
+    if (code <= 67) return '🌧️'
+    if (code <= 77) return '❄️'
+    if (code <= 82) return '🌦️'
+    return '⛈️'
   }
 
   // ΓöÇΓöÇ Search ΓöÇΓöÇ
@@ -451,10 +451,10 @@ export default function LiveMapPage() {
           {weather && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', borderRadius: '8px', border: `1px solid ${borderUI}`, fontSize: '12px' }}>
               <span style={{ fontSize: '16px' }}>{weatherIcon(weather.code)}</span>
-              <span style={{ fontWeight: 700, color: textUI }}>{weather.temp}┬░C</span>
+              <span style={{ fontWeight: 700, color: textUI }}>{weather.temp}°C</span>
               <span style={{ color: textSubUI }}>{weatherDesc(weather.code)}</span>
-              {weather.rain > 0 && <span style={{ color: '#60a5fa', fontWeight: 600 }}>≡ƒÆº{weather.rain}mm</span>}
-              <span style={{ color: textSubUI }}>≡ƒÆ¿{weather.wind}km/h</span>
+              {weather.rain > 0 && <span style={{ color: '#60a5fa', fontWeight: 600 }}>💧{weather.rain}mm</span>}
+              <span style={{ color: textSubUI }}>💨{weather.wind}km/h</span>
             </div>
           )}
 
@@ -564,7 +564,7 @@ export default function LiveMapPage() {
               {incident.status === 'CONFIRMED' && (
                 <div style={{ marginBottom: '16px', padding: '10px 14px', background: 'rgba(239,68,68,0.1)', borderLeft: '4px solid #ef4444', borderRadius: '6px' }}>
                   <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 700, marginBottom: '3px' }}>RECOMMENDED ACTION</div>
-                  <div style={{ fontSize: '14px', color: textUI, fontWeight: 700 }}>AVOID AFFECTED ROAD ┬╖ TAKE SAFE ROUTE</div>
+                  <div style={{ fontSize: '14px', color: textUI, fontWeight: 700 }}>AVOID AFFECTED ROAD · TAKE SAFE ROUTE</div>
                 </div>
               )}
 
@@ -574,7 +574,7 @@ export default function LiveMapPage() {
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px' }}>
                     <div style={{ color: '#10b981', marginTop: '2px', flexShrink: 0 }}><Check size={13} strokeWidth={3} /></div>
                     <div>
-                      <div style={{ color: textSubUI, fontSize: '10px', fontWeight: 600, marginBottom: '1px' }}>{ev.time} ┬╖ {ev.source}</div>
+                      <div style={{ color: textSubUI, fontSize: '10px', fontWeight: 600, marginBottom: '1px' }}>{ev.time} · {ev.source}</div>
                       <div style={{ color: textUI, fontWeight: 500 }}>{ev.message}</div>
                     </div>
                   </div>
@@ -728,7 +728,7 @@ export default function LiveMapPage() {
         {/* Helper hint */}
         {!destination && userLocation && (
           <div style={{ position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', color: 'white', padding: '12px 24px', borderRadius: '24px', fontSize: '13px', fontWeight: 700, boxShadow: '0 10px 30px rgba(59,130,246,0.4)', pointerEvents: 'none', animation: 'bounce 2s infinite', whiteSpace: 'nowrap', zIndex: 10 }}>
-            ≡ƒû▒∩╕Å Click anywhere on the map to set your destination
+            🖱️ Click anywhere on the map to set your destination
           </div>
         )}
       </div>
