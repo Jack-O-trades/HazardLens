@@ -73,7 +73,7 @@ export default function LiveMapPage() {
   }
 
   const mapStyleUrl = useMemo(() => {
-    const key = import.meta.env.VITE_MAPTILER_KEY
+    const key = import.meta.env.VITE_MAPTILER_KEY || '8oJS7UaNGu6yuoJGxY7P'
     const s = MAP_STYLES[mapBaseStyle] || MAP_STYLES['hybrid']
     if (key) {
       return {
