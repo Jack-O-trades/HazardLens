@@ -42,6 +42,9 @@ export default function AlertCard({ alert, compact = false }) {
           <span className={`alert-card-confidence alert-card-confidence--${confidenceTone}`}>
             {alert.confidence}%
           </span>
+          {alert.reportedByRole === 'reporter' && (
+            <span className="alert-card-field-badge" title="Submitted by Field Operations">Field Report</span>
+          )}
           {!compact && <StatusBadge status={alert.status} />}
         </div>
         <ChevronRight size={16} className="alert-card-arrow" />

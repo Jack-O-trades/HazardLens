@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, Search, ChevronDown, Menu, User, Settings, LogOut, Sun, Moon } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useAlerts } from '../../context/AlertsContext'
 import { useTheme } from '../../context/ThemeContext'
 import './TopBar.css'
 
@@ -45,11 +46,11 @@ const ROLE_AVATAR_COLORS = {
   admin:      { bg: 'hsla(280,65%,60%,0.20)', text: 'hsl(280,65%,65%)',  border: 'hsla(280,65%,60%,0.35)' },
 }
 
-function UserAvatar({ user }) {
+function UserAvatar({ user, large = false }) {
   const colors = ROLE_AVATAR_COLORS[user?.role] || ROLE_AVATAR_COLORS.community
   return (
     <div
-      className="topbar-avatar topbar-avatar--initials"
+      className={`topbar-avatar topbar-avatar--initials ${large ? 'topbar-avatar--lg' : ''}`}
       style={{ background: colors.bg, color: colors.text, border: `1.5px solid ${colors.border}` }}
     >
       {user?.avatar || 'U'}
@@ -57,8 +58,24 @@ function UserAvatar({ user }) {
   )
 }
 
+/* Small role tag — reuses the same role→color mapping as the avatar so
+   a user's role is recognizable by color everywhere it appears, not
+   just spelled out as plain text. */
+function RoleBadge({ role }) {
+  const colors = ROLE_AVATAR_COLORS[role] || ROLE_AVATAR_COLORS.community
+  return (
+    <span
+      className="topbar-role-badge"
+      style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
+    >
+      {role}
+    </span>
+  )
+}
+
 export default function TopBar({ onMenuClick }) {
   const { user, logout } = useAuth()
+  const { unreadNotificationCount } = useAlerts()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [dropOpen, setDropOpen] = useState(false)
@@ -96,7 +113,10 @@ export default function TopBar({ onMenuClick }) {
 
         <div className="topbar-brand" onClick={() => navigate('/dashboard')} role="button" tabIndex={0}
           onKeyDown={e => e.key === 'Enter' && navigate('/dashboard')}>
-          <RiverdaleShieldIcon />
+          <span className="topbar-brand-mark">
+            <RiverdaleShieldIcon />
+            <span className="topbar-brand-status" aria-hidden="true" title="Monitoring active" />
+          </span>
           <div className="topbar-brand-text">
             <span className="topbar-brand-name">RIVERDALE ALERTS</span>
             <span className="topbar-brand-sub">Local Hazard Monitoring</span>
@@ -131,11 +151,15 @@ export default function TopBar({ onMenuClick }) {
         <button
           className="topbar-bell-btn"
           onClick={() => navigate('/dashboard/notifications')}
-          aria-label="Notifications"
+          aria-label={unreadNotificationCount > 0 ? `Notifications, ${unreadNotificationCount} unread` : 'Notifications'}
           id="topbar-bell"
         >
           <Bell size={18} />
-          <span className="topbar-notif-dot" />
+          {unreadNotificationCount > 0 && (
+            <span className="topbar-notif-badge">
+              {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+            </span>
+          )}
         </button>
 
         {/* User dropdown trigger */}
@@ -150,7 +174,7 @@ export default function TopBar({ onMenuClick }) {
             <UserAvatar user={user} />
             <div className="topbar-user-info">
               <span className="topbar-user-name">{user?.name || 'Guest'}</span>
-              <span className="topbar-user-role">{user?.role || ''}</span>
+              {user?.role && <RoleBadge role={user.role} />}
             </div>
             <ChevronDown size={14} className={`topbar-chevron ${dropOpen ? 'topbar-chevron--up' : ''}`} />
           </button>
@@ -160,10 +184,11 @@ export default function TopBar({ onMenuClick }) {
             <div className="topbar-dropdown" role="menu">
               {/* Profile header inside dropdown */}
               <div className="topbar-drop-profile">
-                <UserAvatar user={user} />
+                <UserAvatar user={user} large />
                 <div>
                   <p className="topbar-drop-name">{user?.name}</p>
                   <p className="topbar-drop-email">{user?.email}</p>
+                  {user?.role && <RoleBadge role={user.role} />}
                 </div>
               </div>
 

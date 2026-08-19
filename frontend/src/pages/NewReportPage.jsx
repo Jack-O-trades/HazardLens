@@ -155,6 +155,7 @@ export default function NewReportPage() {
           description: desc || 'Citizen hazard report submitted via HazardLens.',
           location: 'Riverdale Heights',
           reportedBy: user?.name || 'Citizen Reporter',
+          reporterRole: user?.role,
         })
 
         // NOTE: field names here are a best guess based on the old

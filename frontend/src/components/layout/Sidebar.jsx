@@ -19,6 +19,7 @@ function HazardIcon() {
 }
 
 const ROLE_COLORS = {
+  community: { bg: 'hsla(220,15%,50%,0.15)', text: 'hsl(220,15%,45%)' },
   reporter:  { bg: 'hsla(35,95%,55%,0.15)',  text: 'hsl(35,100%,62%)' },
   verifier:  { bg: 'hsla(195,70%,50%,0.15)', text: 'hsl(195,70%,60%)' },
   corrector: { bg: 'hsla(145,60%,45%,0.15)', text: 'hsl(145,60%,52%)' },
@@ -35,10 +36,17 @@ export default function Sidebar({ isOpen, onClose }) {
   }
 
   if (!user) return null
-  const roleStyle = ROLE_COLORS[user.role] || ROLE_COLORS.reporter
+  const roleStyle = ROLE_COLORS[user.role] || ROLE_COLORS.community
+
+  // canQueue is true for verifier / corrector / admin — anyone with review
+  // authority. Community members and reporters never see these sections.
+  const isAuthorized = caps.canQueue
 
   return (
-    <aside className={`sidebar ${isOpen ? 'sidebar--open' : ''}`}>
+    <aside
+      className={`sidebar ${isOpen ? 'sidebar--open' : ''} ${isAuthorized ? 'sidebar--authorized' : ''}`}
+      style={isAuthorized ? { '--role-accent': roleStyle.text } : undefined}
+    >
       {/* Header */}
       <div className="sidebar-header">
         <div className="sidebar-logo">
@@ -73,8 +81,6 @@ export default function Sidebar({ isOpen, onClose }) {
           <span>Dashboard</span>
         </NavLink>
 
-        {/* NOTE: no /dashboard/live-map route exists yet in your router —
-            this link will dead-end until that page is built. */}
         <NavLink to="/dashboard/live-map" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
           <Map size={18} />
           <span>Live Map</span>
@@ -86,38 +92,9 @@ export default function Sidebar({ isOpen, onClose }) {
           <span className="sidebar-badge">3</span>
         </NavLink>
 
-        <p className="sidebar-nav-label">Reports</p>
-
-        <NavLink to="/dashboard/report/new" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
-          <PlusCircle size={18} />
-          <span>New Report</span>
-        </NavLink>
-
-        <NavLink to="/dashboard/my-reports" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
-          <FileText size={18} />
-          <span>Reports</span>
-        </NavLink>
-
-        <NavLink to="/dashboard/my-reports-own" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
-          <ClipboardList size={18} />
-          <span>My Reports</span>
-        </NavLink>
-
-        <p className="sidebar-nav-label">Insights</p>
-
-        {/* NOTE: /dashboard/analytics and /dashboard/resources don't
-            exist yet either — same situation as Live Map above. */}
-        <NavLink to="/dashboard/analytics" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
-          <BarChart3 size={18} />
-          <span>Analytics</span>
-        </NavLink>
-
-        <NavLink to="/dashboard/resources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
-          <BookOpen size={18} />
-          <span>Resources</span>
-        </NavLink>
-
-        {caps.canQueue && (
+        {/* Authorized reviewers see their queue right away, ahead of
+            Reports/Insights — it's the primary task for this role. */}
+        {isAuthorized && (
           <>
             <p className="sidebar-nav-label">Authorized</p>
             <NavLink to="/dashboard/queue" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
@@ -127,17 +104,54 @@ export default function Sidebar({ isOpen, onClose }) {
           </>
         )}
 
-        {caps.canAdmin && (
-          <NavLink to="/dashboard/admin" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
-            <Shield size={18} />
-            <span>Admin Panel</span>
+        <p className="sidebar-nav-label">Reports</p>
+
+        <NavLink to="/dashboard/report/new" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+          <PlusCircle size={18} />
+          <span>New Report</span>
+        </NavLink>
+
+        <NavLink to="/dashboard/my-reports-own" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+          <FileText size={18} />
+          <span>My Reports</span>
+        </NavLink>
+
+        {/* System-wide report list — reviewers only. A community member
+            has no reason to see other people's raw submissions. */}
+        {isAuthorized && (
+          <NavLink to="/dashboard/my-reports" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+            <ClipboardList size={18} />
+            <span>All Reports</span>
           </NavLink>
+        )}
+
+        <p className="sidebar-nav-label">Insights</p>
+
+        {/* Operational metrics — reviewers only. */}
+        {isAuthorized && (
+          <NavLink to="/dashboard/analytics" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+            <BarChart3 size={18} />
+            <span>Analytics</span>
+          </NavLink>
+        )}
+
+        <NavLink to="/dashboard/resources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+          <BookOpen size={18} />
+          <span>Resources</span>
+        </NavLink>
+
+        {caps.canAdmin && (
+          <>
+            <p className="sidebar-nav-label">Administration</p>
+            <NavLink to="/dashboard/admin" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
+              <Shield size={18} />
+              <span>Admin Panel</span>
+            </NavLink>
+          </>
         )}
 
         <p className="sidebar-nav-label">Account</p>
 
-        {/* Confirmed against the real router: ProfilePage lives at
-            /dashboard/profile, separate from Settings. */}
         <NavLink to="/dashboard/profile" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
           <User size={18} />
           <span>Profile</span>

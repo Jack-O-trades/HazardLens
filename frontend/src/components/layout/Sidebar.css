@@ -19,6 +19,13 @@
   box-shadow: 1px 0 0 var(--border-subtle);
 }
 
+/* Authorized reviewers (verifier / corrector / admin) get a persistent,
+   glanceable cue in their role color — a reminder they're in a session
+   with review/correction authority, not just browsing as a resident. */
+.sidebar--authorized {
+  border-top: 3px solid var(--role-accent, var(--accent));
+}
+
 .sidebar--closed {
   width: 0;
   min-width: 0;
