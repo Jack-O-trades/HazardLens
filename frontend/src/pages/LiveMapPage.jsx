@@ -12,8 +12,11 @@ import bbox from '@turf/bbox'
 import { lineString } from '@turf/helpers'
 import './LiveMapPage.css'
 
-const DEMO_FALLBACK = [85.210208, 20.949033]
-
+const DEMO_CONFIG = {
+  start: [85.8341, 20.2858],
+  dest: [85.8450, 20.2858],
+  hazard: [85.8395, 20.2858]
+};
 // Backend API base. Set VITE_API_URL in your .env for anything beyond local dev.
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
@@ -31,11 +34,11 @@ const NOTICE_DURATION_MS = 4000
 
 // ---- Stable Map Styles & Paint Objects ----
 const MAP_STYLES = {
-  hybrid:       { label: 'Satellite',     icon: '🛰️', tile: 'hybrid',          ext: 'jpg' },
-  'streets-dk': { label: 'Streets Dark',  icon: '🌙', tile: 'streets-v2-dark', ext: 'png' },
+  hybrid: { label: 'Satellite', icon: '🛰️', tile: 'hybrid', ext: 'jpg' },
+  'streets-dk': { label: 'Streets Dark', icon: '🌙', tile: 'streets-v2-dark', ext: 'png' },
   'streets-lt': { label: 'Streets Light', icon: '☀️', tile: 'streets-v2-light', ext: 'png' },
-  outdoor:      { label: 'Outdoor',       icon: '🏔️', tile: 'outdoor-v2',       ext: 'png' },
-  topo:         { label: 'Topographic',   icon: '🗺️', tile: 'topo-v2',          ext: 'png' },
+  outdoor: { label: 'Outdoor', icon: '🏔️', tile: 'outdoor-v2', ext: 'png' },
+  topo: { label: 'Topographic', icon: '🗺️', tile: 'topo-v2', ext: 'png' },
 }
 
 const getStableMapStyle = (baseStyle, theme) => {
@@ -95,8 +98,8 @@ export default function LiveMapPage() {
 
   const [theme, setTheme] = useState(() => localStorage.getItem('s32-theme') || 'dark')
   const [viewState, setViewState] = useState({
-    longitude: DEMO_FALLBACK[0], latitude: DEMO_FALLBACK[1],
-    zoom: 13.5, pitch: 45, bearing: 0
+    longitude: 0, latitude: 0,
+    zoom: 2, pitch: 0, bearing: 0
   })
 
   // Search
@@ -108,8 +111,8 @@ export default function LiveMapPage() {
   const searchContainerRef = useRef(null)
 
   // S32 State
-  const [userLocation, setUserLocation] = useState([85.210208, 20.949033])
-  const [destination, setDestination] = useState([85.212670, 20.949950])
+  const [userLocation, setUserLocation] = useState(null)
+  const [destination, setDestination] = useState(null)
   const [routeData, setRouteData] = useState(null)
   const [oldRouteData, setOldRouteData] = useState(null)
   const [avoidWaypoint, setAvoidWaypoint] = useState(null)
@@ -143,8 +146,11 @@ export default function LiveMapPage() {
   const avoidWaypointRef = useRef(null)
   const routeDataRef = useRef(null)
 
-  useEffect(() => { userLocationRef.current = userLocation }, [userLocation])
-  useEffect(() => { destinationRef.current = destination }, [destination])
+  const activeUserLocation = appMode === 'demo' ? DEMO_CONFIG.start : userLocation
+  const activeDestination = appMode === 'demo' ? DEMO_CONFIG.dest : destination
+
+  useEffect(() => { userLocationRef.current = activeUserLocation }, [activeUserLocation])
+  useEffect(() => { destinationRef.current = activeDestination }, [activeDestination])
   useEffect(() => { avoidWaypointRef.current = avoidWaypoint }, [avoidWaypoint])
   useEffect(() => { routeDataRef.current = routeData }, [routeData])
 
@@ -174,98 +180,77 @@ export default function LiveMapPage() {
 
   const routeOutlineRef = useRef(null);
   const routeLineRef = useRef(null);
-  const latestRouteCoords = useRef(null);
-  const latestAltRoutes = useRef([]);
-  const latestUnsafeRoutes = useRef([]);
 
   // Keep route coords synced and force immediate update
   useEffect(() => {
-    latestRouteCoords.current = routeData?.recommended_route?.geometry?.coordinates || routeData?.route?.geometry?.coordinates || null;
-    latestAltRoutes.current = (routeData?.alternatives || []).map(alt => alt.geometry?.coordinates).filter(Boolean);
-    latestUnsafeRoutes.current = (routeData?.unsafe_routes || []).map(alt => alt.geometry?.coordinates).filter(Boolean);
-    
-    if (mapRef.current) {
-      const map = mapRef.current.getMap();
-      if (map && typeof map.project === 'function') {
-        if (latestRouteCoords.current) {
-          const points = latestRouteCoords.current.map(c => {
-            const p = map.project(c);
-            return `${p.x},${p.y}`;
-          }).join(" ");
-          if (routeOutlineRef.current) routeOutlineRef.current.setAttribute("points", points);
-          if (routeLineRef.current) routeLineRef.current.setAttribute("points", points);
-        } else {
-          if (routeOutlineRef.current) routeOutlineRef.current.setAttribute("points", "");
-          if (routeLineRef.current) routeLineRef.current.setAttribute("points", "");
-        }
-        
-        // Update alternatives dynamically
-        latestAltRoutes.current.forEach((coords, idx) => {
-          const altPoints = coords.map(c => {
-            const p = map.project(c);
-            return `${p.x},${p.y}`;
-          }).join(" ");
-          const altOutlineEl = document.getElementById(`alt-route-outline-${idx}`);
-          const altLineEl = document.getElementById(`alt-route-line-${idx}`);
-          if (altOutlineEl) altOutlineEl.setAttribute("points", altPoints);
-          if (altLineEl) altLineEl.setAttribute("points", altPoints);
-        });
-
-        // Update unsafe routes dynamically
-        latestUnsafeRoutes.current.forEach((coords, idx) => {
-          const unsafePoints = coords.map(c => {
-            const p = map.project(c);
-            return `${p.x},${p.y}`;
-          }).join(" ");
-          const unsafeOutlineEl = document.getElementById(`unsafe-route-outline-${idx}`);
-          const unsafeLineEl = document.getElementById(`unsafe-route-line-${idx}`);
-          if (unsafeOutlineEl) unsafeOutlineEl.setAttribute("points", unsafePoints);
-          if (unsafeLineEl) unsafeLineEl.setAttribute("points", unsafePoints);
-        });
+    if (routeData) {
+      const coords = routeData.recommended_route?.geometry?.coordinates || routeData.route?.geometry?.coordinates;
+      console.log("[ROUTE SVG DEBUG]");
+      console.log(`route exists: ${!!coords}`);
+      if (coords) {
+        console.log(`geometry type: ${routeData.recommended_route?.geometry?.type || routeData.route?.geometry?.type}`);
+        console.log(`coordinate count: ${coords.length}`);
+        console.log(`first coordinate:`, coords[0]);
+        console.log(`last coordinate:`, coords[coords.length - 1]);
       }
     }
-  }, [routeData]);
 
-  // Hook into MapLibre render cycle for 60fps syncing
-  useEffect(() => {
     if (!mapRef.current) return;
     const map = mapRef.current.getMap();
     if (!map) return;
 
     const updateSvgRoute = () => {
       if (typeof map.project !== 'function') return;
-      if (latestRouteCoords.current) {
-        const points = latestRouteCoords.current.map(c => {
+
+      const coords = routeData?.recommended_route?.geometry?.coordinates || routeData?.route?.geometry?.coordinates;
+      if (coords && coords.length > 1) {
+        const points = coords.map(c => {
           const p = map.project(c);
           return `${p.x},${p.y}`;
         }).join(" ");
-        if (routeOutlineRef.current) routeOutlineRef.current.setAttribute("points", points);
-        if (routeLineRef.current) routeLineRef.current.setAttribute("points", points);
+        if (routeOutlineRef.current) {
+          routeOutlineRef.current.setAttribute("points", points);
+          routeOutlineRef.current.style.display = 'block';
+        }
+        if (routeLineRef.current) {
+          routeLineRef.current.setAttribute("points", points);
+          routeLineRef.current.style.display = 'block';
+        }
+      } else {
+        if (routeOutlineRef.current) routeOutlineRef.current.style.display = 'none';
+        if (routeLineRef.current) routeLineRef.current.style.display = 'none';
       }
-      
-      latestAltRoutes.current.forEach((coords, idx) => {
-        const altPoints = coords.map(c => {
-          const p = map.project(c);
-          return `${p.x},${p.y}`;
-        }).join(" ");
-        const altOutlineEl = document.getElementById(`alt-route-outline-${idx}`);
-        const altLineEl = document.getElementById(`alt-route-line-${idx}`);
-        if (altOutlineEl) altOutlineEl.setAttribute("points", altPoints);
-        if (altLineEl) altLineEl.setAttribute("points", altPoints);
+
+      (routeData?.alternatives || []).forEach((alt, idx) => {
+        const altCoords = alt.geometry?.coordinates;
+        if (altCoords && altCoords.length > 1) {
+          const points = altCoords.map(c => {
+            const p = map.project(c);
+            return `${p.x},${p.y}`;
+          }).join(" ");
+          const altOutlineEl = document.getElementById(`alt-route-outline-${idx}`);
+          const altLineEl = document.getElementById(`alt-route-line-${idx}`);
+          if (altOutlineEl) { altOutlineEl.setAttribute("points", points); altOutlineEl.style.display = 'block'; }
+          if (altLineEl) { altLineEl.setAttribute("points", points); altLineEl.style.display = 'block'; }
+        }
       });
 
-      latestUnsafeRoutes.current.forEach((coords, idx) => {
-        const unsafePoints = coords.map(c => {
-          const p = map.project(c);
-          return `${p.x},${p.y}`;
-        }).join(" ");
-        const unsafeOutlineEl = document.getElementById(`unsafe-route-outline-${idx}`);
-        const unsafeLineEl = document.getElementById(`unsafe-route-line-${idx}`);
-        if (unsafeOutlineEl) unsafeOutlineEl.setAttribute("points", unsafePoints);
-        if (unsafeLineEl) unsafeLineEl.setAttribute("points", unsafePoints);
+      (routeData?.unsafe_routes || []).forEach((alt, idx) => {
+        const unsafeCoords = alt.geometry?.coordinates;
+        if (unsafeCoords && unsafeCoords.length > 1) {
+          const points = unsafeCoords.map(c => {
+            const p = map.project(c);
+            return `${p.x},${p.y}`;
+          }).join(" ");
+          const unsafeOutlineEl = document.getElementById(`unsafe-route-outline-${idx}`);
+          const unsafeLineEl = document.getElementById(`unsafe-route-line-${idx}`);
+          if (unsafeOutlineEl) { unsafeOutlineEl.setAttribute("points", points); unsafeOutlineEl.style.display = 'block'; }
+          if (unsafeLineEl) { unsafeLineEl.setAttribute("points", points); unsafeLineEl.style.display = 'block'; }
+        }
       });
     };
 
+    updateSvgRoute();
     map.on('render', updateSvgRoute);
     map.on('move', updateSvgRoute);
     map.on('zoom', updateSvgRoute);
@@ -275,7 +260,7 @@ export default function LiveMapPage() {
       map.off('move', updateSvgRoute);
       map.off('zoom', updateSvgRoute);
     };
-  }, []);
+  }, [routeData]);
 
   // ---- Weather (OpenMeteo - free, no key needed) ----
   const fetchWeather = async (lat, lng) => {
@@ -332,14 +317,14 @@ export default function LiveMapPage() {
       }
       const res = await fetch(`${API_BASE_URL}/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${end[0]}&endLat=${end[1]}${hazardQuery}`)
       const data = await res.json()
-      
+
       if (data.recommended_route || data.alternatives || data.unsafe_routes || data.route) {
-        
+
         let routeGeoJSON = null;
         const mainRoute = data.recommended_route || data.route;
-        
+
         if (mainRoute?.geometry) {
-           routeGeoJSON = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: mainRoute.geometry }] };
+          routeGeoJSON = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: mainRoute.geometry }] };
         }
 
         return {
@@ -394,8 +379,6 @@ export default function LiveMapPage() {
     let watchId = null
     let hasCentered = false
 
-    // Temporarily disabled for debugging routing
-    /*
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
@@ -404,30 +387,18 @@ export default function LiveMapPage() {
           setUserLocation([lng, lat])
           // Only auto-center the map and pull weather on the *first* fix —
           // otherwise every GPS update would yank the view and re-fetch weather.
-          if (!hasCentered) {
+          if (!hasCentered && appMode !== 'demo') {
             hasCentered = true
             setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 15 }))
             fetchWeather(lat, lng)
+            if (destinationRef.current) recalculateRoute()
           }
         },
         () => {
-          if (!hasCentered) {
-            hasCentered = true
-            setUserLocation(DEMO_FALLBACK)
-            fetchWeather(DEMO_FALLBACK[1], DEMO_FALLBACK[0])
-          }
+          // Geolocation unavailable. Show nothing (handled by UI state)
         },
         { enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS }
       )
-    } else {
-      setUserLocation(DEMO_FALLBACK)
-    }
-    */
-    // Auto-fetch route for debug markers on mount
-    if (!hasCentered) {
-      hasCentered = true;
-      setViewState(prev => ({ ...prev, longitude: DEMO_FALLBACK[0], latitude: DEMO_FALLBACK[1], zoom: 15 }));
-      recalculateRoute();
     }
 
     const socket = io(API_BASE_URL)
@@ -544,16 +515,21 @@ export default function LiveMapPage() {
       return
     }
     const dest = [e.lngLat.lng, e.lngLat.lat]
+    if (appMode === 'demo') {
+      setAppMode('live')
+      setAvoidWaypoint(null)
+    }
     setDestination(dest)
     setIncident(null)
     setOldRouteData(null)
+    setRouteData(null)
     setEvidenceStream([])
     const rData = await fetchRoute(userLocation, dest)
     if (rData) { setRouteData(rData); fitMapToRoute(rData.geojson) }
   }
 
-  const formatDistance = (m) => m > 1000 ? (m/1000).toFixed(1) + ' km' : Math.round(m) + ' m'
-  const formatDuration = (s) => Math.round(s/60) + ' min'
+  const formatDistance = (m) => m > 1000 ? (m / 1000).toFixed(1) + ' km' : Math.round(m) + ' m'
+  const formatDuration = (s) => Math.round(s / 60) + ' min'
 
   const getStepIcon = (modifier) => {
     if (!modifier) return <ArrowUp size={16} />
@@ -575,16 +551,14 @@ export default function LiveMapPage() {
       setIncident(null)
       setEvidenceStream([])
       setOldRouteData(null)
-      
+
       // Verified Phase 3.3 Demo Coordinates
-      const demoStart = [85.8341, 20.2858];
-      const demoDest = [85.8450, 20.2858];
-      const demoHazard = [85.8395, 20.2858];
-      
-      // Set to trigger map movement
-      setUserLocation(demoStart);
-      setDestination(demoDest);
+      const demoStart = DEMO_CONFIG.start;
+      const demoDest = DEMO_CONFIG.dest;
+      const demoHazard = DEMO_CONFIG.hazard;
+
       setAvoidWaypoint(demoHazard);
+      setViewState(prev => ({ ...prev, longitude: demoStart[0], latitude: demoStart[1], zoom: 14.5 }));
 
       await fetch(`${API_BASE_URL}/api/demo/flood/start`, {
         method: 'POST',
@@ -606,14 +580,14 @@ export default function LiveMapPage() {
     if (!incident || incident.confidence < HAZARD_DISPLAY_THRESHOLD || !incident.hazardCenter) return null
     const [lng, lat] = incident.hazardCenter
     const d = HAZARD_POLYGON_HALF_SIZE_DEG
-    return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[lng-d,lat+d],[lng+d,lat+d],[lng+d,lat-d],[lng-d,lat-d],[lng-d,lat+d]]] } }] }
+    return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[lng - d, lat + d], [lng + d, lat + d], [lng + d, lat - d], [lng - d, lat - d], [lng - d, lat + d]]] } }] }
   }, [incident])
 
   const unsafeRoadGeoJSON = useMemo(() => {
     if (!incident || incident.status !== 'CONFIRMED' || !incident.hazardCenter) return null
     const [lng, lat] = incident.hazardCenter
     const d = UNSAFE_ROAD_OFFSET_DEG
-    return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lng-d, lat-d],[lng+d, lat+d]] } }] }
+    return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lng - d, lat - d], [lng + d, lat + d]] } }] }
   }, [incident])
 
 
@@ -868,7 +842,7 @@ export default function LiveMapPage() {
                   <div style={{ fontSize: '11px', color: (routeData.recommended_route || routeData.route) ? textSubUI : '#ef4444', fontWeight: 700, marginBottom: '6px' }}>
                     {(routeData.recommended_route || routeData.route) ? 'RECOMMENDED SAFE ROUTE' : 'NO SAFE ROUTE AVAILABLE'}
                   </div>
-                  
+
                   {(routeData.recommended_route || routeData.route) && (
                     <>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
@@ -894,7 +868,7 @@ export default function LiveMapPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {routeData.alternatives.map((alt, i) => (
                     <div key={alt.id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                      <span style={{ fontWeight: 600, color: textUI }}>Route {i+1}</span>
+                      <span style={{ fontWeight: 600, color: textUI }}>Route {i + 1}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ color: textSubUI, fontWeight: 500 }}>{formatDistance(alt.distance)}</span>
                         <span style={{ color: '#10b981', fontWeight: 800, fontSize: '10px' }}>SAFE</span>
@@ -948,10 +922,10 @@ export default function LiveMapPage() {
         >
           {/* Controls */}
           <div style={{ position: 'absolute', bottom: 28, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <button onClick={() => setViewState(p => ({...p, zoom: p.zoom+1}))} aria-label="Zoom in" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Plus size={17} /></button>
-            <button onClick={() => setViewState(p => ({...p, zoom: p.zoom-1}))} aria-label="Zoom out" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Minus size={17} /></button>
-            <button onClick={() => setViewState(p => ({...p, bearing: 0, pitch: 45}))} aria-label="Reset map orientation" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Compass size={17} /></button>
-            <button onClick={() => userLocation && setViewState(p => ({...p, longitude: userLocation[0], latitude: userLocation[1], zoom: 15}))} aria-label="Recenter on my location" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Navigation size={17} /></button>
+            <button onClick={() => setViewState(p => ({ ...p, zoom: p.zoom + 1 }))} aria-label="Zoom in" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Plus size={17} /></button>
+            <button onClick={() => setViewState(p => ({ ...p, zoom: p.zoom - 1 }))} aria-label="Zoom out" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Minus size={17} /></button>
+            <button onClick={() => setViewState(p => ({ ...p, bearing: 0, pitch: 45 }))} aria-label="Reset map orientation" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Compass size={17} /></button>
+            <button onClick={() => userLocation && setViewState(p => ({ ...p, longitude: userLocation[0], latitude: userLocation[1], zoom: 15 }))} aria-label="Recenter on my location" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Navigation size={17} /></button>
           </div>
 
           {/* HAZARD POLYGON */}
@@ -977,11 +951,11 @@ export default function LiveMapPage() {
             </Source>
           )}
 
-          {/* CURRENT SAFE ROUTE (BYPASSED - SVG OVERLAY) */}
+
 
           {/* USER MARKER */}
-          {userLocation && (
-            <Marker longitude={userLocation[0]} latitude={userLocation[1]} anchor="center">
+          {activeUserLocation && (
+            <Marker longitude={activeUserLocation[0]} latitude={activeUserLocation[1]} anchor="center">
               <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ position: 'absolute', width: '40px', height: '40px', background: 'rgba(59,130,246,0.2)', borderRadius: '50%', top: '-10px', animation: 'pulse 2s infinite' }} />
                 <div style={{ width: '22px', height: '22px', backgroundColor: '#3b82f6', border: '3px solid white', borderRadius: '50%', boxShadow: '0 3px 10px rgba(0,0,0,0.4)', zIndex: 2 }} />
@@ -991,8 +965,8 @@ export default function LiveMapPage() {
           )}
 
           {/* DESTINATION MARKER */}
-          {destination && (
-            <Marker longitude={destination[0]} latitude={destination[1]} anchor="bottom">
+          {activeDestination && (
+            <Marker longitude={activeDestination[0]} latitude={activeDestination[1]} anchor="bottom">
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ background: bgUI, color: textUI, fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', marginBottom: '4px', border: `1px solid ${borderUI}`, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', whiteSpace: 'nowrap' }}>DESTINATION</div>
                 <MapPin size={34} color="#ef4444" fill="#ef4444" />
@@ -1010,75 +984,79 @@ export default function LiveMapPage() {
           )}
         </Map>
 
-        <svg 
-          style={{ 
-            position: 'absolute', 
-            top: 0, left: 0, 
-            width: '100%', height: '100%', 
-            pointerEvents: 'none', 
-            zIndex: 5 
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0, left: 0,
+            width: '100%', height: '100%',
+            pointerEvents: 'none',
+            zIndex: 5
           }}
         >
           {/* Unsafe Routes rendered at the very bottom */}
           {routeData && routeData.unsafe_routes && routeData.unsafe_routes.map((alt, idx) => (
-             <g key={`unsafe-${alt.id || idx}`}>
-               <polyline
-                 id={`unsafe-route-outline-${idx}`}
-                 fill="none"
-                 stroke="#07110D"
-                 strokeWidth="12"
-                 strokeLinecap="round"
-                 strokeLinejoin="round"
-               />
-               <polyline
-                 id={`unsafe-route-line-${idx}`}
-                 fill="none"
-                 stroke="#ef4444"
-                 strokeWidth="8"
-                 strokeLinecap="round"
-                 strokeLinejoin="round"
-               />
-             </g>
+            <g key={`unsafe-${alt.id || idx}`}>
+              <polyline
+                id={`unsafe-route-outline-${idx}`}
+                fill="none"
+                stroke="#07110D"
+                strokeWidth="12"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ display: 'none' }}
+              />
+              <polyline
+                id={`unsafe-route-line-${idx}`}
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ display: 'none' }}
+              />
+            </g>
           ))}
           {/* Alternatives rendered above unsafe */}
           {routeData && routeData.alternatives && routeData.alternatives.map((alt, idx) => (
-             <g key={`alt-${alt.id || idx}`}>
-               <polyline
-                 id={`alt-route-outline-${idx}`}
-                 fill="none"
-                 stroke="#07110D"
-                 strokeWidth="12"
-                 strokeLinecap="round"
-                 strokeLinejoin="round"
-               />
-               <polyline
-                 id={`alt-route-line-${idx}`}
-                 fill="none"
-                 stroke={idx === 0 ? '#eab308' : '#64748b'}
-                 strokeWidth="8"
-                 strokeLinecap="round"
-                 strokeLinejoin="round"
-               />
-             </g>
+            <g key={`alt-${alt.id || idx}`}>
+              <polyline
+                id={`alt-route-outline-${idx}`}
+                fill="none"
+                stroke="#07110D"
+                strokeWidth="12"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ display: 'none' }}
+              />
+              <polyline
+                id={`alt-route-line-${idx}`}
+                fill="none"
+                stroke={idx === 0 ? '#eab308' : '#64748b'}
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ display: 'none' }}
+              />
+            </g>
           ))}
           {/* Main safe route on top */}
           <polyline
-             ref={routeOutlineRef}
-             fill="none"
-             stroke="#07110D"
-             strokeWidth="12"
-             strokeLinecap="round"
-             strokeLinejoin="round"
-             style={{ display: routeData && (routeData.recommended_route || routeData.route) ? 'block' : 'none' }}
+            ref={routeOutlineRef}
+            fill="none"
+            stroke="#07110D"
+            strokeWidth="12"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ display: 'none' }}
           />
           <polyline
-             ref={routeLineRef}
-             fill="none"
-             stroke="#00D084"
-             strokeWidth="8"
-             strokeLinecap="round"
-             strokeLinejoin="round"
-             style={{ display: routeData && (routeData.recommended_route || routeData.route) ? 'block' : 'none' }}
+            ref={routeLineRef}
+            fill="none"
+            stroke="#00D084"
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ display: 'none' }}
           />
         </svg>
 
