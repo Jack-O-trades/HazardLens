@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Bell, Search, ChevronDown, Menu, User, Settings, LogOut, Sun, Moon } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAlerts } from '../../context/AlertsContext'
@@ -73,13 +73,21 @@ function RoleBadge({ role }) {
   )
 }
 
+/* Routes where the page itself renders its own map/location search,
+   so TopBar's generic search would just be a duplicate. Adjust this
+   to match your actual Live Map route if it differs. */
+const ROUTES_WITH_OWN_SEARCH = ['/dashboard/live-map']
+
 export default function TopBar({ onMenuClick }) {
   const { user, logout } = useAuth()
   const { unreadNotificationCount } = useAlerts()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
+  const location = useLocation()
   const [dropOpen, setDropOpen] = useState(false)
   const dropRef = useRef(null)
+
+  const hideGenericSearch = ROUTES_WITH_OWN_SEARCH.some(route => location.pathname.startsWith(route))
 
   /* Close dropdown when clicking outside */
   useEffect(() => {
@@ -124,18 +132,20 @@ export default function TopBar({ onMenuClick }) {
         </div>
       </div>
 
-      {/* Center — Search */}
-      <div id="topbar-search-target" className="topbar-search-wrap">
-        <Search size={15} className="topbar-search-icon" />
-        <input
-          type="search"
-          className="topbar-search-input"
-          placeholder="Search map or location…"
-          aria-label="Search"
-          id="topbar-search"
-        />
-        <kbd className="topbar-kbd">⌘ K</kbd>
-      </div>
+      {/* Center — Search (hidden on pages that render their own, e.g. Live Map) */}
+      {!hideGenericSearch && (
+        <div id="topbar-search-target" className="topbar-search-wrap">
+          <Search size={15} className="topbar-search-icon" />
+          <input
+            type="search"
+            className="topbar-search-input"
+            placeholder="Search map or location…"
+            aria-label="Search"
+            id="topbar-search"
+          />
+          <kbd className="topbar-kbd">⌘ K</kbd>
+        </div>
+      )}
 
       {/* Right — Bell + User */}
       <div className="topbar-right">
