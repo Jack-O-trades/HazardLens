@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, Shield, FileText, Sun,
-  Plus, Minus, Maximize2, ChevronRight, ArrowRight, Home, Bell
+  Plus, Minus, Maximize2, ChevronRight, ArrowRight, Home, Bell,
+  Route as RouteIcon, Building2
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { MOCK_ALERTS, MOCK_SHELTERS, MOCK_ROUTES } from '../data/mockData'
@@ -58,9 +59,10 @@ function ReportsIcon() {
 }
 
 /* ─── Map marker definitions — matching image positions & colours ─── */
+/* Flood uses its own teal so it reads distinctly from Weather on the legend/map */
 const MAP_MARKERS = [
   { id: 'm1', x: 37, y: 26, bg: '#3b82f6', count: 3, label: 'Weather',  icon: WeatherIcon  },
-  { id: 'm2', x: 60, y: 37, bg: '#3b82f6', count: 4, label: 'Flood',    icon: FloodIcon    },
+  { id: 'm2', x: 60, y: 37, bg: '#0891b2', count: 4, label: 'Flood',    icon: FloodIcon    },
   { id: 'm3', x: 20, y: 48, bg: '#8b5cf6', count: 2, label: 'Seismic',  icon: SeismicIcon  },
   { id: 'm4', x: 42, y: 65, bg: '#f97316', count: 2, label: 'Fire',     icon: FireIcon     },
   { id: 'm5', x: 63, y: 62, bg: '#ef4444', count: 2, label: 'Fire',     icon: FireIcon     },
@@ -68,7 +70,16 @@ const MAP_MARKERS = [
   { id: 'm7', x: 63, y: 82, bg: '#6b7280', count: 7, label: 'Reports',  icon: ReportsIcon  },
 ]
 
-/* ─── Mock Map SVG — light terrain matching reference image ─── */
+/* Legend — one entry per distinct hazard category shown on the map */
+const MAP_LEGEND = [
+  { bg: '#3b82f6', label: 'Weather' },
+  { bg: '#0891b2', label: 'Flood' },
+  { bg: '#8b5cf6', label: 'Seismic' },
+  { bg: '#f97316', label: 'Fire' },
+  { bg: '#6b7280', label: 'Community reports' },
+]
+
+/* ─── Mock Map SVG — light, neutral cartographic palette ─── */
 function MockMap({ activeMarker, onMarkerClick, showShelters, showRoutes }) {
   return (
     <svg
@@ -78,25 +89,25 @@ function MockMap({ activeMarker, onMarkerClick, showShelters, showRoutes }) {
       aria-label="Hazard incident map of Riverdale"
     >
       <defs>
-        {/* Light warm terrain gradient */}
+        {/* Neutral slate terrain gradient */}
         <linearGradient id="terrainGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f2ede3"/>
-          <stop offset="100%" stopColor="#ebe5d8"/>
+          <stop offset="0%" stopColor="#eef1f5"/>
+          <stop offset="100%" stopColor="#e4e8ee"/>
         </linearGradient>
-        {/* River blue */}
+        {/* River — muted, legible blue */}
         <linearGradient id="riverGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#a5c8e1"/>
-          <stop offset="100%" stopColor="#85b4d0"/>
+          <stop offset="0%" stopColor="#93bcd9"/>
+          <stop offset="100%" stopColor="#6e9ec1"/>
         </linearGradient>
         <filter id="mapShadow">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.22"/>
+          <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.18"/>
         </filter>
         <filter id="markerGlow">
-          <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.35"/>
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodOpacity="0.25"/>
         </filter>
       </defs>
 
-      {/* Base terrain — warm beige */}
+      {/* Base terrain */}
       <rect width="800" height="620" fill="url(#terrainGrad)"/>
 
       {/* City block texture — very subtle */}
@@ -111,43 +122,43 @@ function MockMap({ activeMarker, onMarkerClick, showShelters, showRoutes }) {
         {x:445, y:474, w:195, h:146}, {x:645, y:474, w:155, h:146},
       ].map((b, i) => (
         <rect key={i} x={b.x + 2} y={b.y + 2} width={b.w - 4} height={b.h - 4}
-          fill="#e6e0d2" opacity="0.45" rx="2"/>
+          fill="#dfe3ea" opacity="0.5" rx="2"/>
       ))}
 
       {/* Major roads */}
-      <line x1="0" y1="152" x2="800" y2="150" stroke="#cdc8bc" strokeWidth="14"/>
+      <line x1="0" y1="152" x2="800" y2="150" stroke="#c7cdd6" strokeWidth="14"/>
       <line x1="0" y1="152" x2="800" y2="150" stroke="#ffffff" strokeWidth="9"/>
-      <line x1="0" y1="308" x2="800" y2="306" stroke="#cdc8bc" strokeWidth="14"/>
+      <line x1="0" y1="308" x2="800" y2="306" stroke="#c7cdd6" strokeWidth="14"/>
       <line x1="0" y1="308" x2="800" y2="306" stroke="#ffffff" strokeWidth="9"/>
-      <line x1="0" y1="464" x2="800" y2="462" stroke="#cdc8bc" strokeWidth="14"/>
+      <line x1="0" y1="464" x2="800" y2="462" stroke="#c7cdd6" strokeWidth="14"/>
       <line x1="0" y1="464" x2="800" y2="462" stroke="#ffffff" strokeWidth="9"/>
-      <line x1="200" y1="0" x2="200" y2="620" stroke="#cdc8bc" strokeWidth="14"/>
+      <line x1="200" y1="0" x2="200" y2="620" stroke="#c7cdd6" strokeWidth="14"/>
       <line x1="200" y1="0" x2="200" y2="620" stroke="#ffffff" strokeWidth="9"/>
-      <line x1="440" y1="0" x2="440" y2="620" stroke="#cdc8bc" strokeWidth="14"/>
+      <line x1="440" y1="0" x2="440" y2="620" stroke="#c7cdd6" strokeWidth="14"/>
       <line x1="440" y1="0" x2="440" y2="620" stroke="#ffffff" strokeWidth="9"/>
-      <line x1="645" y1="0" x2="645" y2="620" stroke="#cdc8bc" strokeWidth="14"/>
+      <line x1="645" y1="0" x2="645" y2="620" stroke="#c7cdd6" strokeWidth="14"/>
       <line x1="645" y1="0" x2="645" y2="620" stroke="#ffffff" strokeWidth="9"/>
 
       {/* Minor roads */}
       {[76, 114, 228, 268, 382, 420, 536, 574].map(y => (
-        <line key={`hr-${y}`} x1="0" y1={y} x2="800" y2={y} stroke="#e4dfd4" strokeWidth="4" opacity="0.75"/>
+        <line key={`hr-${y}`} x1="0" y1={y} x2="800" y2={y} stroke="#dde1e7" strokeWidth="4" opacity="0.75"/>
       ))}
       {[100, 155, 320, 374, 520, 572, 720].map(x => (
-        <line key={`vr-${x}`} x1={x} y1="0" x2={x} y2="620" stroke="#e4dfd4" strokeWidth="4" opacity="0.75"/>
+        <line key={`vr-${x}`} x1={x} y1="0" x2={x} y2="620" stroke="#dde1e7" strokeWidth="4" opacity="0.75"/>
       ))}
 
-      {/* Park — vivid green */}
-      <ellipse cx="475" cy="252" rx="98" ry="74" fill="#cce8c0"/>
-      <ellipse cx="475" cy="252" rx="84" ry="60" fill="#b8dca8"/>
-      <text x="475" y="256" textAnchor="middle" fill="#2e6b2e" fontSize="11"
+      {/* Park */}
+      <ellipse cx="475" cy="252" rx="98" ry="74" fill="#d3e3cf"/>
+      <ellipse cx="475" cy="252" rx="84" ry="60" fill="#bcd5b6"/>
+      <text x="475" y="256" textAnchor="middle" fill="#3f6b3a" fontSize="11"
         fontWeight="600" fontFamily="Inter, sans-serif" opacity="0.9">
         Riverview Park
       </text>
       {/* Small parks */}
-      <ellipse cx="115" cy="520" rx="55" ry="38" fill="#cce8c0" opacity="0.7"/>
-      <ellipse cx="710" cy="135" rx="45" ry="32" fill="#cce8c0" opacity="0.7"/>
+      <ellipse cx="115" cy="520" rx="55" ry="38" fill="#d3e3cf" opacity="0.7"/>
+      <ellipse cx="710" cy="135" rx="45" ry="32" fill="#d3e3cf" opacity="0.7"/>
 
-      {/* Riverdale River — diagonal, matching image */}
+      {/* Riverdale River — diagonal */}
       <path
         d="M 645 0 C 618 52 594 92 570 135 C 546 178 524 208 502 252 C 480 296 468 328 450 365 C 432 402 407 430 377 456 C 347 482 312 502 274 520 C 236 538 204 552 172 568 C 140 584 110 598 76 618"
         fill="none"
@@ -160,19 +171,19 @@ function MockMap({ activeMarker, onMarkerClick, showShelters, showRoutes }) {
         fill="none"
         stroke="#cce4f5"
         strokeWidth="13"
-        opacity="0.55"
+        opacity="0.4"
       />
       {/* River label */}
       <text transform="rotate(-37, 495, 272)" x="495" y="272"
-        textAnchor="middle" fill="#4e8ab0" fontSize="10.5"
+        textAnchor="middle" fill="#3b6f8f" fontSize="10.5"
         fontStyle="italic" fontFamily="Inter, sans-serif" opacity="0.9">
         Riverdale River
       </text>
 
-      {/* District labels — matching image exactly */}
+      {/* District labels */}
       {[
         { x: 100,  y: 72,  label: 'Pinecrest'         },
-        { x: 318,  y: 72,  label: 'Pinecrest'         },
+        { x: 318,  y: 72,  label: 'Millbrook'         },
         { x: 540,  y: 72,  label: 'Northwood'         },
         { x: 100,  y: 232, label: 'Westgate'          },
         { x: 100,  y: 248, label: 'Heights'           },
@@ -181,11 +192,12 @@ function MockMap({ activeMarker, onMarkerClick, showShelters, showRoutes }) {
         { x: 318,  y: 390, label: 'Southbank'         },
         { x: 540,  y: 390, label: 'Eastvale'          },
         { x: 100,  y: 540, label: 'Lakeside'          },
-        { x: 540,  y: 538, label: 'Iwlint'            },
+        { x: 318,  y: 540, label: 'Fairview'          },
+        { x: 540,  y: 538, label: 'Brookhaven'        },
       ].map(d => (
         <text key={d.x + '-' + d.y} x={d.x} y={d.y} textAnchor="middle"
-          fill="#5a5650" fontSize="12" fontWeight="700"
-          fontFamily="Inter, sans-serif" opacity="0.82">
+          fill="#475569" fontSize="12" fontWeight="700"
+          fontFamily="Inter, sans-serif" opacity="0.78">
           {d.label}
         </text>
       ))}
@@ -226,15 +238,15 @@ function MockMap({ activeMarker, onMarkerClick, showShelters, showRoutes }) {
         return (
           <g key={s.id} transform={`translate(${px}, ${py})`} style={{ cursor: 'pointer' }}>
             {/* Pulsing ring for active shelters */}
-            <circle cx="0" cy="0" r="19" fill={color} opacity="0.12">
-              {!isFull && <animate attributeName="r" from="14" to="24" dur="2s" repeatCount="indefinite" />}
-              {!isFull && <animate attributeName="opacity" from="0.35" to="0" dur="2s" repeatCount="indefinite" />}
+            <circle cx="0" cy="0" r="17" fill={color} opacity="0.1">
+              {!isFull && <animate attributeName="r" from="14" to="22" dur="2.2s" repeatCount="indefinite" />}
+              {!isFull && <animate attributeName="opacity" from="0.28" to="0" dur="2.2s" repeatCount="indefinite" />}
             </circle>
             {/* Shelter badge shield */}
             <circle cx="0" cy="0" r="11" fill="white" stroke={color} strokeWidth="2.5" />
             {/* Hospital/Shelter Medical Cross */}
             <path d="M-4 -1.5 H-1.5 V-4 H1.5 V-1.5 H4 V1.5 H1.5 V4 H-1.5 V1.5 H-4 Z" fill={color} />
-            
+
             {/* Shelter details popup on hover/label */}
             <g className="shelter-hover-label" transform="translate(0, -32)">
               <rect x="-65" y="0" width="130" height="26" rx="4" fill="#0f172a" opacity="0.92" filter="url(#markerGlow)" />
@@ -258,9 +270,9 @@ function MockMap({ activeMarker, onMarkerClick, showShelters, showRoutes }) {
         return (
           <g key={m.id} style={{ cursor: 'pointer' }} onClick={() => onMarkerClick(m.id)} filter="url(#markerGlow)">
             {isActive && (
-              <circle cx={px} cy={py} r="32" fill={m.bg} opacity="0.18">
-                <animate attributeName="r" from="28" to="44" dur="1.2s" repeatCount="indefinite"/>
-                <animate attributeName="opacity" from="0.3" to="0" dur="1.2s" repeatCount="indefinite"/>
+              <circle cx={px} cy={py} r="30" fill={m.bg} opacity="0.16">
+                <animate attributeName="r" from="26" to="40" dur="1.3s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" from="0.26" to="0" dur="1.3s" repeatCount="indefinite"/>
               </circle>
             )}
             {/* Marker circle */}
@@ -283,14 +295,14 @@ function MockMap({ activeMarker, onMarkerClick, showShelters, showRoutes }) {
 
       {/* Scale bar */}
       <g transform="translate(440, 594)">
-        <rect x="0" y="0" width="138" height="20" rx="4" fill="white" opacity="0.88"/>
-        <line x1="10" y1="12" x2="126" y2="12" stroke="#5a5650" strokeWidth="1.5"/>
-        <line x1="10" y1="8" x2="10" y2="16" stroke="#5a5650" strokeWidth="1.5"/>
-        <line x1="68" y1="10" x2="68" y2="14" stroke="#5a5650" strokeWidth="1"/>
-        <line x1="126" y1="8" x2="126" y2="16" stroke="#5a5650" strokeWidth="1.5"/>
-        <text x="10" y="9" fill="#5a5650" fontSize="8" fontFamily="Inter,sans-serif">0</text>
-        <text x="60" y="9" fill="#5a5650" fontSize="8" fontFamily="Inter,sans-serif">1 km</text>
-        <text x="114" y="9" fill="#5a5650" fontSize="8" fontFamily="Inter,sans-serif">2 km</text>
+        <rect x="0" y="0" width="138" height="20" rx="4" fill="white" opacity="0.92" stroke="#dde1e7" strokeWidth="1"/>
+        <line x1="10" y1="12" x2="126" y2="12" stroke="#475569" strokeWidth="1.5"/>
+        <line x1="10" y1="8" x2="10" y2="16" stroke="#475569" strokeWidth="1.5"/>
+        <line x1="68" y1="10" x2="68" y2="14" stroke="#475569" strokeWidth="1"/>
+        <line x1="126" y1="8" x2="126" y2="16" stroke="#475569" strokeWidth="1.5"/>
+        <text x="10" y="9" fill="#475569" fontSize="8" fontFamily="Inter,sans-serif">0</text>
+        <text x="60" y="9" fill="#475569" fontSize="8" fontFamily="Inter,sans-serif">1 km</text>
+        <text x="114" y="9" fill="#475569" fontSize="8" fontFamily="Inter,sans-serif">2 km</text>
       </g>
     </svg>
   )
@@ -361,7 +373,7 @@ export default function DashboardPage() {
 
   const [activeMarker, setActiveMarker] = useState(null)
   const [mapExpanded, setMapExpanded]   = useState(false)
-  
+
   // Layer toggles
   const [showShelters, setShowShelters] = useState(true)
   const [showRoutes, setShowRoutes]     = useState(true)
@@ -435,7 +447,7 @@ export default function DashboardPage() {
       <div className="dash-greeting-row">
         <div>
           <h1 className="dash-greeting-title">
-            {getGreeting()}, {user?.name?.split(' ')[0] || 'there'}!
+            {getGreeting()}, {user?.name?.split(' ')[0] || 'there'}
           </h1>
           <p className="dash-greeting-sub">Stay informed. Stay prepared.</p>
         </div>
@@ -454,11 +466,13 @@ export default function DashboardPage() {
 
       {priorityAlerts.length > 0 ? (
         <div className="dash-priority-banner">
-          High-priority alert cluster: {priorityAlerts.length} active incident{priorityAlerts.length > 1 ? 's' : ''} require attention.
+          <AlertTriangle size={16} className="dash-priority-banner-icon" />
+          <span>High-priority alert cluster: {priorityAlerts.length} active incident{priorityAlerts.length > 1 ? 's' : ''} require attention.</span>
         </div>
       ) : digestSummary ? (
         <div className="dash-priority-banner dash-priority-banner--digest">
-          {digestSummary}
+          <Bell size={16} className="dash-priority-banner-icon" />
+          <span>{digestSummary}</span>
         </div>
       ) : null}
 
@@ -467,8 +481,11 @@ export default function DashboardPage() {
 
         <div className="dash-map-card">
           <div className="dash-map-card-header">
-            <h2 className="dash-map-card-title">Live Hazard Map <span>Overview</span></h2>
-            
+            <h2 className="dash-map-card-title">
+              Live Hazard Map
+              <span className="dash-live-badge"><span className="dash-live-dot" />Live</span>
+            </h2>
+
             {/* Map layers toolbar */}
             <div className="map-layers-toolbar">
               <label className="layer-checkbox-label">
@@ -477,7 +494,8 @@ export default function DashboardPage() {
                   checked={showShelters}
                   onChange={e => setShowShelters(e.target.checked)}
                 />
-                🏥 Safe Shelters
+                <Building2 size={13} />
+                Safe Shelters
               </label>
               <label className="layer-checkbox-label">
                 <input
@@ -485,7 +503,8 @@ export default function DashboardPage() {
                   checked={showRoutes}
                   onChange={e => setShowRoutes(e.target.checked)}
                 />
-                🟢 Evacuation Routes
+                <RouteIcon size={13} />
+                Evacuation Routes
               </label>
             </div>
 
@@ -510,11 +529,21 @@ export default function DashboardPage() {
               <button className="dash-map-zoom-btn" aria-label="Zoom out"><Minus size={14} /></button>
             </div>
           </div>
+
+          {/* Map legend */}
+          <div className="dash-map-legend">
+            {MAP_LEGEND.map(item => (
+              <span key={item.label} className="dash-map-legend-item">
+                <span className="dash-map-legend-swatch" style={{ background: item.bg }} />
+                {item.label}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Side Panels Stack: Latest Alerts + Safe Shelters Directory */}
         <div className="dash-side-column">
-          
+
           {/* Latest Alerts Panel */}
           <div className="dash-alerts-card">
             <div className="dash-alerts-card-header">
