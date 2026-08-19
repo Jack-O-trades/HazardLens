@@ -14,44 +14,130 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.res-list {
+/* ── Layout ──
+   Mobile/tablet: nav strip on top, panel below, one flowing column.
+   Desktop (≥900px): a sticky nav rail beside the content panel, so
+   the page reads as a real two-pane resource center instead of a
+   tall stack of accordions the person has to scroll through. ── */
+.res-layout {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.res-card {
+@media (min-width: 900px) {
+  .res-layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    align-items: start;
+    gap: 1.5rem;
+  }
+  .res-nav {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+/* ── Category nav ── */
+.res-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.res-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.res-nav-item:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border);
+}
+
+.res-nav-item--active {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+}
+
+.res-nav-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--accent-glow);
+  color: var(--text-accent);
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.res-nav-item--active .res-nav-icon {
+  background: var(--accent);
+  color: var(--bg-surface);
+}
+
+.res-nav-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.res-nav-title {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.res-nav-item--active .res-nav-title {
+  color: var(--text-accent);
+}
+
+.res-nav-desc {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Content panel ── */
+.res-panel {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  min-width: 0;
 }
 
-.res-card--open {
-  border-color: var(--border-accent);
-  box-shadow: 0 8px 25px hsla(25, 95%, 53%, 0.08);
-}
-
-.res-card-header {
-  width: 100%;
+.res-panel-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.9rem;
-  padding: 1rem 1.1rem;
-  background: transparent;
-  border: none;
-  text-align: left;
-  color: var(--text-primary);
+  padding: 1.25rem 1.25rem 1.1rem;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.res-card:hover .res-card-header {
-  background: var(--bg-card-hover);
-}
-
-.res-card-icon {
-  width: 2.5rem;
-  height: 2.5rem;
+.res-panel-icon {
+  width: 2.6rem;
+  height: 2.6rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -61,45 +147,29 @@
   flex-shrink: 0;
 }
 
-.res-card-heading {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.res-card-title {
+.res-panel-title {
   font-family: var(--font-heading);
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 700;
+  color: var(--text-primary);
 }
 
-.res-card-desc {
-  font-size: 0.76rem;
+.res-panel-desc {
+  font-size: 0.8rem;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
-.res-card-chevron {
-  color: var(--text-muted);
-  transition: transform 180ms ease;
+.res-panel-body {
+  padding: 1.25rem;
 }
 
-.res-card--open .res-card-chevron {
-  transform: rotate(180deg);
-}
-
-.res-card-body {
-  padding: 0 1.1rem 1.1rem;
-  border-top: 1px solid var(--border-subtle);
-}
-
+/* ── Safety guidelines / shelters grid ── */
 .res-safety-grid,
 .res-shelters-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
-  padding-top: 1rem;
 }
 
 .res-safety-col {
@@ -140,16 +210,12 @@
   color: var(--accent);
 }
 
-.res-tip-list--single {
-  padding-top: 1rem;
-}
-
+/* ── Emergency contacts ── */
 .res-contacts-list,
 .res-faq-list {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding-top: 1rem;
 }
 
 .res-contact-row {
@@ -161,6 +227,11 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--bg-card);
+  transition: border-color 0.15s ease;
+}
+
+.res-contact-row:hover {
+  border-color: var(--border-accent);
 }
 
 .res-contact-name {
@@ -178,8 +249,10 @@
   color: var(--text-accent);
   font-weight: 700;
   font-size: 0.95rem;
+  flex-shrink: 0;
 }
 
+/* ── Shelters ── */
 .res-shelter-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -216,6 +289,7 @@
   font-size: 0.7rem;
   font-weight: 700;
   border: 1px solid transparent;
+  flex-shrink: 0;
 }
 
 .res-shelter-status--open {
@@ -264,6 +338,7 @@
   color: var(--text-secondary);
 }
 
+/* ── FAQ ── */
 .res-faq-item {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -301,9 +376,33 @@
   transform: rotate(180deg);
 }
 
+/* ── Responsive ── */
+@media (max-width: 899px) {
+  /* Nav becomes a horizontally scrollable tab strip so it doesn't push
+     the actual content below the fold on a phone. */
+  .res-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .res-nav::-webkit-scrollbar { display: none; }
+  .res-nav-item {
+    flex: 0 0 auto;
+    width: 220px;
+  }
+}
+
 @media (max-width: 900px) {
   .res-safety-grid,
   .res-shelters-grid {
     grid-template-columns: 1fr;
   }
+}
+
+@media (max-width: 480px) {
+  .res-panel-header { padding: 1rem; }
+  .res-panel-body { padding: 1rem; }
+  .res-contact-row { flex-wrap: wrap; }
 }

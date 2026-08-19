@@ -86,6 +86,9 @@ export default function ResourcesPage() {
   const [openId, setOpenId] = useState('safety')
   const [openFaq, setOpenFaq] = useState(null)
 
+  const activeCategory = CATEGORIES.find(c => c.id === openId) ?? CATEGORIES[0]
+  const ActiveIcon = activeCategory.icon
+
   return (
     <div className="resources-page animate-fade-in">
       <div className="page-header">
@@ -95,90 +98,105 @@ export default function ResourcesPage() {
         </div>
       </div>
 
-      <div className="res-list">
-        {CATEGORIES.map(cat => {
-          const isOpen = openId === cat.id
-          const Icon = cat.icon
+      {/* ── Category nav + content panel ──
+          Desktop: a sticky nav rail beside a detail panel, so only one
+          topic's content is on screen at once instead of five stacked
+          accordions. Mobile: the same nav becomes a horizontally
+          scrollable tab strip above the panel. ── */}
+      <div className="res-layout">
 
-          return (
-            <div key={cat.id} className={`res-card ${isOpen ? 'res-card--open' : ''}`}>
+        <nav className="res-nav" aria-label="Resource categories">
+          {CATEGORIES.map(cat => {
+            const Icon = cat.icon
+            const isActive = openId === cat.id
+            return (
               <button
-                className="res-card-header"
-                onClick={() => setOpenId(isOpen ? null : cat.id)}
-                aria-expanded={isOpen}
+                key={cat.id}
+                className={`res-nav-item ${isActive ? 'res-nav-item--active' : ''}`}
+                onClick={() => setOpenId(cat.id)}
+                aria-current={isActive}
               >
-                <span className="res-card-icon"><Icon size={18} /></span>
-                <span className="res-card-heading">
-                  <span className="res-card-title">{cat.title}</span>
-                  <span className="res-card-desc">{cat.desc}</span>
+                <span className="res-nav-icon"><Icon size={18} /></span>
+                <span className="res-nav-text">
+                  <span className="res-nav-title">{cat.title}</span>
+                  <span className="res-nav-desc">{cat.desc}</span>
                 </span>
-                <ChevronDown size={16} className="res-card-chevron" />
               </button>
+            )
+          })}
+        </nav>
 
-              {isOpen && (
-                <div className="res-card-body">
-                  {cat.id === 'safety' && (
-                    <div className="res-safety-grid">
-                      {SAFETY_GUIDELINES.map(g => (
-                        <div key={g.phase} className="res-safety-col">
-                          <p className="res-safety-phase">{g.phase}</p>
-                          <ul className="res-tip-list">
-                            {g.tips.map(t => <li key={t}>{t}</li>)}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {cat.id === 'contacts' && (
-                    <div className="res-contacts-list">
-                      {EMERGENCY_CONTACTS.map(c => (
-                        <div key={c.name} className="res-contact-row">
-                          <div>
-                            <p className="res-contact-name">{c.name}</p>
-                            <p className="res-contact-desc">{c.desc}</p>
-                          </div>
-                          <a className="res-contact-number" href={`tel:${c.number.replace(/[^0-9]/g, '')}`}>
-                            {c.number}
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {cat.id === 'shelters' && (
-                    <div className="res-shelters-grid">
-                      {MOCK_SHELTERS.map(s => <ShelterCard key={s.id} shelter={s} />)}
-                    </div>
-                  )}
-
-                  {cat.id === 'prep' && (
-                    <ul className="res-tip-list res-tip-list--single">
-                      {PREPAREDNESS_TIPS.map(t => <li key={t}>{t}</li>)}
-                    </ul>
-                  )}
-
-                  {cat.id === 'faq' && (
-                    <div className="res-faq-list">
-                      {FAQS.map((f, i) => (
-                        <div key={f.q} className="res-faq-item">
-                          <button
-                            className="res-faq-question"
-                            onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                          >
-                            {f.q}
-                            <ChevronDown size={14} className={`res-faq-chevron ${openFaq === i ? 'res-faq-chevron--up' : ''}`} />
-                          </button>
-                          {openFaq === i && <p className="res-faq-answer">{f.a}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+        <div className="res-panel">
+          <div className="res-panel-header">
+            <span className="res-panel-icon"><ActiveIcon size={20} /></span>
+            <div>
+              <h2 className="res-panel-title">{activeCategory.title}</h2>
+              <p className="res-panel-desc">{activeCategory.desc}</p>
             </div>
-          )
-        })}
+          </div>
+
+          <div className="res-panel-body">
+            {openId === 'safety' && (
+              <div className="res-safety-grid">
+                {SAFETY_GUIDELINES.map(g => (
+                  <div key={g.phase} className="res-safety-col">
+                    <p className="res-safety-phase">{g.phase}</p>
+                    <ul className="res-tip-list">
+                      {g.tips.map(t => <li key={t}>{t}</li>)}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {openId === 'contacts' && (
+              <div className="res-contacts-list">
+                {EMERGENCY_CONTACTS.map(c => (
+                  <div key={c.name} className="res-contact-row">
+                    <div>
+                      <p className="res-contact-name">{c.name}</p>
+                      <p className="res-contact-desc">{c.desc}</p>
+                    </div>
+                    <a className="res-contact-number" href={`tel:${c.number.replace(/[^0-9]/g, '')}`}>
+                      {c.number}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {openId === 'shelters' && (
+              <div className="res-shelters-grid">
+                {MOCK_SHELTERS.map(s => <ShelterCard key={s.id} shelter={s} />)}
+              </div>
+            )}
+
+            {openId === 'prep' && (
+              <ul className="res-tip-list res-tip-list--single">
+                {PREPAREDNESS_TIPS.map(t => <li key={t}>{t}</li>)}
+              </ul>
+            )}
+
+            {openId === 'faq' && (
+              <div className="res-faq-list">
+                {FAQS.map((f, i) => (
+                  <div key={f.q} className="res-faq-item">
+                    <button
+                      className="res-faq-question"
+                      onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                      aria-expanded={openFaq === i}
+                    >
+                      {f.q}
+                      <ChevronDown size={14} className={`res-faq-chevron ${openFaq === i ? 'res-faq-chevron--up' : ''}`} />
+                    </button>
+                    {openFaq === i && <p className="res-faq-answer">{f.a}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   )

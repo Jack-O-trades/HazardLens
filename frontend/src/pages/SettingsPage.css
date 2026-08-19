@@ -1,5 +1,5 @@
 /* ============================================================
-   SettingsPage — Profile + Personalization Panel
+   SettingsPage — Profile + Alert Preferences
    ============================================================ */
 
 /* ── Page shell ── */
@@ -9,7 +9,20 @@
   display: flex;
   flex-direction: column;
   margin: -1.75rem -2rem;
-  padding-bottom: 2rem;
+  padding-bottom: 3rem;
+}
+
+/* ── Centered container ──
+   Single source of truth for the page's max width and horizontal
+   padding. Wide enough on desktop to host a two-column layout without
+   the page reading as a narrow mobile stack stranded in empty space;
+   narrow enough on mobile to stay comfortable. */
+.sp-container {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+  box-sizing: border-box;
 }
 
 /* ── Header ── */
@@ -17,8 +30,10 @@
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  padding: 20px 20px 14px;
+  padding: 24px 0 20px;
   background: var(--bg-base);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 24px;
 }
 
 .sp-back-btn {
@@ -41,48 +56,113 @@
 .sp-header-text { flex: 1; }
 
 .sp-title {
-  font-size: 1.625rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.15;
   font-family: var(--font-heading, 'Inter', sans-serif);
+  letter-spacing: -0.01em;
 }
 
 .sp-subtitle {
-  font-size: 0.84rem;
+  font-size: 0.88rem;
   color: var(--text-secondary);
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
-/* ── Content (card stack) ── */
+/* ── Content layout ──
+   Mobile/tablet: one flowing column, profile first.
+   Desktop (≥900px): a sticky profile rail beside a main column, so the
+   page uses the full width of the viewport instead of one narrow strip
+   of cards floating in the middle of the screen. */
 .sp-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 0 14px;
+  gap: 20px;
+}
+
+.sp-col-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* Notifications + Personalization: stacked on narrow screens, side by
+   side once there's room to breathe. */
+.sp-row-2col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 900px) {
+  .sp-content {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+    gap: 24px;
+  }
+  .sp-col-side {
+    position: sticky;
+    top: 24px;
+  }
+  .sp-row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .sp-content { grid-template-columns: 360px minmax(0, 1fr); }
 }
 
 /* ── Cards ── */
 .sp-card {
   background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   border-radius: 14px;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.sp-card--compact {}
+.sp-card:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow-md, 0 10px 28px rgba(0, 0, 0, 0.28));
+}
+
+/* Compact variant — used for the secondary preference cards (Notifications,
+   Personalization, Reduce Noise) so they read as tighter, denser groupings
+   than the primary Profile / Alert Criteria cards above them. */
+.sp-card--compact .sp-card-header {
+  padding: 14px 16px 12px;
+}
+.sp-card--compact .sp-pref-section {
+  padding: 0 16px 14px;
+}
+.sp-card--compact .sp-row-main {
+  padding: 11px 16px;
+}
 
 /* ── Profile Card ── */
 .sp-profile-card {
   padding: 0;
+  position: relative;
 }
 
-/* Avatar row */
+.sp-profile-banner {
+  height: 56px;
+  width: 100%;
+}
+
 .sp-profile-avatar-row {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 20px 16px 16px;
+  padding: 0 16px 16px;
+  margin-top: -28px;
 }
 
 .sp-profile-avatar {
@@ -96,6 +176,7 @@
   font-weight: 800;
   flex-shrink: 0;
   letter-spacing: 0.02em;
+  box-shadow: 0 0 0 4px var(--bg-card);
 }
 
 .sp-profile-avatar-info {
@@ -103,6 +184,8 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+  padding-top: 28px;
 }
 
 .sp-profile-avatar-name {
@@ -111,6 +194,9 @@
   color: var(--text-primary);
   line-height: 1.2;
   font-family: var(--font-heading, 'Inter', sans-serif);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sp-profile-role-badge {
@@ -121,6 +207,7 @@
   font-weight: 600;
   text-transform: capitalize;
   letter-spacing: 0.03em;
+  width: fit-content;
 }
 
 .sp-avatar-change-btn {
@@ -136,19 +223,21 @@
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 28px;
   transition: background 0.15s, border-color 0.15s;
 }
 .sp-avatar-change-btn:hover {
   background: var(--bg-base);
-  border-color: var(--border);
+  border-color: var(--border-accent);
 }
 
-/* Profile stats row */
 .sp-profile-stats {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 0 16px 16px;
+  flex-wrap: wrap;
 }
 
 .sp-profile-stat {
@@ -179,7 +268,6 @@
 .sp-profile-form {
   display: flex;
   flex-direction: column;
-  gap: 0;
   padding: 16px 16px 6px;
 }
 
@@ -189,8 +277,6 @@
   gap: 5px;
   margin-bottom: 14px;
 }
-
-.sp-field-group--readonly {}
 
 .sp-field-label {
   display: flex;
@@ -214,20 +300,12 @@
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
   font-family: var(--font-body, 'Inter', sans-serif);
+  box-sizing: border-box;
 }
 .sp-field-input::placeholder { color: var(--text-muted); }
 .sp-field-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
-}
-
-.sp-field-readonly {
-  padding: 10px 13px;
-  border-radius: 9px;
-  border: 1.5px solid var(--border-subtle);
-  background: var(--bg-card-hover);
-  font-size: 0.9rem;
-  color: var(--text-muted);
 }
 
 /* Save button */
@@ -261,29 +339,19 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 16px 16px 14px;
-}
-
-.sp-card-header--space {
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.sp-card-header-left {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex: 1;
+  padding: 18px 16px 14px;
 }
 
 .sp-card-icon {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 1px;
+  background: var(--accent-glow);
+  color: var(--accent);
 }
 
 .sp-card-title {
@@ -301,72 +369,43 @@
   line-height: 1.45;
 }
 
-/* Value badge (15 km / Moderate) */
+/* ── Alert Criteria (distance + severity) ── */
+.sp-criteria-row {
+  padding: 0 16px 18px;
+}
+
+.sp-criteria-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sp-criteria-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
 .sp-value-badge {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
   white-space: nowrap;
   flex-shrink: 0;
-  padding-top: 2px;
 }
 
 .sp-value-badge--muted {
   color: var(--text-secondary);
 }
 
-/* ── Role selector ── */
-.sp-role-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  padding: 0 14px 14px;
-}
-
-.sp-role-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 8px;
-  border-radius: 10px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-input);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.sp-role-btn:hover { background: var(--bg-card-hover); border-color: var(--border); }
-
-.sp-role-btn--active {
-  background: var(--bg-card-hover);
-  border-color: var(--border);
-  box-shadow: var(--shadow-sm);
-}
-
-.sp-role-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-/* ── Info row ── */
-.sp-info-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-top: 1px solid var(--border-subtle);
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-}
-
-.sp-info-icon { color: var(--text-muted); flex-shrink: 0; }
-
 /* ── Sliders ── */
-.sp-slider-wrap { padding: 0 16px 16px; }
+.sp-slider-wrap {}
 
 .sp-slider {
   -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   width: 100%;
   height: 6px;
   border-radius: 99px;
@@ -374,6 +413,7 @@
   cursor: pointer;
   position: relative;
   z-index: 2;
+  margin: 0;
 }
 
 .sp-slider--blue {
@@ -386,6 +426,21 @@
   );
 }
 
+.sp-slider::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 6px;
+  border-radius: 99px;
+}
+.sp-slider::-moz-range-track {
+  background: transparent;
+  height: 6px;
+  border-radius: 99px;
+  border: none;
+}
+.sp-slider::-moz-range-progress {
+  background: transparent;
+}
+
 .sp-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 22px;
@@ -396,6 +451,7 @@
   box-shadow: var(--shadow-sm);
   cursor: pointer;
   transition: transform 0.15s;
+  margin-top: -8px;
 }
 .sp-slider::-webkit-slider-thumb:hover { transform: scale(1.1); }
 
@@ -416,12 +472,6 @@
   margin-top: 8px;
   font-size: 0.75rem;
   color: var(--text-muted);
-}
-
-.sp-slider-rec {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  font-style: italic;
 }
 
 /* ── Severity slider ── */
@@ -484,27 +534,32 @@
 
 .sp-sev-warn { display: flex; align-items: center; justify-content: center; }
 
-.sp-sev-rec {
-  font-size: 0.71rem;
-  color: var(--text-muted);
-  text-align: center;
-  margin-top: 6px;
-  font-style: italic;
-}
-
-/* ── Toggle rows ── */
+/* ── Toggle rows (Quiet Hours / High-Confidence) ── */
 .sp-row-main {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 15px 16px 14px;
+  padding: 13px 16px;
 }
 
-.sp-row-main--header {
-  align-items: flex-start;
+.sp-row-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-.sp-row-text { flex: 1; }
+.sp-row-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sp-row-sub {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
 
 .sp-toggle {
   width: 48px;
@@ -561,31 +616,14 @@
   color: var(--text-secondary);
 }
 
-.sp-sub-chevron {
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
 .sp-sub-icon {
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-/* ── Notification prefs list ── */
-.sp-pref-list {
-  display: flex;
-  flex-direction: column;
-}
-
+/* ── Notification channels ── */
 .sp-pref-section {
   padding: 0 16px 16px;
-}
-
-.sp-pref-section--inline {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  align-items: end;
 }
 
 .sp-section-label {
@@ -598,6 +636,42 @@
   margin-bottom: 10px;
 }
 
+.sp-channel-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sp-channel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  background: var(--bg-input);
+}
+
+.sp-channel-row + .sp-channel-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sp-channel-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  flex-shrink: 0;
+}
+
+.sp-channel-label {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ── Chips (areas / hazard types) ── */
 .sp-chip-grid {
   display: flex;
   flex-wrap: wrap;
@@ -626,6 +700,7 @@
   color: var(--text-accent);
 }
 
+/* ── Persona picker ── */
 .sp-persona-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -666,11 +741,7 @@
   line-height: 1.4;
 }
 
-.sp-inline-field {
-  display: flex;
-  flex-direction: column;
-}
-
+/* ── Language select ── */
 .sp-language-select {
   width: 100%;
   border: 1px solid var(--border);
@@ -680,6 +751,7 @@
   padding: 10px 12px;
   font-size: 0.88rem;
   outline: none;
+  box-sizing: border-box;
 }
 
 .sp-language-select:focus {
@@ -687,6 +759,7 @@
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+/* ── Cadence toggle ── */
 .sp-mode-toggle {
   display: inline-flex;
   background: var(--bg-input);
@@ -711,55 +784,6 @@
   color: white;
 }
 
-.sp-pref-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 13px 16px;
-  border-top: 1px solid var(--border-subtle);
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.sp-pref-row:hover { background: var(--bg-card-hover); }
-
-.sp-pref-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  flex-shrink: 0;
-}
-
-.sp-pref-label {
-  flex: 1;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.sp-pref-chevron {
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-/* ── Footer ── */
-.sp-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 20px;
-  margin-top: 8px;
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  border-top: 1px solid var(--border);
-  background: var(--bg-base);
-}
-
-.sp-footer-icon {
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
 /* ── Light theme overrides ── */
 html.hl-light .sp-page {
   background: var(--bg-base);
@@ -767,11 +791,9 @@ html.hl-light .sp-page {
 
 /* ── Responsive ── */
 @media (max-width: 600px) {
-  .sp-content { padding: 0 10px; }
-  .sp-header { padding: 16px 12px 12px; }
-  .sp-role-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .sp-role-btn { padding: 10px 4px; }
+  .sp-container { padding: 0 16px; }
+  .sp-header { padding: 16px 0 14px; margin-bottom: 16px; }
+  .sp-title { font-size: 1.5rem; }
   .sp-profile-avatar { width: 52px; height: 52px; font-size: 1.1rem; }
-  .sp-pref-section--inline,
   .sp-persona-grid { grid-template-columns: 1fr; }
 }
