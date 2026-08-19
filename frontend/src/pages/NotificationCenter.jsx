@@ -18,10 +18,6 @@ const NEEDS_ATTENTION = [
     confidenceLevel: 'High',
     action: 'Avoid low-lying areas; move to higher ground.',
     severity: 'critical',
-    dotColor: '#d93025',
-    borderColor: '#d93025',
-    badgeBg: '#fce8e6',
-    badgeText: '#c0392b',
   },
   {
     id: 'a-002',
@@ -37,10 +33,6 @@ const NEEDS_ATTENTION = [
     confidenceLevel: 'High',
     action: 'Close windows; limit outdoor activity.',
     severity: 'high',
-    dotColor: '#f97316',
-    borderColor: '#f97316',
-    badgeBg: '#fff3e0',
-    badgeText: '#c05a00',
   },
   {
     id: 'a-004',
@@ -56,10 +48,6 @@ const NEEDS_ATTENTION = [
     confidenceLevel: 'Medium',
     action: 'Secure outdoor objects; stay informed.',
     severity: 'medium',
-    dotColor: '#f59e0b',
-    borderColor: '#f59e0b',
-    badgeBg: '#fffbeb',
-    badgeText: '#92600a',
   },
 ]
 
@@ -123,24 +111,26 @@ const THIS_WEEK = [
   },
 ]
 
-/* ─── SVG icons ─── */
+/* ─── SVG icons — all use currentColor, tinted via CSS classes so they
+   adapt correctly between light and dark themes instead of carrying
+   fixed hex values ─── */
 function MoonIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4a5568" strokeWidth="2" strokeLinecap="round">
+    <svg className="nc-icon nc-icon--moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
     </svg>
   )
 }
 function CloudIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#5a7fa8" strokeWidth="2" strokeLinecap="round">
+    <svg className="nc-icon nc-icon--cloud" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
     </svg>
   )
 }
 function InfoIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round">
+    <svg className="nc-icon nc-icon--info" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <circle cx="12" cy="12" r="10"/>
       <line x1="12" y1="8" x2="12" y2="8"/>
       <line x1="12" y1="12" x2="12" y2="16"/>
@@ -149,7 +139,7 @@ function InfoIcon() {
 }
 function ShieldCheckIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2e6b3e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="nc-icon nc-icon--shield" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2L4 6v6c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6L12 2z"/>
       <path d="M9 12l2 2 4-4"/>
     </svg>
@@ -157,7 +147,7 @@ function ShieldCheckIcon() {
 }
 function WarnIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#c8a020" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="nc-icon nc-icon--warn" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
       <line x1="12" y1="9" x2="12" y2="13"/>
       <line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -182,7 +172,7 @@ function CircleArrowIcon() {
 }
 function ChevronUpIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round">
+    <svg className="nc-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <polyline points="18 15 12 9 6 15"/>
     </svg>
   )
@@ -209,36 +199,37 @@ function Chip({ label, type }) {
   )
 }
 
-/* Tab bar icons */
+/* Tab bar icons — all accept `active` now, so every tab (not just Bell)
+   visually responds when selected, using theme-aware currentColor. */
 function BellTabIcon({ active }) {
   return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill={active ? '#1a2640' : 'none'}
-      stroke={active ? '#1a2640' : '#94a3b8'} strokeWidth="2" strokeLinecap="round">
+    <svg className={`nc-tab-icon ${active ? 'nc-tab-icon--active' : ''}`} viewBox="0 0 24 24" width="22" height="22"
+      fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
       <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
     </svg>
   )
 }
-function IncidentsTabIcon() {
+function IncidentsTabIcon({ active }) {
   return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round">
+    <svg className={`nc-tab-icon ${active ? 'nc-tab-icon--active' : ''}`} viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <circle cx="12" cy="10" r="3"/>
       <path d="M12 2C8.1 2 5 5.1 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.9-3.1-7-7-7z"/>
     </svg>
   )
 }
-function MapTabIcon() {
+function MapTabIcon({ active }) {
   return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={`nc-tab-icon ${active ? 'nc-tab-icon--active' : ''}`} viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
       <line x1="8" y1="2" x2="8" y2="18"/>
       <line x1="16" y1="6" x2="16" y2="22"/>
     </svg>
   )
 }
-function SettingsTabIcon() {
+function SettingsTabIcon({ active }) {
   return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round">
+    <svg className={`nc-tab-icon ${active ? 'nc-tab-icon--active' : ''}`} viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <circle cx="12" cy="12" r="3"/>
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
@@ -279,7 +270,19 @@ export default function NotificationCenter() {
       </div>
 
       {/* ── Quiet Hours Banner ── */}
-      <div className="nc-quiet-banner" onClick={() => setQuietExpanded(v => !v)}>
+      <div
+        className="nc-quiet-banner"
+        role="button"
+        tabIndex={0}
+        aria-expanded={quietExpanded}
+        onClick={() => setQuietExpanded(v => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setQuietExpanded(v => !v)
+          }
+        }}
+      >
         <div className="nc-quiet-icon"><MoonIcon /></div>
         <div className="nc-quiet-text">
           <p className="nc-quiet-title">Quiet hours active until 7:00 AM</p>
@@ -300,15 +303,23 @@ export default function NotificationCenter() {
           {NEEDS_ATTENTION.map(item => (
             <div
               key={item.id}
-              className="nc-att-card"
-              style={{ '--border-color': item.borderColor }}
+              className={`nc-att-card nc-att-card--${item.severity}`}
+              role="button"
+              tabIndex={0}
+              aria-label={`${item.title}, ${item.confidenceLevel} confidence, affecting ${item.area}`}
               onClick={() => navigate(`/dashboard/alert/${item.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  navigate(`/dashboard/alert/${item.id}`)
+                }
+              }}
             >
               {/* Title row */}
               <div className="nc-att-title-row">
-                <span className="nc-att-dot" style={{ background: item.dotColor }} />
+                <span className={`nc-att-dot nc-att-dot--${item.severity}`} />
                 <span className="nc-att-title">{item.title}</span>
-                <span className="nc-conf-badge" style={{ background: item.badgeBg, color: item.badgeText }}>
+                <span className={`nc-conf-badge nc-conf-badge--${item.severity}`}>
                   {item.confidenceLevel} Confidence · {item.confidence}%
                 </span>
               </div>
@@ -342,12 +353,8 @@ export default function NotificationCenter() {
         <p className="nc-section-label">EARLIER TODAY</p>
 
         <div className="nc-simple-list">
-          {EARLIER_TODAY.map((item, i) => (
-            <div
-              key={item.id}
-              className="nc-simple-row"
-              style={{ borderTop: i === 0 ? 'none' : '1px solid #e8e6e2' }}
-            >
+          {EARLIER_TODAY.map((item) => (
+            <div key={item.id} className="nc-simple-row">
               <div className="nc-simple-icon"><RowIcon type={item.icon} /></div>
               <div className="nc-simple-text">
                 <p className="nc-simple-title">{item.title}</p>
@@ -365,12 +372,8 @@ export default function NotificationCenter() {
         <p className="nc-section-label">THIS WEEK</p>
 
         <div className="nc-simple-list">
-          {THIS_WEEK.map((item, i) => (
-            <div
-              key={item.id}
-              className="nc-simple-row"
-              style={{ borderTop: i === 0 ? 'none' : '1px solid #e8e6e2' }}
-            >
+          {THIS_WEEK.map((item) => (
+            <div key={item.id} className="nc-simple-row">
               <div className="nc-simple-icon"><RowIcon type={item.icon} /></div>
               <div className="nc-simple-text">
                 <p className="nc-simple-title">{item.title}</p>
@@ -401,7 +404,7 @@ export default function NotificationCenter() {
           className={`nc-tab ${activeTab === 'incidents' ? 'nc-tab--active' : ''}`}
           onClick={() => { setActiveTab('incidents'); navigate('/dashboard') }}
         >
-          <IncidentsTabIcon />
+          <IncidentsTabIcon active={activeTab === 'incidents'} />
           <span className="nc-tab-label">Incidents</span>
         </button>
         <button
@@ -409,7 +412,7 @@ export default function NotificationCenter() {
           className={`nc-tab ${activeTab === 'map' ? 'nc-tab--active' : ''}`}
           onClick={() => { setActiveTab('map'); navigate('/dashboard') }}
         >
-          <MapTabIcon />
+          <MapTabIcon active={activeTab === 'map'} />
           <span className="nc-tab-label">Map</span>
         </button>
         <button
@@ -417,7 +420,7 @@ export default function NotificationCenter() {
           className={`nc-tab ${activeTab === 'settings' ? 'nc-tab--active' : ''}`}
           onClick={() => { setActiveTab('settings'); navigate('/dashboard/settings') }}
         >
-          <SettingsTabIcon />
+          <SettingsTabIcon active={activeTab === 'settings'} />
           <span className="nc-tab-label">Settings</span>
         </button>
       </div>

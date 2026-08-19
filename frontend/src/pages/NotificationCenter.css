@@ -21,13 +21,30 @@
   --nc-scroll-track: #edecea;
   --nc-toggle-off: #c8cbd4;
   --nc-toggle-on: #1a2640;
-  
+
   --nc-chip-critical-bg: #fce8e6;
   --nc-chip-critical-text: #c0392b;
   --nc-chip-critical-border: #f5c6c2;
   --nc-chip-warning-bg: #fff3e0;
   --nc-chip-warning-text: #b05a00;
   --nc-chip-warning-border: #f5ddb8;
+
+  /* Third severity tier ("medium"), and card elevation/icon tokens —
+     added so severity styling and iconography are class-driven and
+     theme-aware instead of hardcoded per item in JSX. */
+  --nc-severity-caution-bg: #fffbeb;
+  --nc-severity-caution-text: #b45309;
+  --nc-severity-caution-border: #f5e6ae;
+
+  --nc-icon-moon: #4a5568;
+  --nc-icon-cloud: #5a7fa8;
+  --nc-icon-info: #64748b;
+  --nc-icon-shield: #2e6b3e;
+  --nc-icon-warn: #c8a020;
+
+  --nc-tab-inactive: #94a3b8;
+
+  --nc-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.03);
 
   display: flex;
   flex-direction: column;
@@ -61,6 +78,20 @@
   --nc-chip-warning-bg: hsla(42, 95%, 55%, 0.15);
   --nc-chip-warning-text: hsl(42, 95%, 55%);
   --nc-chip-warning-border: hsla(42, 95%, 55%, 0.3);
+
+  --nc-severity-caution-bg: hsla(38, 92%, 58%, 0.15);
+  --nc-severity-caution-text: hsl(38, 92%, 58%);
+  --nc-severity-caution-border: hsla(38, 92%, 58%, 0.3);
+
+  --nc-icon-moon: hsl(210, 10%, 65%);
+  --nc-icon-cloud: hsl(210, 55%, 68%);
+  --nc-icon-info: hsl(210, 10%, 65%);
+  --nc-icon-shield: hsl(140, 45%, 58%);
+  --nc-icon-warn: hsl(42, 90%, 62%);
+
+  --nc-tab-inactive: hsl(210, 10%, 55%);
+
+  --nc-card-shadow: none;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -88,6 +119,20 @@
     --nc-chip-warning-bg: hsla(42, 95%, 55%, 0.15);
     --nc-chip-warning-text: hsl(42, 95%, 55%);
     --nc-chip-warning-border: hsla(42, 95%, 55%, 0.3);
+
+    --nc-severity-caution-bg: hsla(38, 92%, 58%, 0.15);
+    --nc-severity-caution-text: hsl(38, 92%, 58%);
+    --nc-severity-caution-border: hsla(38, 92%, 58%, 0.3);
+
+    --nc-icon-moon: hsl(210, 10%, 65%);
+    --nc-icon-cloud: hsl(210, 55%, 68%);
+    --nc-icon-info: hsl(210, 10%, 65%);
+    --nc-icon-shield: hsl(140, 45%, 58%);
+    --nc-icon-warn: hsl(42, 90%, 62%);
+
+    --nc-tab-inactive: hsl(210, 10%, 55%);
+
+    --nc-card-shadow: none;
   }
 }
 
@@ -98,8 +143,9 @@
   justify-content: space-between;
   padding: 20px 18px 14px;
   background: var(--nc-header-bg);
+  border-bottom: 1px solid var(--nc-border-subtle);
   flex-shrink: 0;
-  transition: background var(--dur-med) var(--ease);
+  transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
 }
 
 .nc-title {
@@ -142,6 +188,11 @@
   background: var(--nc-toggle-on);
 }
 
+.nc-toggle:focus-visible {
+  outline: 2px solid var(--nc-toggle-on);
+  outline-offset: 2px;
+}
+
 .nc-toggle-thumb {
   position: absolute;
   width: 24px;
@@ -168,11 +219,19 @@
   background: var(--nc-item-bg);
   border-radius: 12px;
   border: 1px solid var(--nc-border);
+  box-shadow: var(--nc-card-shadow);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background var(--dur-fast), border-color var(--dur-med) var(--ease);
+  transition: background var(--dur-fast), border-color var(--dur-med) var(--ease), transform var(--dur-fast) var(--ease);
 }
-.nc-quiet-banner:hover { background: var(--nc-item-hover); }
+.nc-quiet-banner:hover {
+  background: var(--nc-item-hover);
+  transform: translateY(-1px);
+}
+.nc-quiet-banner:focus-visible {
+  outline: 2px solid var(--nc-toggle-on);
+  outline-offset: 2px;
+}
 
 .nc-quiet-icon {
   width: 36px;
@@ -202,9 +261,20 @@
 .nc-quiet-chevron {
   color: var(--nc-text-muted);
   flex-shrink: 0;
+  transform: rotate(180deg);
   transition: transform 0.2s, color var(--dur-med) var(--ease);
 }
 .nc-quiet-chevron--up { transform: rotate(0deg); }
+
+/* ── Icons — theme-aware via currentColor ── */
+.nc-icon {
+  color: var(--nc-text-muted);
+}
+.nc-icon--moon   { color: var(--nc-icon-moon); }
+.nc-icon--cloud  { color: var(--nc-icon-cloud); }
+.nc-icon--info   { color: var(--nc-icon-info); }
+.nc-icon--shield { color: var(--nc-icon-shield); }
+.nc-icon--warn   { color: var(--nc-icon-warn); }
 
 /* ── Scrollable area ── */
 .nc-scroll {
@@ -239,13 +309,14 @@
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--nc-border);
+  box-shadow: var(--nc-card-shadow);
   transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
 }
 
 .nc-att-card {
   position: relative;
   padding: 14px 14px 12px 18px;
-  border-left: 4px solid var(--border-color, var(--nc-border));
+  border-left: 4px solid transparent;
   border-bottom: 1px solid var(--nc-border-subtle);
   cursor: pointer;
   transition: background 0.12s, border-color var(--dur-med) var(--ease);
@@ -253,6 +324,16 @@
 }
 .nc-att-card:last-child { border-bottom: none; }
 .nc-att-card:hover { background: var(--nc-item-hover); }
+.nc-att-card:focus-visible {
+  outline: 2px solid var(--nc-toggle-on);
+  outline-offset: -2px;
+}
+
+/* Severity → color, driven entirely by CSS so it adapts per theme
+   instead of per-item inline hex values. */
+.nc-att-card--critical { border-left-color: var(--nc-chip-critical-text); }
+.nc-att-card--high     { border-left-color: var(--nc-chip-warning-text); }
+.nc-att-card--medium   { border-left-color: var(--nc-severity-caution-text); }
 
 /* Title row */
 .nc-att-title-row {
@@ -269,6 +350,9 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
+.nc-att-dot--critical { background: var(--nc-chip-critical-text); }
+.nc-att-dot--high     { background: var(--nc-chip-warning-text); }
+.nc-att-dot--medium   { background: var(--nc-severity-caution-text); }
 
 .nc-att-title {
   font-size: 0.9375rem;
@@ -286,8 +370,24 @@
   font-weight: 600;
   padding: 3px 9px;
   border-radius: 6px;
+  border: 1px solid transparent;
   white-space: nowrap;
   flex-shrink: 0;
+}
+.nc-conf-badge--critical {
+  background: var(--nc-chip-critical-bg);
+  color: var(--nc-chip-critical-text);
+  border-color: var(--nc-chip-critical-border);
+}
+.nc-conf-badge--high {
+  background: var(--nc-chip-warning-bg);
+  color: var(--nc-chip-warning-text);
+  border-color: var(--nc-chip-warning-border);
+}
+.nc-conf-badge--medium {
+  background: var(--nc-severity-caution-bg);
+  color: var(--nc-severity-caution-text);
+  border-color: var(--nc-severity-caution-border);
 }
 
 /* Affected area */
@@ -377,7 +477,7 @@
 
 .nc-att-action-label {
   font-size: 0.7rem;
-  color: #94a3b8;
+  color: var(--nc-text-muted);
   text-align: right;
 }
 
@@ -395,6 +495,7 @@
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--nc-border);
+  box-shadow: var(--nc-card-shadow);
   margin-bottom: 2px;
   transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
 }
@@ -408,6 +509,12 @@
   transition: background 0.12s;
 }
 .nc-simple-row:hover { background: var(--nc-item-hover); }
+
+/* Divider between rows via sibling selector instead of a per-row
+   inline style computed from array index. */
+.nc-simple-row + .nc-simple-row {
+  border-top: 1px solid var(--nc-border-subtle);
+}
 
 .nc-simple-icon {
   width: 36px;
@@ -480,12 +587,26 @@
   transition: opacity 0.15s;
 }
 .nc-tab:hover { opacity: 0.75; }
+.nc-tab:focus-visible {
+  outline: 2px solid var(--nc-toggle-on);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.nc-tab-icon {
+  color: var(--nc-tab-inactive);
+  transition: color var(--dur-med) var(--ease);
+}
+.nc-tab-icon--active {
+  color: var(--nc-text-title);
+}
 
 .nc-tab-label {
   font-size: 0.68rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: var(--nc-tab-inactive);
   white-space: nowrap;
+  transition: color var(--dur-med) var(--ease);
 }
 
 .nc-tab--active .nc-tab-label {
@@ -500,4 +621,18 @@
   .nc-title  { font-size: 1.6rem; }
   .nc-scroll { padding: 0 10px 8px; }
   .nc-quiet-banner { margin: 0 10px 10px; }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .nc-quiet-banner,
+  .nc-toggle-thumb,
+  .nc-quiet-chevron,
+  .nc-tab,
+  .nc-att-card {
+    transition: none;
+  }
+  .nc-quiet-banner:hover {
+    transform: none;
+  }
 }
