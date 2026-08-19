@@ -12,7 +12,7 @@ import bbox from '@turf/bbox'
 import { lineString } from '@turf/helpers'
 import './LiveMapPage.css'
 
-const DEMO_FALLBACK = [-122.681, 45.520]
+const DEMO_FALLBACK = [85.210208, 20.949033]
 
 // Backend API base. Set VITE_API_URL in your .env for anything beyond local dev.
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
@@ -28,6 +28,67 @@ const UNSAFE_ROAD_OFFSET_DEG = 0.003
 const AVOID_OFFSET_DEG = 0.015              // how far off the hazard center we route the avoid-waypoint
 const SEARCH_DEBOUNCE_MS = 300
 const NOTICE_DURATION_MS = 4000
+
+// ---- Stable Map Styles & Paint Objects ----
+const MAP_STYLES = {
+  hybrid:       { label: 'Satellite',     icon: '🛰️', tile: 'hybrid',          ext: 'jpg' },
+  'streets-dk': { label: 'Streets Dark',  icon: '🌙', tile: 'streets-v2-dark', ext: 'png' },
+  'streets-lt': { label: 'Streets Light', icon: '☀️', tile: 'streets-v2-light', ext: 'png' },
+  outdoor:      { label: 'Outdoor',       icon: '🏔️', tile: 'outdoor-v2',       ext: 'png' },
+  topo:         { label: 'Topographic',   icon: '🗺️', tile: 'topo-v2',          ext: 'png' },
+}
+
+const getStableMapStyle = (baseStyle, theme) => {
+  const key = import.meta.env.VITE_MAPTILER_KEY || '8oJS7UaNGu6yuoJGxY7P'
+  const s = MAP_STYLES[baseStyle] || MAP_STYLES['streets-dk']
+  if (key) {
+    if (s.tile === 'hybrid') {
+      return {
+        version: 8,
+        sources: {
+          'maptiler-raster': {
+            type: 'raster',
+            tiles: [`https://api.maptiler.com/maps/${s.tile}/256/{z}/{x}/{y}@2x.${s.ext}?key=${key}`],
+            tileSize: 256,
+            attribution: '&copy; MapTiler &copy; OpenStreetMap contributors',
+            maxzoom: 22
+          }
+        },
+        layers: [{ id: 'maptiler-base', type: 'raster', source: 'maptiler-raster' }]
+      }
+    } else {
+      return `https://api.maptiler.com/maps/${s.tile}/style.json?key=${key}`
+    }
+  }
+  const basemap = theme === 'dark' ? 'dark_all' : 'voyager'
+  return {
+    version: 8,
+    sources: {
+      carto: {
+        type: 'raster',
+        tiles: [
+          `https://a.basemaps.cartocdn.com/${basemap}/{z}/{x}/{y}@2x.png`,
+          `https://b.basemaps.cartocdn.com/${basemap}/{z}/{x}/{y}@2x.png`,
+        ],
+        tileSize: 256
+      }
+    },
+    layers: [{ id: 'carto-base', type: 'raster', source: 'carto' }]
+  }
+}
+
+// Stable layout and paint objects so they don't recreate on every render
+const routeLayout = { 'line-cap': 'round', 'line-join': 'round' }
+const safeRoutePaint = { 'line-color': '#00D084', 'line-width': 6, 'line-opacity': 1 }
+const safeRouteOutlinePaint = { 'line-color': '#07110D', 'line-width': 10, 'line-opacity': 0.9 }
+const blockedRoutePaint = { 'line-color': '#FF4D4F', 'line-width': 5, 'line-opacity': 0.45, 'line-dasharray': [2, 2] }
+const hazardFillPaint = { 'fill-color': '#ef4444', 'fill-opacity': 0.25 }
+const hazardOutlinePaint = { 'line-color': '#ef4444', 'line-width': 3, 'line-dasharray': [2, 2] }
+const unsafeLinePaint = { 'line-color': '#ef4444', 'line-width': 10, 'line-opacity': 0.85 }
+const unsafeStripesPaint = { 'line-color': '#ffffff', 'line-width': 4, 'line-dasharray': [1, 1], 'line-opacity': 0.6 }
+const unsafeStripesLayout = { 'line-cap': 'butt', 'line-join': 'round' }
+
+let previousMapStyle = null;
 
 export default function LiveMapPage() {
   const mapRef = useRef(null)
@@ -47,8 +108,8 @@ export default function LiveMapPage() {
   const searchContainerRef = useRef(null)
 
   // S32 State
-  const [userLocation, setUserLocation] = useState(null)
-  const [destination, setDestination] = useState(null)
+  const [userLocation, setUserLocation] = useState([85.210208, 20.949033])
+  const [destination, setDestination] = useState([85.212670, 20.949950])
   const [routeData, setRouteData] = useState(null)
   const [oldRouteData, setOldRouteData] = useState(null)
   const [avoidWaypoint, setAvoidWaypoint] = useState(null)
@@ -61,9 +122,9 @@ export default function LiveMapPage() {
   const noticeTimeoutRef = useRef(null)
 
   // Map style
-  const [mapBaseStyle, setMapBaseStyle] = useState(() => localStorage.getItem('s32-mapstyle') || 'hybrid')
+  const [mapBaseStyle, setMapBaseStyle] = useState(() => localStorage.getItem('s32-mapstyle') || 'streets-dk')
   const [showStylePicker, setShowStylePicker] = useState(false)
-  const [mapLoaded, setMapLoaded] = useState(false)
+  const [mapStyleUrl, setMapStyleUrl] = useState(() => getStableMapStyle(mapBaseStyle, theme))
 
   // Legend collapse
   const [legendExpanded, setLegendExpanded] = useState(true)
@@ -105,53 +166,116 @@ export default function LiveMapPage() {
     document.documentElement.classList.toggle('hl-dark', theme === 'dark')
   }, [theme])
 
-  useEffect(() => { localStorage.setItem('s32-mapstyle', mapBaseStyle) }, [mapBaseStyle])
+  // Sync stable map style object/url ONLY when base style or theme changes
+  useEffect(() => {
+    localStorage.setItem('s32-mapstyle', mapBaseStyle)
+    setMapStyleUrl(getStableMapStyle(mapBaseStyle, theme))
+  }, [mapBaseStyle, theme])
 
-  // ---- Map Styles ----
-  const MAP_STYLES = {
-    hybrid:       { label: 'Satellite',     icon: '🛰️', tile: 'hybrid',          ext: 'jpg' },
-    'streets-dk': { label: 'Streets Dark',  icon: '🌙', tile: 'streets-v2-dark', ext: 'png' },
-    'streets-lt': { label: 'Streets Light', icon: '☀️', tile: 'streets-v2-light', ext: 'png' },
-    outdoor:      { label: 'Outdoor',       icon: '🏔️', tile: 'outdoor-v2',       ext: 'png' },
-    topo:         { label: 'Topographic',   icon: '🗺️', tile: 'topo-v2',          ext: 'png' },
-  }
+  const routeOutlineRef = useRef(null);
+  const routeLineRef = useRef(null);
+  const latestRouteCoords = useRef(null);
+  const latestAltRoutes = useRef([]);
+  const latestUnsafeRoutes = useRef([]);
 
-  const mapStyleUrl = useMemo(() => {
-    // TODO: this fallback key is exposed in source — move to VITE_MAPTILER_KEY
-    // in a .env file when you get a chance, so it's not sitting in the repo.
-    const key = import.meta.env.VITE_MAPTILER_KEY || '8oJS7UaNGu6yuoJGxY7P'
-    const s = MAP_STYLES[mapBaseStyle] || MAP_STYLES['hybrid']
-    if (key) {
-      return {
-        version: 8,
-        sources: {
-          'maptiler-raster': {
-            type: 'raster',
-            tiles: [`https://api.maptiler.com/maps/${s.tile}/256/{z}/{x}/{y}@2x.${s.ext}?key=${key}`],
-            tileSize: 256,
-            attribution: '&copy; MapTiler &copy; OpenStreetMap contributors',
-            maxzoom: 22
-          }
-        },
-        layers: [{ id: 'maptiler-base', type: 'raster', source: 'maptiler-raster' }]
+  // Keep route coords synced and force immediate update
+  useEffect(() => {
+    latestRouteCoords.current = routeData?.recommended_route?.geometry?.coordinates || routeData?.route?.geometry?.coordinates || null;
+    latestAltRoutes.current = (routeData?.alternatives || []).map(alt => alt.geometry?.coordinates).filter(Boolean);
+    latestUnsafeRoutes.current = (routeData?.unsafe_routes || []).map(alt => alt.geometry?.coordinates).filter(Boolean);
+    
+    if (mapRef.current) {
+      const map = mapRef.current.getMap();
+      if (map && typeof map.project === 'function') {
+        if (latestRouteCoords.current) {
+          const points = latestRouteCoords.current.map(c => {
+            const p = map.project(c);
+            return `${p.x},${p.y}`;
+          }).join(" ");
+          if (routeOutlineRef.current) routeOutlineRef.current.setAttribute("points", points);
+          if (routeLineRef.current) routeLineRef.current.setAttribute("points", points);
+        } else {
+          if (routeOutlineRef.current) routeOutlineRef.current.setAttribute("points", "");
+          if (routeLineRef.current) routeLineRef.current.setAttribute("points", "");
+        }
+        
+        // Update alternatives dynamically
+        latestAltRoutes.current.forEach((coords, idx) => {
+          const altPoints = coords.map(c => {
+            const p = map.project(c);
+            return `${p.x},${p.y}`;
+          }).join(" ");
+          const altOutlineEl = document.getElementById(`alt-route-outline-${idx}`);
+          const altLineEl = document.getElementById(`alt-route-line-${idx}`);
+          if (altOutlineEl) altOutlineEl.setAttribute("points", altPoints);
+          if (altLineEl) altLineEl.setAttribute("points", altPoints);
+        });
+
+        // Update unsafe routes dynamically
+        latestUnsafeRoutes.current.forEach((coords, idx) => {
+          const unsafePoints = coords.map(c => {
+            const p = map.project(c);
+            return `${p.x},${p.y}`;
+          }).join(" ");
+          const unsafeOutlineEl = document.getElementById(`unsafe-route-outline-${idx}`);
+          const unsafeLineEl = document.getElementById(`unsafe-route-line-${idx}`);
+          if (unsafeOutlineEl) unsafeOutlineEl.setAttribute("points", unsafePoints);
+          if (unsafeLineEl) unsafeLineEl.setAttribute("points", unsafePoints);
+        });
       }
     }
-    const basemap = theme === 'dark' ? 'dark_all' : 'voyager'
-    return {
-      version: 8,
-      sources: {
-        carto: {
-          type: 'raster',
-          tiles: [
-            `https://a.basemaps.cartocdn.com/${basemap}/{z}/{x}/{y}@2x.png`,
-            `https://b.basemaps.cartocdn.com/${basemap}/{z}/{x}/{y}@2x.png`,
-          ],
-          tileSize: 256
-        }
-      },
-      layers: [{ id: 'carto-base', type: 'raster', source: 'carto' }]
-    }
-  }, [mapBaseStyle, theme])
+  }, [routeData]);
+
+  // Hook into MapLibre render cycle for 60fps syncing
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current.getMap();
+    if (!map) return;
+
+    const updateSvgRoute = () => {
+      if (typeof map.project !== 'function') return;
+      if (latestRouteCoords.current) {
+        const points = latestRouteCoords.current.map(c => {
+          const p = map.project(c);
+          return `${p.x},${p.y}`;
+        }).join(" ");
+        if (routeOutlineRef.current) routeOutlineRef.current.setAttribute("points", points);
+        if (routeLineRef.current) routeLineRef.current.setAttribute("points", points);
+      }
+      
+      latestAltRoutes.current.forEach((coords, idx) => {
+        const altPoints = coords.map(c => {
+          const p = map.project(c);
+          return `${p.x},${p.y}`;
+        }).join(" ");
+        const altOutlineEl = document.getElementById(`alt-route-outline-${idx}`);
+        const altLineEl = document.getElementById(`alt-route-line-${idx}`);
+        if (altOutlineEl) altOutlineEl.setAttribute("points", altPoints);
+        if (altLineEl) altLineEl.setAttribute("points", altPoints);
+      });
+
+      latestUnsafeRoutes.current.forEach((coords, idx) => {
+        const unsafePoints = coords.map(c => {
+          const p = map.project(c);
+          return `${p.x},${p.y}`;
+        }).join(" ");
+        const unsafeOutlineEl = document.getElementById(`unsafe-route-outline-${idx}`);
+        const unsafeLineEl = document.getElementById(`unsafe-route-line-${idx}`);
+        if (unsafeOutlineEl) unsafeOutlineEl.setAttribute("points", unsafePoints);
+        if (unsafeLineEl) unsafeLineEl.setAttribute("points", unsafePoints);
+      });
+    };
+
+    map.on('render', updateSvgRoute);
+    map.on('move', updateSvgRoute);
+    map.on('zoom', updateSvgRoute);
+
+    return () => {
+      map.off('render', updateSvgRoute);
+      map.off('move', updateSvgRoute);
+      map.off('zoom', updateSvgRoute);
+    };
+  }, []);
 
   // ---- Weather (OpenMeteo - free, no key needed) ----
   const fetchWeather = async (lat, lng) => {
@@ -202,28 +326,33 @@ export default function LiveMapPage() {
   // ---- Routing (defined early so effects below can safely reference it) ----
   const fetchRoute = async (start, end, waypoint = null) => {
     try {
+      let hazardQuery = ''
       if (waypoint) {
-        const [r1, r2] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${waypoint[0]}&endLat=${waypoint[1]}`).then(r => r.json()),
-          fetch(`${API_BASE_URL}/api/routes?startLng=${waypoint[0]}&startLat=${waypoint[1]}&endLng=${end[0]}&endLat=${end[1]}`).then(r => r.json()),
-        ])
-        if (r1.route && r2.route) {
-          return {
-            geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [...r1.route.geometry.coordinates, ...r2.route.geometry.coordinates] } }] },
-            distance: r1.route.distance + r2.route.distance,
-            duration: r1.route.duration + r2.route.duration,
-            steps: r1.route.steps || []
-          }
-        }
+        hazardQuery = `&hazardLng=${waypoint[0]}&hazardLat=${waypoint[1]}`
       }
-      const res = await fetch(`${API_BASE_URL}/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${end[0]}&endLat=${end[1]}`)
+      const res = await fetch(`${API_BASE_URL}/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${end[0]}&endLat=${end[1]}${hazardQuery}`)
       const data = await res.json()
-      if (data.route) {
+      
+      if (data.recommended_route || data.alternatives || data.unsafe_routes || data.route) {
+        
+        let routeGeoJSON = null;
+        const mainRoute = data.recommended_route || data.route;
+        
+        if (mainRoute?.geometry) {
+           routeGeoJSON = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: mainRoute.geometry }] };
+        }
+
         return {
-          geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: data.route.geometry }] },
-          distance: data.route.distance,
-          duration: data.route.duration,
-          steps: data.route.steps || []
+          geojson: routeGeoJSON,
+          recommended_route: data.recommended_route || null,
+          route: data.route || null, // fallback for legacy
+          alternatives: data.alternatives || [],
+          unsafe_routes: data.unsafe_routes || [],
+          hazards: data.hazards || [],
+          // For legacy panel compatibility:
+          distance: mainRoute?.distance,
+          duration: mainRoute?.duration,
+          steps: mainRoute?.steps || [],
         }
       }
     } catch (err) { console.error('Route error:', err) }
@@ -256,8 +385,7 @@ export default function LiveMapPage() {
     setRecalculating(false)
     if (newRoute) { setRouteData(newRoute); fitMapToRoute(newRoute.geojson) }
     else {
-      const fallback = await fetchRoute(start, end)
-      if (fallback) setRouteData(fallback)
+      showNotice('Could not find safe route. Fallback to default.', 'error')
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -266,6 +394,8 @@ export default function LiveMapPage() {
     let watchId = null
     let hasCentered = false
 
+    // Temporarily disabled for debugging routing
+    /*
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
@@ -292,6 +422,13 @@ export default function LiveMapPage() {
     } else {
       setUserLocation(DEMO_FALLBACK)
     }
+    */
+    // Auto-fetch route for debug markers on mount
+    if (!hasCentered) {
+      hasCentered = true;
+      setViewState(prev => ({ ...prev, longitude: DEMO_FALLBACK[0], latitude: DEMO_FALLBACK[1], zoom: 15 }));
+      recalculateRoute();
+    }
 
     const socket = io(API_BASE_URL)
 
@@ -302,13 +439,10 @@ export default function LiveMapPage() {
       if (!isConfirmedHazard) return
 
       if (data.hazardCenter) {
-        // Derive an avoid-waypoint from the real hazard location so live
-        // incidents actually route around the hazard (previously only the
-        // demo flow ever set avoidWaypoint).
+        // We now just set the avoidWaypoint to the actual hazard center and let the backend evaluate intersection
         const [hazardLng, hazardLat] = data.hazardCenter
-        const derivedWaypoint = [hazardLng - AVOID_OFFSET_DEG, hazardLat + AVOID_OFFSET_DEG]
-        setAvoidWaypoint(derivedWaypoint)
-        recalculateRoute(derivedWaypoint)
+        setAvoidWaypoint([hazardLng, hazardLat])
+        recalculateRoute([hazardLng, hazardLat])
       } else {
         recalculateRoute()
       }
@@ -436,26 +570,29 @@ export default function LiveMapPage() {
   const textSubUI = isDark ? '#94a3b8' : '#64748b'
 
   const startDemo = async () => {
-    if (!userLocation || !routeData) {
-      showNotice('Click on the map to set a destination first, then run demo.', 'error')
-      return
-    }
     try {
       setAppMode('demo')
       setIncident(null)
       setEvidenceStream([])
       setOldRouteData(null)
-      const coords = routeData.geojson.features[0].geometry.coordinates
-      const hazardIndex = Math.floor(coords.length * 0.4)
-      const dynamicHazardCenter = coords[hazardIndex]
-      setAvoidWaypoint([dynamicHazardCenter[0] - AVOID_OFFSET_DEG, dynamicHazardCenter[1] + AVOID_OFFSET_DEG])
+      
+      // Verified Phase 3.3 Demo Coordinates
+      const demoStart = [85.8341, 20.2858];
+      const demoDest = [85.8450, 20.2858];
+      const demoHazard = [85.8395, 20.2858];
+      
+      // Set to trigger map movement
+      setUserLocation(demoStart);
+      setDestination(demoDest);
+      setAvoidWaypoint(demoHazard);
+
       await fetch(`${API_BASE_URL}/api/demo/flood/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          startLng: userLocation[0], startLat: userLocation[1],
-          destLng: destination[0], destLat: destination[1],
-          hazardLng: dynamicHazardCenter[0], hazardLat: dynamicHazardCenter[1]
+          startLng: demoStart[0], startLat: demoStart[1],
+          destLng: demoDest[0], destLat: demoDest[1],
+          hazardLng: demoHazard[0], hazardLat: demoHazard[1]
         })
       })
     } catch (err) {
@@ -479,12 +616,6 @@ export default function LiveMapPage() {
     return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lng-d, lat-d],[lng+d, lat+d]] } }] }
   }, [incident])
 
-  const routeLayout = { 'line-cap': 'round', 'line-join': 'round' }
-  const safeRoutePaint = { 'line-color': '#06b6d4', 'line-width': 6, 'line-opacity': 1 }
-  const safeRouteGlowPaint = { 'line-color': '#06b6d4', 'line-width': 14, 'line-opacity': 0.4, 'line-blur': 4 }
-
-  const blockedRoutePaint = { 'line-color': '#f97316', 'line-width': 6, 'line-opacity': 1 }
-  const blockedRouteGlowPaint = { 'line-color': '#f97316', 'line-width': 14, 'line-opacity': 0.4, 'line-blur': 4 }
 
   return (
     <div className="dash-v2" style={{ backgroundColor: isDark ? '#060d1f' : '#f8fafc', color: textUI, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -726,26 +857,60 @@ export default function LiveMapPage() {
 
         {/* Route Summary (Top Right) */}
         {routeData && (
-          <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, backgroundColor: recalculating ? 'rgba(239,68,68,0.95)' : bgUI, backdropFilter: 'blur(16px)', border: `1px solid ${recalculating ? 'transparent' : borderUI}`, borderRadius: '14px', padding: '14px 20px', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', transition: 'all 0.3s ease', minWidth: '160px' }}>
-            {recalculating ? (
-              <div style={{ color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                <RefreshCw size={16} className="spin" /> RECALCULATING...
-              </div>
-            ) : (
-              <>
-                <div style={{ fontSize: '11px', color: textSubUI, fontWeight: 700, marginBottom: '6px' }}>
-                  {oldRouteData ? <span style={{ color: '#10b981' }}>✓ SAFE ROUTE ACTIVE</span> : 'OPTIMAL ROUTE'}
+          <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ backgroundColor: recalculating ? 'rgba(239,68,68,0.95)' : bgUI, backdropFilter: 'blur(16px)', border: `1px solid ${recalculating ? 'transparent' : borderUI}`, borderRadius: '14px', padding: '14px 20px', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', transition: 'all 0.3s ease', minWidth: '220px' }}>
+              {recalculating ? (
+                <div style={{ color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                  <RefreshCw size={16} className="spin" /> RECALCULATING...
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                  <span style={{ fontSize: '30px', fontWeight: 900, color: '#10b981', lineHeight: 1 }}>{formatDuration(routeData.duration)}</span>
-                  <span style={{ fontSize: '16px', fontWeight: 600, color: textSubUI }}>{formatDistance(routeData.distance)}</span>
-                </div>
-                {oldRouteData && (
-                  <div style={{ marginTop: '8px', fontSize: '11px', color: '#ef4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Shield size={11} /> AVOIDS HAZARD ZONE
+              ) : (
+                <>
+                  <div style={{ fontSize: '11px', color: (routeData.recommended_route || routeData.route) ? textSubUI : '#ef4444', fontWeight: 700, marginBottom: '6px' }}>
+                    {(routeData.recommended_route || routeData.route) ? 'RECOMMENDED SAFE ROUTE' : 'NO SAFE ROUTE AVAILABLE'}
                   </div>
-                )}
-              </>
+                  
+                  {(routeData.recommended_route || routeData.route) && (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                        <span style={{ fontSize: '30px', fontWeight: 900, color: '#10b981', lineHeight: 1 }}>{formatDuration((routeData.recommended_route || routeData.route).duration)}</span>
+                        <span style={{ fontSize: '16px', fontWeight: 600, color: textSubUI }}>{formatDistance((routeData.recommended_route || routeData.route).distance)}</span>
+                      </div>
+                      <div style={{ marginTop: '8px', fontSize: '11px', color: textUI, fontWeight: 500 }}>
+                        Hazard exposure: {routeData.recommended_route?.hazardExposure || 0}
+                      </div>
+                      <div style={{ marginTop: '4px', fontSize: '11px', color: '#10b981', fontWeight: 800 }}>
+                        {routeData.recommended_route?.safety || 'SAFE'}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Alternatives List */}
+            {routeData.alternatives && routeData.alternatives.length > 0 && !recalculating && (
+              <div style={{ backgroundColor: bgUI, backdropFilter: 'blur(16px)', border: `1px solid ${borderUI}`, borderRadius: '10px', padding: '12px 16px', boxShadow: '0 10px 20px rgba(0,0,0,0.15)' }}>
+                <div style={{ fontSize: '10px', color: textSubUI, fontWeight: 700, marginBottom: '8px' }}>ALTERNATIVE ROUTES</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {routeData.alternatives.map((alt, i) => (
+                    <div key={alt.id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                      <span style={{ fontWeight: 600, color: textUI }}>Route {i+1}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: textSubUI, fontWeight: 500 }}>{formatDistance(alt.distance)}</span>
+                        <span style={{ color: '#10b981', fontWeight: 800, fontSize: '10px' }}>SAFE</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Unsafe Routes Avoided */}
+            {routeData.unsafe_routes && routeData.unsafe_routes.length > 0 && !recalculating && (
+              <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', backdropFilter: 'blur(16px)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '10px 16px', boxShadow: '0 4px 12px rgba(239,68,68,0.1)' }}>
+                <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 800, marginBottom: '2px' }}>HAZARDOUS ROUTES AVOIDED</div>
+                <div style={{ fontSize: '12px', color: textUI, fontWeight: 600 }}>{routeData.unsafe_routes.length} route{routeData.unsafe_routes.length > 1 ? 's' : ''} rejected</div>
+              </div>
             )}
           </div>
         )}
@@ -759,8 +924,12 @@ export default function LiveMapPage() {
           {legendExpanded && (
             <div style={{ padding: '2px 12px 10px', display: 'flex', flexDirection: 'column', gap: '7px', fontSize: '11px', color: textUI, fontWeight: 600 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#3b82f6', border: '2px solid white', boxShadow: '0 0 0 2px rgba(59,130,246,0.3)', flexShrink: 0 }} /> YOU</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#06b6d4', borderRadius: '2px', boxShadow: '0 0 4px rgba(6,182,212,0.5)', flexShrink: 0 }} /> OPTIMAL ROUTE</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#f97316', borderRadius: '2px', boxShadow: '0 0 4px rgba(249,115,22,0.5)', flexShrink: 0 }} /> BLOCKED ROUTE</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#00D084', borderRadius: '2px', flexShrink: 0 }} /> SAFE ROUTE</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#eab308', borderRadius: '2px', flexShrink: 0 }} /> ALT ROUTE 1</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#64748b', borderRadius: '2px', flexShrink: 0 }} /> ALT ROUTE 2+</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#ef4444', borderRadius: '2px', flexShrink: 0 }} /> UNSAFE ROUTE</div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#FF4D4F', border: '1px dashed #FF4D4F', borderRadius: '2px', flexShrink: 0 }} /> BLOCKED ROUTE</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '12px', height: '12px', background: 'rgba(239,68,68,0.2)', border: '1px dashed #ef4444', flexShrink: 0 }} /> HAZARD</div>
             </div>
           )}
@@ -772,7 +941,6 @@ export default function LiveMapPage() {
           {...viewState}
           onMove={evt => setViewState(evt.viewState)}
           onClick={handleMapClick}
-          onLoad={() => setMapLoaded(true)}
           mapStyle={mapStyleUrl}
           interactive={true}
           cursor={userLocation && !destination ? 'crosshair' : 'grab'}
@@ -789,34 +957,27 @@ export default function LiveMapPage() {
           {/* HAZARD POLYGON */}
           {hazardPolygon && (
             <Source id="hazard-zone" type="geojson" data={hazardPolygon}>
-              <Layer id="hazard-fill" type="fill" paint={{ 'fill-color': '#ef4444', 'fill-opacity': 0.25 }} />
-              <Layer id="hazard-outline" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#ef4444', 'line-width': 3, 'line-dasharray': [2, 2] }} />
+              <Layer id="hazard-fill" type="fill" paint={hazardFillPaint} />
+              <Layer id="hazard-outline" type="line" layout={routeLayout} paint={hazardOutlinePaint} />
             </Source>
           )}
 
           {/* UNSAFE ROAD */}
           {unsafeRoadGeoJSON && (
             <Source id="unsafe-road-src" type="geojson" data={unsafeRoadGeoJSON}>
-              <Layer id="unsafe-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#ef4444', 'line-width': 10, 'line-opacity': 0.85 }} />
-              <Layer id="unsafe-stripes" type="line" layout={{ 'line-cap': 'butt', 'line-join': 'round' }} paint={{ 'line-color': '#ffffff', 'line-width': 4, 'line-dasharray': [1, 1], 'line-opacity': 0.6 }} />
+              <Layer id="unsafe-line" type="line" layout={routeLayout} paint={unsafeLinePaint} />
+              <Layer id="unsafe-stripes" type="line" layout={unsafeStripesLayout} paint={unsafeStripesPaint} />
             </Source>
           )}
 
-          {/* OLD BLOCKED ROUTE (Orange) */}
+          {/* OLD BLOCKED ROUTE */}
           {oldRouteData && oldRouteData.geojson && (
-            <Source id="old-route-src" type="geojson" data={oldRouteData.geojson}>
-              <Layer id="old-route-glow" type="line" layout={routeLayout} paint={blockedRouteGlowPaint} />
-              <Layer id="old-route-line" type="line" layout={routeLayout} paint={blockedRoutePaint} />
+            <Source id="s32-blocked-route" type="geojson" data={oldRouteData.geojson}>
+              <Layer id="s32-blocked-route-line" type="line" layout={routeLayout} paint={blockedRoutePaint} />
             </Source>
           )}
 
-          {/* CURRENT SAFE ROUTE (Cyan) */}
-          {routeData && routeData.geojson && (
-            <Source id="current-route-src" type="geojson" data={routeData.geojson}>
-              <Layer id="current-route-glow" type="line" layout={routeLayout} paint={safeRouteGlowPaint} />
-              <Layer id="current-route-line" type="line" layout={routeLayout} paint={safeRoutePaint} />
-            </Source>
-          )}
+          {/* CURRENT SAFE ROUTE (BYPASSED - SVG OVERLAY) */}
 
           {/* USER MARKER */}
           {userLocation && (
@@ -848,6 +1009,78 @@ export default function LiveMapPage() {
             </Marker>
           )}
         </Map>
+
+        <svg 
+          style={{ 
+            position: 'absolute', 
+            top: 0, left: 0, 
+            width: '100%', height: '100%', 
+            pointerEvents: 'none', 
+            zIndex: 5 
+          }}
+        >
+          {/* Unsafe Routes rendered at the very bottom */}
+          {routeData && routeData.unsafe_routes && routeData.unsafe_routes.map((alt, idx) => (
+             <g key={`unsafe-${alt.id || idx}`}>
+               <polyline
+                 id={`unsafe-route-outline-${idx}`}
+                 fill="none"
+                 stroke="#07110D"
+                 strokeWidth="12"
+                 strokeLinecap="round"
+                 strokeLinejoin="round"
+               />
+               <polyline
+                 id={`unsafe-route-line-${idx}`}
+                 fill="none"
+                 stroke="#ef4444"
+                 strokeWidth="8"
+                 strokeLinecap="round"
+                 strokeLinejoin="round"
+               />
+             </g>
+          ))}
+          {/* Alternatives rendered above unsafe */}
+          {routeData && routeData.alternatives && routeData.alternatives.map((alt, idx) => (
+             <g key={`alt-${alt.id || idx}`}>
+               <polyline
+                 id={`alt-route-outline-${idx}`}
+                 fill="none"
+                 stroke="#07110D"
+                 strokeWidth="12"
+                 strokeLinecap="round"
+                 strokeLinejoin="round"
+               />
+               <polyline
+                 id={`alt-route-line-${idx}`}
+                 fill="none"
+                 stroke={idx === 0 ? '#eab308' : '#64748b'}
+                 strokeWidth="8"
+                 strokeLinecap="round"
+                 strokeLinejoin="round"
+               />
+             </g>
+          ))}
+          {/* Main safe route on top */}
+          <polyline
+             ref={routeOutlineRef}
+             fill="none"
+             stroke="#07110D"
+             strokeWidth="12"
+             strokeLinecap="round"
+             strokeLinejoin="round"
+             style={{ display: routeData && (routeData.recommended_route || routeData.route) ? 'block' : 'none' }}
+          />
+          <polyline
+             ref={routeLineRef}
+             fill="none"
+             stroke="#00D084"
+             strokeWidth="8"
+             strokeLinecap="round"
+             strokeLinejoin="round"
+             style={{ display: routeData && (routeData.recommended_route || routeData.route) ? 'block' : 'none' }}
+          />
+        </svg>
 
         {/* Helper hint */}
         {!destination && userLocation && (
