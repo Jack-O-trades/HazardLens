@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import ReactDOM from 'react-dom'
+import { createPortal } from 'react-dom'
 import {
   Shield, Plus, Minus, Compass, AlertTriangle, Play, Navigation, MapPin, Search,
   Check, Moon, Sun, CornerUpLeft, CornerUpRight, ArrowUp, RefreshCw, Layers,
@@ -107,6 +107,7 @@ export default function LiveMapPage() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchSuggestions, setSearchSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [dropdownRect, setDropdownRect] = useState(null)
   const searchDebounceRef = useRef(null)
   const searchContainerRef = useRef(null)
 
@@ -509,6 +510,25 @@ export default function LiveMapPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Keep the portal dropdown's position glued to the search box, since it now
+  // lives outside the normal DOM flow (appended to document.body) and can't
+  // rely on CSS positioning relative to its original parent anymore.
+  useEffect(() => {
+    if (!showSuggestions) return
+    const updateRect = () => {
+      if (searchContainerRef.current) {
+        setDropdownRect(searchContainerRef.current.getBoundingClientRect())
+      }
+    }
+    updateRect()
+    window.addEventListener('scroll', updateRect, true)
+    window.addEventListener('resize', updateRect)
+    return () => {
+      window.removeEventListener('scroll', updateRect, true)
+      window.removeEventListener('resize', updateRect)
+    }
+  }, [showSuggestions, searchSuggestions])
+
   const handleMapClick = async (e) => {
     if (!userLocation) {
       showNotice('Waiting for your location. Check browser location permissions.', 'error')
@@ -596,7 +616,7 @@ export default function LiveMapPage() {
 
       <div className="dash-filterbar" style={{ backgroundColor: isDark ? 'rgba(15,23,42,0.98)' : '#ffffff', borderBottom: `1px solid ${borderUI}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px', height: '52px', backdropFilter: 'blur(12px)', zIndex: 50, position: 'relative' }}>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           <Shield size={20} color="#3b82f6" />
           <span style={{ fontWeight: 800, letterSpacing: '1px', fontSize: '14px' }}>S32 LIVE OPS</span>
           <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
@@ -609,60 +629,69 @@ export default function LiveMapPage() {
           </div>
         </div>
 
-        {/* Search portal targeting the TopBar component */}
-        {document.getElementById('topbar-search-target') && ReactDOM.createPortal(
-          <div ref={searchContainerRef} style={{ position: 'relative', zIndex: 300, width: '100%' }}>
-            <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center', backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderRadius: showSuggestions ? '8px 8px 0 0' : '8px', border: `1px solid ${showSuggestions ? '#3b82f6' : 'transparent'}`, padding: '6px 12px', width: '100%', transition: 'all 0.2s' }}>
-              <Search size={14} color={isSearching ? '#3b82f6' : textSubUI} />
-              <input
-                type="text"
-                placeholder="Search map or location..."
-                aria-label="Search map or location"
-                value={searchQuery}
-                onChange={handleSearchInputChange}
-                onFocus={() => searchSuggestions.length > 0 && setShowSuggestions(true)}
-                style={{ background: 'transparent', border: 'none', color: textUI, marginLeft: '8px', width: '100%', outline: 'none', fontSize: '14px' }}
-              />
-              {searchQuery && (
-                <button type="button" onClick={() => { setSearchQuery(''); setSearchSuggestions([]); setShowSuggestions(false) }} aria-label="Clear search" style={{ background: 'transparent', border: 'none', color: textSubUI, cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 2px' }}>×</button>
-              )}
-            </form>
-
-            {/* Suggestions dropdown - high z-index, position fixed relative to container */}
-            {showSuggestions && searchSuggestions.length > 0 && (
-              <div style={{
-                position: 'absolute', top: '100%', left: 0, right: 0,
-                backgroundColor: isDark ? '#0f172a' : '#ffffff',
-                border: `1px solid #3b82f6`, borderTop: 'none',
-                borderRadius: '0 0 10px 10px',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-                overflow: 'hidden', zIndex: 9999
-              }}>
-                {searchSuggestions.map((item, i) => {
-                  const parts = item.display_name.split(',')
-                  const mainName = parts[0]?.trim()
-                  const subText = parts.slice(1, 3).join(',').trim()
-                  return (
-                    <button key={item.place_id || i} onClick={() => selectSuggestion(item)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', borderBottom: i < searchSuggestions.length - 1 ? `1px solid ${isDark ? '#1e293b' : '#f1f5f9'}` : 'none', cursor: 'pointer', textAlign: 'left', color: textUI }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = isDark ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.06)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <MapPin size={15} color="#3b82f6" style={{ flexShrink: 0 }} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mainName}</div>
-                        <div style={{ fontSize: '11px', color: textSubUI, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>{subText}</div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
+        {/* Search — lives directly in the map's own filter bar (previously portaled into TopBar,
+            which caused a second, non-functional search box to appear next to this one).
+            The suggestions dropdown itself is rendered via a React Portal into document.body
+            (see below) so it always paints above the MapLibre canvas, regardless of the
+            stacking-context/z-index relationship between .dash-filterbar and .dash-main. */}
+        <div ref={searchContainerRef} style={{ position: 'relative', flex: 1, maxWidth: '440px', margin: '0 20px' }}>
+          <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', borderRadius: showSuggestions ? '8px 8px 0 0' : '8px', border: `1px solid ${showSuggestions ? '#3b82f6' : borderUI}`, padding: '6px 12px', width: '100%', transition: 'all 0.2s', boxShadow: showSuggestions ? 'none' : '0 1px 3px rgba(0,0,0,0.15)' }}>
+            <Search size={14} color={isSearching ? '#3b82f6' : textSubUI} />
+            <input
+              type="text"
+              placeholder="Search map or location..."
+              aria-label="Search map or location"
+              value={searchQuery}
+              onChange={handleSearchInputChange}
+              onFocus={() => searchSuggestions.length > 0 && setShowSuggestions(true)}
+              style={{ background: 'transparent', border: 'none', color: textUI, marginLeft: '8px', width: '100%', outline: 'none', fontSize: '14px' }}
+            />
+            {searchQuery && (
+              <button type="button" onClick={() => { setSearchQuery(''); setSearchSuggestions([]); setShowSuggestions(false) }} aria-label="Clear search" style={{ background: 'transparent', border: 'none', color: textSubUI, cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 2px' }}>×</button>
             )}
+          </form>
+        </div>
+
+        {/* Suggestions dropdown — portaled to document.body and positioned via
+            getBoundingClientRect() so it renders in its own stacking context at
+            the document root, above the map's WebGL canvas. */}
+        {showSuggestions && searchSuggestions.length > 0 && dropdownRect && createPortal(
+          <div style={{
+            position: 'fixed',
+            top: dropdownRect.bottom,
+            left: dropdownRect.left,
+            width: dropdownRect.width,
+            backgroundColor: isDark ? '#0f172a' : '#ffffff',
+            border: `1px solid #3b82f6`,
+            borderTop: 'none',
+            borderRadius: '0 0 10px 10px',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            overflow: 'hidden',
+            zIndex: 99999
+          }}>
+            {searchSuggestions.map((item, i) => {
+              const parts = item.display_name.split(',')
+              const mainName = parts[0]?.trim()
+              const subText = parts.slice(1, 3).join(',').trim()
+              return (
+                <button key={item.place_id || i} onClick={() => selectSuggestion(item)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', borderBottom: i < searchSuggestions.length - 1 ? `1px solid ${isDark ? '#1e293b' : '#f1f5f9'}` : 'none', cursor: 'pointer', textAlign: 'left', color: textUI }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = isDark ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.06)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <MapPin size={15} color="#3b82f6" style={{ flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mainName}</div>
+                    <div style={{ fontSize: '11px', color: textSubUI, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>{subText}</div>
+                  </div>
+                </button>
+              )
+            })}
           </div>,
-          document.getElementById('topbar-search-target')
+          document.body
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           {/* Weather widget */}
           {weather && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', borderRadius: '8px', border: `1px solid ${borderUI}`, fontSize: '12px' }}>
