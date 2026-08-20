@@ -1,202 +1,204 @@
 import { useState } from 'react'
 import {
-  ShieldCheck, Phone, Home, ClipboardCheck, HelpCircle,
-  ChevronDown, MapPin
+  LayoutGrid, Droplets, Wind, Flame, Activity, ShieldCheck,
+  Landmark, ClipboardCheck, Home, Cloud, Users, Info, FileText,
+  Link2, ChevronRight, Download, Phone, CloudRain, HeartPulse,
+  MessageSquare, ExternalLink, AlertCircle
 } from 'lucide-react'
-import { MOCK_SHELTERS } from '../data/mockData'
 import './ResourcesPage.css'
 
+// ── Category filter pills across the top of the page ──
+const CATEGORY_FILTERS = [
+  { id: 'all', label: 'All', icon: LayoutGrid },
+  { id: 'flood', label: 'Flood', icon: Droplets },
+  { id: 'cyclone', label: 'Cyclone', icon: Wind },
+  { id: 'fire', label: 'Fire', icon: Flame },
+  { id: 'seismic', label: 'Seismic', icon: Activity },
+  { id: 'preparedness', label: 'Preparedness', icon: ShieldCheck },
+  { id: 'official', label: 'Official Sources', icon: Landmark },
+]
+
+// ── Resource cards shown in the grid ──
+const RESOURCE_CARDS = [
+  {
+    id: 'flood-checklist',
+    icon: ClipboardCheck,
+    iconTone: 'mint',
+    title: 'Flood Preparedness Checklist',
+    desc: 'Step-by-step checklist to help you and your household prepare for flooding.',
+    tag: { label: 'Checklist', icon: ClipboardCheck, tone: 'blue' },
+    action: 'View',
+    categories: ['flood', 'preparedness'],
+  },
+  {
+    id: 'confidence-scores',
+    icon: ShieldCheck,
+    iconTone: 'blue',
+    title: 'What Confidence Scores Mean',
+    desc: 'Understanding alert confidence scores and how they help you make informed decisions.',
+    tag: { label: 'Guide', icon: Info, tone: 'blue' },
+    action: 'View',
+    categories: ['preparedness', 'official'],
+  },
+  {
+    id: 'emergency-kit',
+    icon: Home,
+    iconTone: 'peach',
+    title: 'Home Emergency Kit Guide',
+    desc: 'A practical guide to building and maintaining an emergency kit at home.',
+    tag: { label: 'PDF', icon: FileText, tone: 'red' },
+    action: 'Download',
+    categories: ['preparedness'],
+  },
+  {
+    id: 'weather-sources',
+    icon: Cloud,
+    iconTone: 'blue',
+    title: 'Official Weather Sources',
+    desc: 'Trusted agencies and websites for weather forecasts and warnings.',
+    tag: { label: 'Link', icon: Link2, tone: 'blue' },
+    action: 'View',
+    categories: ['official'],
+  },
+  {
+    id: 'community-reporting',
+    icon: Users,
+    iconTone: 'green',
+    title: 'Community Reporting Guidelines',
+    desc: 'How to report hazards and incidents effectively in community.',
+    tag: { label: 'Guide', icon: Info, tone: 'yellow' },
+    action: 'View',
+    categories: ['official', 'preparedness'],
+  },
+]
+
+// ── Emergency contacts sidebar ──
 const EMERGENCY_CONTACTS = [
-  { name: 'City Emergency Hotline', number: '311', desc: 'Non-life-threatening hazard reports & general assistance' },
-  { name: 'Police', number: '100', desc: 'Immediate danger, crime in progress' },
-  { name: 'Fire Department', number: '101', desc: 'Fire, gas leaks, rescue' },
-  { name: 'Ambulance', number: '102', desc: 'Medical emergencies' },
-  { name: 'Poison Control', number: '1800-222-1222', desc: '24/7 poisoning & chemical exposure help' },
-  { name: 'Utility Emergency', number: '1800-233-3131', desc: 'Downed power lines, gas smell, water main breaks' },
+  { name: 'Emergency Services', sub: '(Police, Fire,)', number: '000', icon: Phone, tone: 'red' },
+  { name: 'Weather Warnings', number: '13 22 33', icon: CloudRain, tone: 'blue' },
+  { name: 'Lifeline Australia', number: '13 11 14', icon: HeartPulse, tone: 'purple' },
+  { name: 'Text Emergency Alerts', detail: 'Text "SAFE" to 0400 000 000', icon: MessageSquare, tone: 'orange' },
 ]
 
-const PREPAREDNESS_TIPS = [
-  'Keep a 72-hour emergency kit: water, non-perishable food, flashlight, batteries, first aid.',
-  'Agree on a family meeting point and an out-of-area emergency contact.',
-  'Keep copies of important documents (ID, insurance, medical records) in a waterproof bag.',
-  'Know your evacuation route and the nearest shelter before an emergency happens.',
-  'Sign up for local alert notifications and keep your phone charged during hazard season.',
-  'Store a battery- or hand-crank radio in case cell networks go down.',
-]
-
-const SAFETY_GUIDELINES = [
-  { phase: 'Before', tips: [
-    'Identify safe rooms and evacuation routes in your home.',
-    'Assemble an emergency kit and keep it accessible.',
-    'Review your family communication plan.',
-  ]},
-  { phase: 'During', tips: [
-    "Follow official evacuation orders immediately — don't wait to see how bad it gets.",
-    'Avoid low-lying areas and river paths during flood warnings.',
-    'Stay off downed power lines and flooded roads.',
-  ]},
-  { phase: 'After', tips: [
-    'Wait for an official all-clear before returning home.',
-    'Document damage with photos before cleanup for insurance.',
-    'Check in with your emergency contact.',
-  ]},
-]
-
-const FAQS = [
-  { q: 'How is alert confidence calculated?', a: 'Confidence combines sensor readings, official feeds (USGS, NWS), and crowdsourced reports — more independent sources agreeing raises the score.' },
-  { q: 'Can I report a hazard anonymously?', a: 'Yes — community members can submit reports without an account, though verified accounts help responders follow up faster.' },
-  { q: 'What happens after I submit a report?', a: 'It enters the verification queue, where a verifier confirms it against other sources before it becomes a public alert.' },
-  { q: 'How often is shelter capacity updated?', a: 'Shelter status is refreshed by on-site coordinators — treat it as a strong estimate, not a live headcount.' },
-]
-
-const CATEGORIES = [
-  { id: 'safety', icon: ShieldCheck, title: 'Safety Guidelines', desc: 'What to do before, during, and after a hazard' },
-  { id: 'contacts', icon: Phone, title: 'Emergency Contacts', desc: 'Helplines & support numbers' },
-  { id: 'shelters', icon: Home, title: 'Shelter Locations', desc: 'Nearest safe places and current capacity' },
-  { id: 'prep', icon: ClipboardCheck, title: 'Preparedness Tips', desc: 'Stay ready, stay safe' },
-  { id: 'faq', icon: HelpCircle, title: 'FAQs', desc: 'Get your answers' },
-]
-
-function ShelterCard({ shelter }) {
-  const pct = Math.round((shelter.capacity / shelter.maxCapacity) * 100)
+function ResourceCard({ card }) {
+  const CardIcon = card.icon
+  const TagIcon = card.tag.icon
 
   return (
-    <div className="res-shelter-card">
-      <div className="res-shelter-header">
-        <div>
-          <p className="res-shelter-name">{shelter.name}</p>
-          <p className="res-shelter-type">{shelter.type}</p>
-        </div>
-        <span className={`res-shelter-status res-shelter-status--${shelter.status}`}>
-          {shelter.status === 'open' ? 'Open' : 'Full'}
+    <div className="rp2-card">
+      <span className={`rp2-card-icon rp2-card-icon--${card.iconTone}`}>
+        <CardIcon size={20} />
+      </span>
+      <h3 className="rp2-card-title">{card.title}</h3>
+      <p className="rp2-card-desc">{card.desc}</p>
+      <div className="rp2-card-footer">
+        <span className={`rp2-tag rp2-tag--${card.tag.tone}`}>
+          <TagIcon size={13} />
+          {card.tag.label}
         </span>
-      </div>
-      <p className="res-shelter-address"><MapPin size={12} /> {shelter.address}</p>
-      <div className="res-shelter-capacity">
-        <div className="res-shelter-capacity-bar">
-          <div className="res-shelter-capacity-fill" style={{ width: `${pct}%` }} />
-        </div>
-        <span className="res-shelter-capacity-label">{shelter.capacity} / {shelter.maxCapacity} occupied</span>
+        <button type="button" className="rp2-card-action">
+          {card.action}
+          {card.action === 'Download' ? <Download size={14} /> : <ChevronRight size={14} />}
+        </button>
       </div>
     </div>
   )
 }
 
-export default function ResourcesPage() {
-  const [openId, setOpenId] = useState('safety')
-  const [openFaq, setOpenFaq] = useState(null)
-
-  const activeCategory = CATEGORIES.find(c => c.id === openId) ?? CATEGORIES[0]
-  const ActiveIcon = activeCategory.icon
+function EmergencyRow({ contact }) {
+  const Icon = contact.icon
 
   return (
-    <div className="resources-page animate-fade-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Resources &amp; Guidance</h1>
-          <p className="page-subtitle">Preparedness information, contacts, and shelters for Riverdale</p>
-        </div>
+    <div className="rp2-emergency-row">
+      <span className={`rp2-emergency-row-icon rp2-emergency-row-icon--${contact.tone}`}>
+        <Icon size={16} />
+      </span>
+      {contact.number ? (
+        <>
+          <span className="rp2-emergency-row-name">
+            {contact.name}
+            {contact.sub ? <span className="rp2-emergency-row-sub"> {contact.sub}</span> : null}
+          </span>
+          <span className="rp2-emergency-row-number">{contact.number}</span>
+        </>
+      ) : (
+        <span className="rp2-emergency-row-stack">
+          <span className="rp2-emergency-row-name">{contact.name}</span>
+          <span className="rp2-emergency-row-detail">{contact.detail}</span>
+        </span>
+      )}
+    </div>
+  )
+}
+
+export default function ResourcesPage() {
+  const [activeFilter, setActiveFilter] = useState('all')
+
+  const visibleCards = activeFilter === 'all'
+    ? RESOURCE_CARDS
+    : RESOURCE_CARDS.filter(c => c.categories.includes(activeFilter))
+
+  return (
+    <div className="resources-page-v2 animate-fade-in">
+      <div className="rp2-header">
+        <h1 className="rp2-title">Resources</h1>
+        <p className="rp2-subtitle">Guides, checklists, and trusted information to help you stay prepared.</p>
       </div>
 
-      {/* ── Category nav + content panel ──
-          Desktop: a sticky nav rail beside a detail panel, so only one
-          topic's content is on screen at once instead of five stacked
-          accordions. Mobile: the same nav becomes a horizontally
-          scrollable tab strip above the panel. ── */}
-      <div className="res-layout">
+      <div className="rp2-filters" role="tablist" aria-label="Resource categories">
+        {CATEGORY_FILTERS.map(f => {
+          const Icon = f.icon
+          const isActive = activeFilter === f.id
+          return (
+            <button
+              key={f.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              className={`rp2-filter-pill ${isActive ? 'rp2-filter-pill--active' : ''}`}
+              onClick={() => setActiveFilter(f.id)}
+            >
+              <Icon size={15} />
+              <span>{f.label}</span>
+            </button>
+          )
+        })}
+      </div>
 
-        <nav className="res-nav" aria-label="Resource categories">
-          {CATEGORIES.map(cat => {
-            const Icon = cat.icon
-            const isActive = openId === cat.id
-            return (
-              <button
-                key={cat.id}
-                className={`res-nav-item ${isActive ? 'res-nav-item--active' : ''}`}
-                onClick={() => setOpenId(cat.id)}
-                aria-current={isActive}
-              >
-                <span className="res-nav-icon"><Icon size={18} /></span>
-                <span className="res-nav-text">
-                  <span className="res-nav-title">{cat.title}</span>
-                  <span className="res-nav-desc">{cat.desc}</span>
-                </span>
-              </button>
-            )
-          })}
-        </nav>
-
-        <div className="res-panel">
-          <div className="res-panel-header">
-            <span className="res-panel-icon"><ActiveIcon size={20} /></span>
-            <div>
-              <h2 className="res-panel-title">{activeCategory.title}</h2>
-              <p className="res-panel-desc">{activeCategory.desc}</p>
-            </div>
-          </div>
-
-          <div className="res-panel-body">
-            {openId === 'safety' && (
-              <div className="res-safety-grid">
-                {SAFETY_GUIDELINES.map(g => (
-                  <div key={g.phase} className="res-safety-col">
-                    <p className="res-safety-phase">{g.phase}</p>
-                    <ul className="res-tip-list">
-                      {g.tips.map(t => <li key={t}>{t}</li>)}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {openId === 'contacts' && (
-              <div className="res-contacts-list">
-                {EMERGENCY_CONTACTS.map(c => (
-                  <div key={c.name} className="res-contact-row">
-                    <div>
-                      <p className="res-contact-name">{c.name}</p>
-                      <p className="res-contact-desc">{c.desc}</p>
-                    </div>
-                    <a className="res-contact-number" href={`tel:${c.number.replace(/[^0-9]/g, '')}`}>
-                      {c.number}
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {openId === 'shelters' && (
-              <div className="res-shelters-grid">
-                {MOCK_SHELTERS.map(s => <ShelterCard key={s.id} shelter={s} />)}
-              </div>
-            )}
-
-            {openId === 'prep' && (
-              <ul className="res-tip-list res-tip-list--single">
-                {PREPAREDNESS_TIPS.map(t => <li key={t}>{t}</li>)}
-              </ul>
-            )}
-
-            {openId === 'faq' && (
-              <div className="res-faq-list">
-                {FAQS.map((f, i) => (
-                  <div key={f.q} className="res-faq-item">
-                    <button
-                      className="res-faq-question"
-                      onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                      aria-expanded={openFaq === i}
-                    >
-                      {f.q}
-                      <ChevronDown size={14} className={`res-faq-chevron ${openFaq === i ? 'res-faq-chevron--up' : ''}`} />
-                    </button>
-                    {openFaq === i && <p className="res-faq-answer">{f.a}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+      <div className="rp2-layout">
+        <div className="rp2-cards-grid">
+          {visibleCards.map(card => <ResourceCard key={card.id} card={card} />)}
+          {visibleCards.length === 0 && (
+            <p className="rp2-empty">No resources in this category yet.</p>
+          )}
         </div>
 
+        <aside className="rp2-sidebar">
+          <div className="rp2-emergency-card">
+            <div className="rp2-emergency-header">
+              <span className="rp2-emergency-icon"><AlertCircle size={18} /></span>
+              <h2>Emergency Contacts</h2>
+            </div>
+
+            <div className="rp2-emergency-list">
+              {EMERGENCY_CONTACTS.map(c => <EmergencyRow key={c.name} contact={c} />)}
+            </div>
+
+            <div className="rp2-nonemergency-box">
+              <ShieldCheck size={18} />
+              <p>For non-emergency assistance, contact your local authorities.</p>
+            </div>
+
+            <a href="#" className="rp2-find-local">
+              Find local contacts <ExternalLink size={13} />
+            </a>
+          </div>
+        </aside>
+      </div>
+
+      <div className="rp2-footer">
+        <span>Trusted information. Stronger communities. Better prepared.</span>
+        <span>Last updated: 20 May 2025, 10:00 AM AEST</span>
       </div>
     </div>
   )
