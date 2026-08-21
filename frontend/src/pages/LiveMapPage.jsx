@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import ReactDOM from 'react-dom'
+import { createPortal } from 'react-dom'
 import {
   Shield, Plus, Minus, Compass, AlertTriangle, Play, Navigation, MapPin, Search,
   Check, Moon, Sun, CornerUpLeft, CornerUpRight, ArrowUp, RefreshCw, Layers,
@@ -12,70 +12,40 @@ import bbox from '@turf/bbox'
 import { lineString } from '@turf/helpers'
 import './LiveMapPage.css'
 
-const DEMO_FALLBACK = [-122.681, 45.520]
+const DEMO_CONFIG = {
+  start: [85.8341, 20.2858],
+  dest: [85.8450, 20.2858],
+  hazard: [85.8395, 20.2858]
+};
+// Backend API base. Set VITE_API_URL in your .env for anything beyond local dev.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
-export default function LiveMapPage() {
-  const mapRef = useRef(null)
+// Tunable thresholds / magic numbers, named so they're easy to find and adjust
+const CONFIRM_CONFIDENCE_THRESHOLD = 91     // incident confidence % that triggers a reroute
+const HAZARD_DISPLAY_THRESHOLD = 50         // min confidence % before we draw the hazard polygon
+const HEAVY_RAIN_WEATHER_CODE_THRESHOLD = 51 // open-meteo weather code that counts as "heavy precipitation"
+const WEATHER_REFRESH_INTERVAL_MS = 300000  // 5 minutes
+const GEOLOCATION_TIMEOUT_MS = 8000
+const HAZARD_POLYGON_HALF_SIZE_DEG = 0.002
+const UNSAFE_ROAD_OFFSET_DEG = 0.003
+const AVOID_OFFSET_DEG = 0.015              // how far off the hazard center we route the avoid-waypoint
+const SEARCH_DEBOUNCE_MS = 300
+const NOTICE_DURATION_MS = 4000
 
-  const [theme, setTheme] = useState(() => localStorage.getItem('s32-theme') || 'dark')
-  const [viewState, setViewState] = useState({
-    longitude: DEMO_FALLBACK[0], latitude: DEMO_FALLBACK[1],
-    zoom: 13.5, pitch: 45, bearing: 0
-  })
+// ---- Stable Map Styles & Paint Objects ----
+const MAP_STYLES = {
+  hybrid: { label: 'Satellite', icon: '🛰️', tile: 'hybrid', ext: 'jpg' },
+  'streets-dk': { label: 'Streets Dark', icon: '🌙', tile: 'streets-v2-dark', ext: 'png' },
+  'streets-lt': { label: 'Streets Light', icon: '☀️', tile: 'streets-v2-light', ext: 'png' },
+  outdoor: { label: 'Outdoor', icon: '🏔️', tile: 'outdoor-v2', ext: 'png' },
+  topo: { label: 'Topographic', icon: '🗺️', tile: 'topo-v2', ext: 'png' },
+}
 
-  // Search
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isSearching, setIsSearching] = useState(false)
-  const [searchSuggestions, setSearchSuggestions] = useState([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const searchDebounceRef = useRef(null)
-  const searchContainerRef = useRef(null)
-
-  // S32 State
-  const [userLocation, setUserLocation] = useState(null)
-  const [destination, setDestination] = useState(null)
-  const [routeData, setRouteData] = useState(null)
-  const [oldRouteData, setOldRouteData] = useState(null)
-  const [avoidWaypoint, setAvoidWaypoint] = useState(null)
-  const [incident, setIncident] = useState(null)
-  const [evidenceStream, setEvidenceStream] = useState([])
-  const [recalculating, setRecalculating] = useState(false)
-
-  // Map style
-  const [mapBaseStyle, setMapBaseStyle] = useState(() => localStorage.getItem('s32-mapstyle') || 'hybrid')
-  const [showStylePicker, setShowStylePicker] = useState(false)
-  const [mapLoaded, setMapLoaded] = useState(false)
-
-  // Legend collapse
-  const [legendExpanded, setLegendExpanded] = useState(true)
-
-  // Weather
-  const [weather, setWeather] = useState(null)
-
-  // Mode: 'live' or 'demo'
-  const [appMode, setAppMode] = useState('live')
-
-  // ── Theme Effect ──
-  useEffect(() => {
-    localStorage.setItem('s32-theme', theme)
-    document.documentElement.classList.toggle('hl-dark', theme === 'dark')
-  }, [theme])
-
-  useEffect(() => { localStorage.setItem('s32-mapstyle', mapBaseStyle) }, [mapBaseStyle])
-
-  // ── Map Styles ──
-  const MAP_STYLES = {
-    hybrid:       { label: 'Satellite',     icon: '🛰️', tile: 'hybrid',          ext: 'jpg' },
-    'streets-dk': { label: 'Streets Dark',  icon: '🌙', tile: 'streets-v2-dark', ext: 'png' },
-    'streets-lt': { label: 'Streets Light', icon: '☀️', tile: 'streets-v2-light', ext: 'png' },
-    outdoor:      { label: 'Outdoor',       icon: '🏔️', tile: 'outdoor-v2',       ext: 'png' },
-    topo:         { label: 'Topographic',   icon: '🗺️', tile: 'topo-v2',          ext: 'png' },
-  }
-
-  const mapStyleUrl = useMemo(() => {
-    const key = import.meta.env.VITE_MAPTILER_KEY
-    const s = MAP_STYLES[mapBaseStyle] || MAP_STYLES['hybrid']
-    if (key) {
+const getStableMapStyle = (baseStyle, theme) => {
+  const key = import.meta.env.VITE_MAPTILER_KEY || '8oJS7UaNGu6yuoJGxY7P'
+  const s = MAP_STYLES[baseStyle] || MAP_STYLES['streets-dk']
+  if (key) {
+    if (s.tile === 'hybrid') {
       return {
         version: 8,
         sources: {
@@ -89,57 +59,225 @@ export default function LiveMapPage() {
         },
         layers: [{ id: 'maptiler-base', type: 'raster', source: 'maptiler-raster' }]
       }
+    } else {
+      return `https://api.maptiler.com/maps/${s.tile}/style.json?key=${key}`
     }
-    const basemap = theme === 'dark' ? 'dark_all' : 'voyager'
-    return {
-      version: 8,
-      sources: {
-        carto: {
-          type: 'raster',
-          tiles: [
-            `https://a.basemaps.cartocdn.com/${basemap}/{z}/{x}/{y}@2x.png`,
-            `https://b.basemaps.cartocdn.com/${basemap}/{z}/{x}/{y}@2x.png`,
-          ],
-          tileSize: 256
-        }
-      },
-      layers: [{ id: 'carto-base', type: 'raster', source: 'carto' }]
+  }
+  const basemap = theme === 'dark' ? 'dark_all' : 'voyager'
+  return {
+    version: 8,
+    sources: {
+      carto: {
+        type: 'raster',
+        tiles: [
+          `https://a.basemaps.cartocdn.com/${basemap}/{z}/{x}/{y}@2x.png`,
+          `https://b.basemaps.cartocdn.com/${basemap}/{z}/{x}/{y}@2x.png`,
+        ],
+        tileSize: 256
+      }
+    },
+    layers: [{ id: 'carto-base', type: 'raster', source: 'carto' }]
+  }
+}
+
+// Stable layout and paint objects so they don't recreate on every render
+const routeLayout = { 'line-cap': 'round', 'line-join': 'round' }
+const safeRoutePaint = { 'line-color': '#00D084', 'line-width': 6, 'line-opacity': 1 }
+const safeRouteOutlinePaint = { 'line-color': '#07110D', 'line-width': 10, 'line-opacity': 0.9 }
+const blockedRoutePaint = { 'line-color': '#FF4D4F', 'line-width': 5, 'line-opacity': 0.45, 'line-dasharray': [2, 2] }
+const hazardFillPaint = { 'fill-color': '#ef4444', 'fill-opacity': 0.25 }
+const hazardOutlinePaint = { 'line-color': '#ef4444', 'line-width': 3, 'line-dasharray': [2, 2] }
+const unsafeLinePaint = { 'line-color': '#ef4444', 'line-width': 10, 'line-opacity': 0.85 }
+const unsafeStripesPaint = { 'line-color': '#ffffff', 'line-width': 4, 'line-dasharray': [1, 1], 'line-opacity': 0.6 }
+const unsafeStripesLayout = { 'line-cap': 'butt', 'line-join': 'round' }
+
+let previousMapStyle = null;
+
+export default function LiveMapPage() {
+  const mapRef = useRef(null)
+
+  const [theme, setTheme] = useState(() => localStorage.getItem('s32-theme') || 'dark')
+  const [viewState, setViewState] = useState({
+    longitude: 0, latitude: 0,
+    zoom: 2, pitch: 0, bearing: 0
+  })
+
+  // Search
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchSuggestions, setSearchSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [dropdownRect, setDropdownRect] = useState(null)
+  const searchDebounceRef = useRef(null)
+  const searchContainerRef = useRef(null)
+
+  // S32 State
+  const [userLocation, setUserLocation] = useState(null)
+  const [destination, setDestination] = useState(null)
+  const [routeData, setRouteData] = useState(null)
+  const [oldRouteData, setOldRouteData] = useState(null)
+  const [avoidWaypoint, setAvoidWaypoint] = useState(null)
+  const [incident, setIncident] = useState(null)
+  const [evidenceStream, setEvidenceStream] = useState([])
+  const [recalculating, setRecalculating] = useState(false)
+
+  // Non-blocking replacement for alert() — { message, tone: 'info' | 'error' }
+  const [notice, setNotice] = useState(null)
+  const noticeTimeoutRef = useRef(null)
+
+  // Map style
+  const [mapBaseStyle, setMapBaseStyle] = useState(() => localStorage.getItem('s32-mapstyle') || 'streets-dk')
+  const [showStylePicker, setShowStylePicker] = useState(false)
+  const [mapStyleUrl, setMapStyleUrl] = useState(() => getStableMapStyle(mapBaseStyle, theme))
+
+  // Legend collapse
+  const [legendExpanded, setLegendExpanded] = useState(true)
+
+  // Weather
+  const [weather, setWeather] = useState(null)
+
+  // Mode: 'live' or 'demo'
+  const [appMode, setAppMode] = useState('live')
+
+  // Refs mirroring the latest state, so long-lived callbacks (socket handlers,
+  // the memoized recalculateRoute) never read stale values from a closure
+  // captured at mount time.
+  const userLocationRef = useRef(null)
+  const destinationRef = useRef(null)
+  const avoidWaypointRef = useRef(null)
+  const routeDataRef = useRef(null)
+
+  const isFallbackDemo = appMode === 'demo' && !destination;
+  const activeUserLocation = isFallbackDemo ? DEMO_CONFIG.start : userLocation;
+  const activeDestination = isFallbackDemo ? DEMO_CONFIG.dest : destination;
+
+  useEffect(() => { userLocationRef.current = activeUserLocation }, [activeUserLocation])
+  useEffect(() => { destinationRef.current = activeDestination }, [activeDestination])
+  useEffect(() => { avoidWaypointRef.current = avoidWaypoint }, [avoidWaypoint])
+  useEffect(() => { routeDataRef.current = routeData }, [routeData])
+
+  const showNotice = useCallback((message, tone = 'info') => {
+    if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current)
+    setNotice({ message, tone })
+    noticeTimeoutRef.current = setTimeout(() => setNotice(null), NOTICE_DURATION_MS)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current)
     }
+  }, [])
+
+  // ---- Theme Effect ----
+  useEffect(() => {
+    localStorage.setItem('s32-theme', theme)
+    document.documentElement.classList.toggle('hl-dark', theme === 'dark')
+  }, [theme])
+
+  // Sync stable map style object/url ONLY when base style or theme changes
+  useEffect(() => {
+    localStorage.setItem('s32-mapstyle', mapBaseStyle)
+    setMapStyleUrl(getStableMapStyle(mapBaseStyle, theme))
   }, [mapBaseStyle, theme])
 
-  // ── Geolocation + Socket ──
+  const routeOutlineRef = useRef(null);
+  const routeLineRef = useRef(null);
+  const routeHighlightRef = useRef(null);
+
+  // Keep route coords synced and force immediate update
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lng = pos.coords.longitude
-          const lat = pos.coords.latitude
-          setUserLocation([lng, lat])
-          setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 15 }))
-          fetchWeather(lat, lng)
-        },
-        () => {
-          setUserLocation(DEMO_FALLBACK)
-          fetchWeather(DEMO_FALLBACK[1], DEMO_FALLBACK[0])
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      )
-    } else {
-      setUserLocation(DEMO_FALLBACK)
+    if (routeData) {
+      const coords = routeData.recommended_route?.geometry?.coordinates || routeData.route?.geometry?.coordinates;
+      console.log("[ROUTE SVG DEBUG]");
+      console.log(`route exists: ${!!coords}`);
+      if (coords) {
+        console.log(`geometry type: ${routeData.recommended_route?.geometry?.type || routeData.route?.geometry?.type}`);
+        console.log(`coordinate count: ${coords.length}`);
+        console.log(`first coordinate:`, coords[0]);
+        console.log(`last coordinate:`, coords[coords.length - 1]);
+      }
     }
 
-    const socket = io('http://localhost:3001')
-    socket.on('incident:update', (data) => {
-      setIncident(prev => ({ ...prev, ...data }))
-      if (data.confidence >= 91 && data.status === 'CONFIRMED') recalculateRoute()
-    })
-    socket.on('evidence:new', (data) => {
-      setEvidenceStream(prev => [...prev, data])
-    })
-    return () => socket.disconnect()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!mapRef.current) return;
+    const map = mapRef.current.getMap();
+    if (!map) return;
 
-  // ── Weather (OpenMeteo - free, no key needed) ──
+    const updateSvgRoute = () => {
+      if (typeof map.project !== 'function') return;
+
+      const coords = routeData?.recommended_route?.geometry?.coordinates || routeData?.route?.geometry?.coordinates;
+      if (coords && coords.length > 1) {
+        const points = coords.map(c => {
+          const p = map.project(c);
+          return `${p.x},${p.y}`;
+        }).join(" L ");
+        const pathData = "M " + points;
+        if (routeOutlineRef.current) {
+          routeOutlineRef.current.setAttribute("d", pathData);
+          routeOutlineRef.current.style.display = 'block';
+        }
+        if (routeLineRef.current) {
+          routeLineRef.current.setAttribute("d", pathData);
+          routeLineRef.current.style.display = 'block';
+        }
+        if (routeHighlightRef.current) {
+          routeHighlightRef.current.setAttribute("d", pathData);
+          routeHighlightRef.current.style.display = 'block';
+        }
+      } else {
+        if (routeOutlineRef.current) routeOutlineRef.current.style.display = 'none';
+        if (routeLineRef.current) routeLineRef.current.style.display = 'none';
+        if (routeHighlightRef.current) routeHighlightRef.current.style.display = 'none';
+      }
+
+      (routeData?.alternatives || []).forEach((alt, idx) => {
+        const altCoords = alt.geometry?.coordinates;
+        if (altCoords && altCoords.length > 1) {
+          const points = altCoords.map(c => {
+            const p = map.project(c);
+            return `${p.x},${p.y}`;
+          }).join(" L ");
+          const pathData = "M " + points;
+          const altOutlineEl = document.getElementById(`alt-route-outline-${idx}`);
+          const altLineEl = document.getElementById(`alt-route-line-${idx}`);
+          const altHighlightEl = document.getElementById(`alt-route-highlight-${idx}`);
+          if (altOutlineEl) { altOutlineEl.setAttribute("d", pathData); altOutlineEl.style.display = 'block'; }
+          if (altLineEl) { altLineEl.setAttribute("d", pathData); altLineEl.style.display = 'block'; }
+          if (altHighlightEl) { altHighlightEl.setAttribute("d", pathData); altHighlightEl.style.display = 'block'; }
+        }
+      });
+
+      (routeData?.unsafe_routes || []).forEach((alt, idx) => {
+        const unsafeCoords = alt.geometry?.coordinates;
+        if (unsafeCoords && unsafeCoords.length > 1) {
+          const points = unsafeCoords.map(c => {
+            const p = map.project(c);
+            return `${p.x},${p.y}`;
+          }).join(" L ");
+          const pathData = "M " + points;
+          const unsafeOutlineEl = document.getElementById(`unsafe-route-outline-${idx}`);
+          const unsafeLineEl = document.getElementById(`unsafe-route-line-${idx}`);
+          const unsafeHighlightEl = document.getElementById(`unsafe-route-highlight-${idx}`);
+          if (unsafeOutlineEl) { unsafeOutlineEl.setAttribute("d", pathData); unsafeOutlineEl.style.display = 'block'; }
+          if (unsafeLineEl) { unsafeLineEl.setAttribute("d", pathData); unsafeLineEl.style.display = 'block'; }
+          if (unsafeHighlightEl) { unsafeHighlightEl.setAttribute("d", pathData); unsafeHighlightEl.style.display = 'block'; }
+        }
+      });
+    };
+
+    updateSvgRoute();
+    map.on('render', updateSvgRoute);
+    map.on('move', updateSvgRoute);
+    map.on('zoom', updateSvgRoute);
+
+    return () => {
+      map.off('render', updateSvgRoute);
+      map.off('move', updateSvgRoute);
+      map.off('zoom', updateSvgRoute);
+    };
+  }, [routeData]);
+
+  // ---- Weather (OpenMeteo - free, no key needed) ----
   const fetchWeather = async (lat, lng) => {
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&timezone=auto`
@@ -157,10 +295,10 @@ export default function LiveMapPage() {
     } catch (e) { console.warn('Weather fetch failed', e) }
   }
 
-  // Refresh weather every 5 mins
+  // Refresh weather periodically
   useEffect(() => {
     if (!userLocation) return
-    const interval = setInterval(() => fetchWeather(userLocation[1], userLocation[0]), 300000)
+    const interval = setInterval(() => fetchWeather(userLocation[1], userLocation[0]), WEATHER_REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [userLocation])
 
@@ -171,115 +309,54 @@ export default function LiveMapPage() {
     if (code <= 67) return 'Rain'
     if (code <= 77) return 'Snow'
     if (code <= 82) return 'Showers'
-    if (code <= 99) return 'Γ¢ê Storm'
+    if (code <= 99) return 'Storm'
     return 'Unknown'
   }
 
   const weatherIcon = (code) => {
     if (code === 0) return '☀️'
-    if (code <= 3) return 'Γ¢à'
-    if (code <= 48) return '≡ƒî½∩╕Å'
-    if (code <= 67) return '≡ƒîº∩╕Å'
-    if (code <= 77) return 'Γ¥ä∩╕Å'
-    if (code <= 82) return '≡ƒîª∩╕Å'
-    return 'Γ¢ê∩╕Å'
+    if (code <= 3) return '⛅'
+    if (code <= 48) return '🌫️'
+    if (code <= 67) return '🌧️'
+    if (code <= 77) return '❄️'
+    if (code <= 82) return '🌦️'
+    return '⛈️'
   }
 
-  // ── Search ──
-  const handleSearch = async (e) => {
-    e.preventDefault()
-    if (!searchQuery.trim()) return
-    setIsSearching(true)
-    setShowSuggestions(false)
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`)
-      const data = await res.json()
-      if (data?.length > 0) {
-        const lng = parseFloat(data[0].lon)
-        const lat = parseFloat(data[0].lat)
-        setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 15 }))
-        fetchWeather(lat, lng)
-      } else alert('Location not found')
-    } catch (err) { console.error(err) }
-    finally { setIsSearching(false) }
-  }
-
-  const fetchSuggestions = useCallback((query) => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
-    if (!query || query.trim().length < 2) {
-      setSearchSuggestions([]); setShowSuggestions(false); return
-    }
-    searchDebounceRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=6&addressdetails=1&q=${encodeURIComponent(query)}`)
-        const data = await res.json()
-        setSearchSuggestions(data || [])
-        setShowSuggestions(data?.length > 0)
-      } catch (err) { console.error('Suggestion error:', err) }
-    }, 300)
-  }, [])
-
-  const handleSearchInputChange = (e) => {
-    const val = e.target.value
-    setSearchQuery(val)
-    fetchSuggestions(val)
-  }
-
-  const selectSuggestion = (item) => {
-    const lng = parseFloat(item.lon)
-    const lat = parseFloat(item.lat)
-    setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 16 }))
-    setSearchQuery(item.display_name.split(',').slice(0, 2).join(','))
-    setSearchSuggestions([])
-    setShowSuggestions(false)
-    fetchWeather(lat, lng)
-  }
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target))
-        setShowSuggestions(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // ── Routing ──
-  const handleMapClick = async (e) => {
-    if (!userLocation) return alert('Waiting for your location. Check browser location permissions.')
-    const dest = [e.lngLat.lng, e.lngLat.lat]
-    setDestination(dest)
-    setIncident(null)
-    setOldRouteData(null)
-    setEvidenceStream([])
-    const rData = await fetchRoute(userLocation, dest)
-    if (rData) { setRouteData(rData); fitMapToRoute(rData.geojson) }
-  }
-
+  // ---- Routing (defined early so effects below can safely reference it) ----
   const fetchRoute = async (start, end, waypoint = null) => {
     try {
+      let hazardQuery = ''
       if (waypoint) {
-        const [r1, r2] = await Promise.all([
-          fetch(`http://localhost:3001/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${waypoint[0]}&endLat=${waypoint[1]}`).then(r => r.json()),
-          fetch(`http://localhost:3001/api/routes?startLng=${waypoint[0]}&startLat=${waypoint[1]}&endLng=${end[0]}&endLat=${end[1]}`).then(r => r.json()),
-        ])
-        if (r1.route && r2.route) {
-          return {
-            geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [...r1.route.geometry.coordinates, ...r2.route.geometry.coordinates] } }] },
-            distance: r1.route.distance + r2.route.distance,
-            duration: r1.route.duration + r2.route.duration,
-            steps: r1.route.steps || []
-          }
-        }
+        hazardQuery = `&hazardLng=${waypoint[0]}&hazardLat=${waypoint[1]}`
       }
-      const res = await fetch(`http://localhost:3001/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${end[0]}&endLat=${end[1]}`)
+      const res = await fetch(`${API_BASE_URL}/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${end[0]}&endLat=${end[1]}${hazardQuery}`)
       const data = await res.json()
-      if (data.route) {
+
+      if (waypoint && !data.recommended_route && data.route) {
+        showNotice("⚠️ HazardLens AI service unavailable. Falling back to standard route.", "error");
+      }
+
+      if (data.recommended_route || data.alternatives || data.unsafe_routes || data.route) {
+
+        let routeGeoJSON = null;
+        const mainRoute = data.recommended_route || data.route;
+
+        if (mainRoute?.geometry) {
+          routeGeoJSON = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: mainRoute.geometry }] };
+        }
+
         return {
-          geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: data.route.geometry }] },
-          distance: data.route.distance,
-          duration: data.route.duration,
-          steps: data.route.steps || []
+          geojson: routeGeoJSON,
+          recommended_route: data.recommended_route || null,
+          route: data.route || null, // fallback for legacy
+          alternatives: data.alternatives || [],
+          unsafe_routes: data.unsafe_routes || [],
+          hazards: data.hazards || [],
+          // For legacy panel compatibility:
+          distance: mainRoute?.distance,
+          duration: mainRoute?.duration,
+          steps: mainRoute?.steps || [],
         }
       }
     } catch (err) { console.error('Route error:', err) }
@@ -297,23 +374,262 @@ export default function LiveMapPage() {
     } catch (err) { console.warn('fitBounds error', err) }
   }
 
-  const recalculateRoute = async () => {
-    if (!userLocation || !destination) return
+  // Reads current start/end/waypoint from refs (never stale), so it's safe
+  // to call from the socket effect below without resubscribing on every
+  // location/destination change. Pass an explicit waypoint to override the
+  // stored avoidWaypoint (used when a live incident just supplied one).
+  const recalculateRoute = useCallback(async (waypointOverride) => {
+    const start = userLocationRef.current
+    const end = destinationRef.current
+    if (!start || !end) return
     setRecalculating(true)
-    setOldRouteData(routeData)
-    const newRoute = await fetchRoute(userLocation, destination, avoidWaypoint)
+    setOldRouteData(routeDataRef.current)
+    const waypoint = waypointOverride !== undefined ? waypointOverride : avoidWaypointRef.current
+    const newRoute = await fetchRoute(start, end, waypoint)
     setRecalculating(false)
     if (newRoute) { setRouteData(newRoute); fitMapToRoute(newRoute.geojson) }
     else {
-      const fallback = await fetchRoute(userLocation, destination)
-      if (fallback) setRouteData(fallback)
+      showNotice('Could not find safe route. Fallback to default.', 'error')
     }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- Geolocation + Socket ----
+  useEffect(() => {
+    let watchId = null
+    let hasCentered = false
+
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const lng = pos.coords.longitude
+          const lat = pos.coords.latitude
+          setUserLocation([lng, lat])
+          // Only auto-center the map and pull weather on the *first* fix —
+          // otherwise every GPS update would yank the view and re-fetch weather.
+          if (!hasCentered && appMode !== 'demo') {
+            hasCentered = true
+            setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 15 }))
+            fetchWeather(lat, lng)
+            if (destinationRef.current) recalculateRoute()
+          }
+        },
+        () => {
+          // Geolocation unavailable. Show nothing (handled by UI state)
+        },
+        { enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS }
+      )
+    }
+
+    const socket = io(API_BASE_URL)
+
+    socket.on('incident:update', (data) => {
+      setIncident(prev => ({ ...prev, ...data }))
+
+      const isConfirmedHazard = data.status === 'CONFIRMED' && data.confidence >= CONFIRM_CONFIDENCE_THRESHOLD
+      if (!isConfirmedHazard) return
+
+      if (data.hazardCenter) {
+        // We now just set the avoidWaypoint to the actual hazard center and let the backend evaluate intersection
+        const [hazardLng, hazardLat] = data.hazardCenter
+        setAvoidWaypoint([hazardLng, hazardLat])
+        recalculateRoute([hazardLng, hazardLat])
+      } else {
+        recalculateRoute()
+      }
+    })
+
+    socket.on('evidence:new', (data) => {
+      setEvidenceStream(prev => [...prev, data])
+    })
+
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+      socket.disconnect()
+    }
+  }, [recalculateRoute])
+
+  // ---- Search ----
+  const geocode = async (query, { limit } = {}) => {
+    let localResults = [];
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.results?.length > 0) {
+          localResults = data.results.map(r => ({
+            ...r,
+            display_name: r.display_name,
+            lat: String(r.lat),
+            lon: String(r.lon),
+            source: 'local'
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn("Local search failed", err);
+    }
+
+    // If local database returns plenty of results, return them immediately
+    if (localResults.length >= (limit || 6)) {
+      return localResults.slice(0, limit || 6);
+    }
+
+    let nomResults = [];
+    try {
+      const params = new URLSearchParams({ format: 'json', q: query, addressdetails: '1', countrycodes: 'in' });
+      // Request enough to fill the remaining slots
+      const nomLimit = limit ? limit - localResults.length : 6;
+      params.set('limit', String(Math.max(1, nomLimit)));
+      
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.length > 0) {
+          nomResults = data.map(r => ({ ...r, source: 'nominatim' }));
+        }
+      }
+    } catch (err) {
+      console.warn("Nominatim search failed", err);
+    }
+
+    // Merge and deduplicate
+    const combined = [...localResults];
+    const seenNames = new Set(localResults.map(r => r.display_name.toLowerCase().trim()));
+    
+    for (const nr of nomResults) {
+      const nameKey = nr.display_name.toLowerCase().trim();
+      const nrLat = parseFloat(nr.lat);
+      const nrLon = parseFloat(nr.lon);
+      
+      const isNameDupe = Array.from(seenNames).some(seen => 
+         nameKey.includes(seen) || seen.includes(nameKey)
+      );
+      const isCoordDupe = localResults.some(lr => 
+         Math.abs(parseFloat(lr.lat) - nrLat) < 0.05 && 
+         Math.abs(parseFloat(lr.lon) - nrLon) < 0.05
+      );
+
+      if (!isNameDupe && !isCoordDupe) {
+        seenNames.add(nameKey);
+        combined.push(nr);
+      }
+    }
+
+    return combined.slice(0, limit || 6);
   }
 
+  const handleSearch = async (e) => {
+    e.preventDefault()
+    if (!searchQuery.trim()) return
+    setIsSearching(true)
+    setShowSuggestions(false)
+    try {
+      const data = await geocode(searchQuery, { limit: 1 })
+      if (data?.length > 0) {
+        const lng = parseFloat(data[0].lon)
+        const lat = parseFloat(data[0].lat)
+        setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 15 }))
+        fetchWeather(lat, lng)
+      } else {
+        showNotice('Location not found', 'error')
+      }
+    } catch (err) {
+      console.error(err)
+      showNotice('Search failed. Please try again.', 'error')
+    }
+    finally { setIsSearching(false) }
+  }
 
+  const fetchSuggestions = useCallback((query) => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    if (!query || query.trim().length < 2) {
+      setSearchSuggestions([]); setShowSuggestions(false); return
+    }
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const data = await geocode(query, { limit: 6 })
+        setSearchSuggestions(data || [])
+        setShowSuggestions(data?.length > 0)
+      } catch (err) { console.error('Suggestion error:', err) }
+    }, SEARCH_DEBOUNCE_MS)
+  }, [])
 
-  const formatDistance = (m) => m > 1000 ? (m/1000).toFixed(1) + ' km' : Math.round(m) + ' m'
-  const formatDuration = (s) => Math.round(s/60) + ' min'
+  // Clear any pending debounce on unmount so it can't call setState after unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [])
+
+  const handleSearchInputChange = (e) => {
+    const val = e.target.value
+    setSearchQuery(val)
+    fetchSuggestions(val)
+  }
+
+  const selectSuggestion = (item) => {
+    const lng = parseFloat(item.lon)
+    const lat = parseFloat(item.lat)
+    setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 16 }))
+    setSearchQuery(item.display_name.split(',').slice(0, 2).join(','))
+    setSearchSuggestions([])
+    setShowSuggestions(false)
+    fetchWeather(lat, lng)
+    
+    // Route to the selected destination using existing logic
+    handleMapClick({ lngLat: { lng, lat } })
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target))
+        setShowSuggestions(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Keep the portal dropdown's position glued to the search box, since it now
+  // lives outside the normal DOM flow (appended to document.body) and can't
+  // rely on CSS positioning relative to its original parent anymore.
+  useEffect(() => {
+    if (!showSuggestions) return
+    const updateRect = () => {
+      if (searchContainerRef.current) {
+        setDropdownRect(searchContainerRef.current.getBoundingClientRect())
+      }
+    }
+    updateRect()
+    window.addEventListener('scroll', updateRect, true)
+    window.addEventListener('resize', updateRect)
+    return () => {
+      window.removeEventListener('scroll', updateRect, true)
+      window.removeEventListener('resize', updateRect)
+    }
+  }, [showSuggestions, searchSuggestions])
+
+  const handleMapClick = async (e) => {
+    if (!userLocation) {
+      showNotice('Waiting for your location. Check browser location permissions.', 'error')
+      return
+    }
+    const dest = [e.lngLat.lng, e.lngLat.lat]
+    if (appMode === 'demo') {
+      setAppMode('live')
+      setAvoidWaypoint(null)
+    }
+    setDestination(dest)
+    setIncident(null)
+    setOldRouteData(null)
+    setRouteData(null)
+    setEvidenceStream([])
+    const rData = await fetchRoute(userLocation, dest)
+    if (rData) { setRouteData(rData); fitMapToRoute(rData.geojson) }
+  }
+
+  const formatDistance = (m) => m > 1000 ? (m / 1000).toFixed(1) + ' km' : Math.round(m) + ' m'
+  const formatDuration = (s) => Math.round(s / 60) + ' min'
 
   const getStepIcon = (modifier) => {
     if (!modifier) return <ArrowUp size={16} />
@@ -322,7 +638,7 @@ export default function LiveMapPage() {
     return <ArrowUp size={16} />
   }
 
-  // ── Theme ──
+  // ---- Theme ----
   const isDark = theme === 'dark'
   const bgUI = isDark ? 'rgba(10, 17, 35, 0.96)' : 'rgba(255,255,255,0.96)'
   const borderUI = isDark ? 'rgba(51,65,85,0.8)' : '#e2e8f0'
@@ -330,123 +646,142 @@ export default function LiveMapPage() {
   const textSubUI = isDark ? '#94a3b8' : '#64748b'
 
   const startDemo = async () => {
-    if (!userLocation || !routeData) return alert('Click on the map to set a destination first, then run demo.')
     try {
       setAppMode('demo')
       setIncident(null)
       setEvidenceStream([])
       setOldRouteData(null)
-      const coords = routeData.geojson.features[0].geometry.coordinates
-      const hazardIndex = Math.floor(coords.length * 0.4)
-      const dynamicHazardCenter = coords[hazardIndex]
-      setAvoidWaypoint([dynamicHazardCenter[0] - 0.015, dynamicHazardCenter[1] + 0.015])
-      await fetch('http://localhost:3001/api/demo/flood/start', {
+
+      // Use selected location/destination for dynamic demo, or fallback to Bhubaneswar
+      const isFallbackDemo = !destination;
+      const demoStart = isFallbackDemo ? DEMO_CONFIG.start : userLocation;
+      const demoDest = isFallbackDemo ? DEMO_CONFIG.dest : destination;
+      
+      let demoHazard = DEMO_CONFIG.hazard;
+      if (!isFallbackDemo && routeData && (routeData.recommended_route || routeData.route)) {
+        const coords = routeData.recommended_route?.geometry?.coordinates || routeData.route?.geometry?.coordinates;
+        if (coords && coords.length > 0) {
+          demoHazard = coords[Math.floor(coords.length / 2)];
+        }
+      } else if (!isFallbackDemo) {
+        demoHazard = [(demoStart[0] + demoDest[0]) / 2, (demoStart[1] + demoDest[1]) / 2];
+      }
+
+      setAvoidWaypoint(demoHazard);
+      setViewState(prev => ({ ...prev, longitude: demoStart[0], latitude: demoStart[1], zoom: 14.5 }));
+
+      await fetch(`${API_BASE_URL}/api/demo/flood/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          startLng: userLocation[0], startLat: userLocation[1],
-          destLng: destination[0], destLat: destination[1],
-          hazardLng: dynamicHazardCenter[0], hazardLat: dynamicHazardCenter[1]
+          startLng: demoStart[0], startLat: demoStart[1],
+          destLng: demoDest[0], destLat: demoDest[1],
+          hazardLng: demoHazard[0], hazardLat: demoHazard[1]
         })
       })
     } catch (err) {
       console.error(err)
-      alert('Failed to start demo. Is the backend running?')
+      showNotice('Failed to start demo. Is the backend running?', 'error')
     }
   }
 
-  // ── Map Data ──
+  // ---- Map Data ----
   const hazardPolygon = useMemo(() => {
-    if (!incident || incident.confidence < 50 || !incident.hazardCenter) return null
+    if (!incident || incident.confidence < HAZARD_DISPLAY_THRESHOLD || !incident.hazardCenter) return null
     const [lng, lat] = incident.hazardCenter
-    const d = 0.002
-    return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[lng-d,lat+d],[lng+d,lat+d],[lng+d,lat-d],[lng-d,lat-d],[lng-d,lat+d]]] } }] }
+    const d = HAZARD_POLYGON_HALF_SIZE_DEG
+    return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[lng - d, lat + d], [lng + d, lat + d], [lng + d, lat - d], [lng - d, lat - d], [lng - d, lat + d]]] } }] }
   }, [incident])
 
   const unsafeRoadGeoJSON = useMemo(() => {
     if (!incident || incident.status !== 'CONFIRMED' || !incident.hazardCenter) return null
     const [lng, lat] = incident.hazardCenter
-    return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lng-0.003, lat-0.003],[lng+0.003, lat+0.003]] } }] }
+    const d = UNSAFE_ROAD_OFFSET_DEG
+    return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lng - d, lat - d], [lng + d, lat + d]] } }] }
   }, [incident])
 
-  const routeLayout = { 'line-cap': 'round', 'line-join': 'round' }
-  const safeRoutePaint = { 'line-color': '#06b6d4', 'line-width': 6, 'line-opacity': 1 }
-  const safeRouteGlowPaint = { 'line-color': '#06b6d4', 'line-width': 14, 'line-opacity': 0.4, 'line-blur': 4 }
-  
-  const blockedRoutePaint = { 'line-color': '#f97316', 'line-width': 6, 'line-opacity': 1 }
-  const blockedRouteGlowPaint = { 'line-color': '#f97316', 'line-width': 14, 'line-opacity': 0.4, 'line-blur': 4 }
 
   return (
     <div className="dash-v2" style={{ backgroundColor: isDark ? '#060d1f' : '#f8fafc', color: textUI, height: '100%', display: 'flex', flexDirection: 'column' }}>
 
       <div className="dash-filterbar" style={{ backgroundColor: isDark ? 'rgba(15,23,42,0.98)' : '#ffffff', borderBottom: `1px solid ${borderUI}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px', height: '52px', backdropFilter: 'blur(12px)', zIndex: 50, position: 'relative' }}>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           <Shield size={20} color="#3b82f6" />
           <span style={{ fontWeight: 800, letterSpacing: '1px', fontSize: '14px' }}>S32 LIVE OPS</span>
           <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
-            <button onClick={() => setAppMode('live')} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: appMode === 'live' ? '#10b981' : (isDark ? '#1e293b' : '#f1f5f9'), color: appMode === 'live' ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button onClick={() => setAppMode('live')} aria-label="Switch to live mode" aria-pressed={appMode === 'live'} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: appMode === 'live' ? '#10b981' : (isDark ? '#1e293b' : '#f1f5f9'), color: appMode === 'live' ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Radio size={10} /> LIVE
             </button>
-            <button onClick={() => setAppMode('demo')} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: appMode === 'demo' ? '#f59e0b' : (isDark ? '#1e293b' : '#f1f5f9'), color: appMode === 'demo' ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button onClick={() => setAppMode('demo')} aria-label="Switch to demo mode" aria-pressed={appMode === 'demo'} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: appMode === 'demo' ? '#f59e0b' : (isDark ? '#1e293b' : '#f1f5f9'), color: appMode === 'demo' ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Zap size={10} /> DEMO
             </button>
           </div>
         </div>
 
-        {/* Search portal targeting the TopBar component */}
-        {document.getElementById('topbar-search-target') && ReactDOM.createPortal(
-          <div ref={searchContainerRef} style={{ position: 'relative', zIndex: 300, width: '100%' }}>
-            <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center', backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderRadius: showSuggestions ? '8px 8px 0 0' : '8px', border: `1px solid ${showSuggestions ? '#3b82f6' : 'transparent'}`, padding: '6px 12px', width: '100%', transition: 'all 0.2s' }}>
-              <Search size={14} color={isSearching ? '#3b82f6' : textSubUI} />
-              <input
-                type="text"
-                placeholder="Search map or location..."
-                value={searchQuery}
-                onChange={handleSearchInputChange}
-                onFocus={() => searchSuggestions.length > 0 && setShowSuggestions(true)}
-                style={{ background: 'transparent', border: 'none', color: textUI, marginLeft: '8px', width: '100%', outline: 'none', fontSize: '14px' }}
-              />
-              {searchQuery && (
-                <button type="button" onClick={() => { setSearchQuery(''); setSearchSuggestions([]); setShowSuggestions(false) }} style={{ background: 'transparent', border: 'none', color: textSubUI, cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 2px' }}>×</button>
-              )}
-            </form>
-
-            {/* Suggestions dropdown - high z-index, position fixed relative to container */}
-            {showSuggestions && searchSuggestions.length > 0 && (
-              <div style={{
-                position: 'absolute', top: '100%', left: 0, right: 0,
-                backgroundColor: isDark ? '#0f172a' : '#ffffff',
-                border: `1px solid #3b82f6`, borderTop: 'none',
-                borderRadius: '0 0 10px 10px',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-                overflow: 'hidden', zIndex: 9999
-              }}>
-                {searchSuggestions.map((item, i) => {
-                  const parts = item.display_name.split(',')
-                  const mainName = parts[0]?.trim()
-                  const subText = parts.slice(1, 3).join(',').trim()
-                  return (
-                    <button key={item.place_id || i} onClick={() => selectSuggestion(item)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', borderBottom: i < searchSuggestions.length - 1 ? `1px solid ${isDark ? '#1e293b' : '#f1f5f9'}` : 'none', cursor: 'pointer', textAlign: 'left', color: textUI }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = isDark ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.06)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <MapPin size={15} color="#3b82f6" style={{ flexShrink: 0 }} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mainName}</div>
-                        <div style={{ fontSize: '11px', color: textSubUI, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>{subText}</div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
+        {/* Search — lives directly in the map's own filter bar (previously portaled into TopBar,
+            which caused a second, non-functional search box to appear next to this one).
+            The suggestions dropdown itself is rendered via a React Portal into document.body
+            (see below) so it always paints above the MapLibre canvas, regardless of the
+            stacking-context/z-index relationship between .dash-filterbar and .dash-main. */}
+        <div ref={searchContainerRef} style={{ position: 'relative', flex: 1, maxWidth: '440px', margin: '0 20px' }}>
+          <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', borderRadius: showSuggestions ? '8px 8px 0 0' : '8px', border: `1px solid ${showSuggestions ? '#3b82f6' : borderUI}`, padding: '6px 12px', width: '100%', transition: 'all 0.2s', boxShadow: showSuggestions ? 'none' : '0 1px 3px rgba(0,0,0,0.15)' }}>
+            <Search size={14} color={isSearching ? '#3b82f6' : textSubUI} />
+            <input
+              type="text"
+              placeholder="Search map or location..."
+              aria-label="Search map or location"
+              value={searchQuery}
+              onChange={handleSearchInputChange}
+              onFocus={() => searchSuggestions.length > 0 && setShowSuggestions(true)}
+              style={{ background: 'transparent', border: 'none', color: textUI, marginLeft: '8px', width: '100%', outline: 'none', fontSize: '14px' }}
+            />
+            {searchQuery && (
+              <button type="button" onClick={() => { setSearchQuery(''); setSearchSuggestions([]); setShowSuggestions(false) }} aria-label="Clear search" style={{ background: 'transparent', border: 'none', color: textSubUI, cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 2px' }}>×</button>
             )}
+          </form>
+        </div>
+
+        {/* Suggestions dropdown — portaled to document.body and positioned via
+            getBoundingClientRect() so it renders in its own stacking context at
+            the document root, above the map's WebGL canvas. */}
+        {showSuggestions && searchSuggestions.length > 0 && dropdownRect && createPortal(
+          <div style={{
+            position: 'fixed',
+            top: dropdownRect.bottom,
+            left: dropdownRect.left,
+            width: dropdownRect.width,
+            backgroundColor: isDark ? '#0f172a' : '#ffffff',
+            border: `1px solid #3b82f6`,
+            borderTop: 'none',
+            borderRadius: '0 0 10px 10px',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            overflow: 'hidden',
+            zIndex: 99999
+          }}>
+            {searchSuggestions.map((item, i) => {
+              const parts = item.display_name.split(',')
+              const mainName = parts[0]?.trim()
+              const subText = parts.slice(1, 3).join(',').trim()
+              return (
+                <button key={item.place_id || i} onMouseDown={() => selectSuggestion(item)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', borderBottom: i < searchSuggestions.length - 1 ? `1px solid ${isDark ? '#1e293b' : '#f1f5f9'}` : 'none', cursor: 'pointer', textAlign: 'left', color: textUI }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = isDark ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.06)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <MapPin size={15} color="#3b82f6" style={{ flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mainName}</div>
+                    <div style={{ fontSize: '11px', color: textSubUI, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>{subText}</div>
+                  </div>
+                </button>
+              )
+            })}
           </div>,
-          document.getElementById('topbar-search-target')
+          document.body
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           {/* Weather widget */}
           {weather && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', borderRadius: '8px', border: `1px solid ${borderUI}`, fontSize: '12px' }}>
@@ -460,7 +795,7 @@ export default function LiveMapPage() {
 
           {/* Map Style Picker */}
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setShowStylePicker(!showStylePicker)}
+            <button onClick={() => setShowStylePicker(!showStylePicker)} aria-label="Change map style" aria-expanded={showStylePicker}
               style={{ background: isDark ? '#1e293b' : '#f1f5f9', border: `1px solid ${borderUI}`, borderRadius: '8px', cursor: 'pointer', color: textSubUI, display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 600 }}>
               <Layers size={15} /> {MAP_STYLES[mapBaseStyle]?.icon}
             </button>
@@ -478,7 +813,7 @@ export default function LiveMapPage() {
             )}
           </div>
 
-          <button onClick={() => setTheme(isDark ? 'light' : 'dark')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: textSubUI, display: 'flex', alignItems: 'center' }}>
+          <button onClick={() => setTheme(isDark ? 'light' : 'dark')} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: textSubUI, display: 'flex', alignItems: 'center' }}>
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
@@ -489,8 +824,21 @@ export default function LiveMapPage() {
         </div>
       </div>
 
-      {/* ── MAP AREA ── */}
+      {/* ---- MAP AREA ---- */}
       <div className="dash-main" style={{ position: 'relative' }}>
+
+        {/* Non-blocking notice banner (replaces alert()) */}
+        {notice && (
+          <div role="status" style={{
+            position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 200,
+            background: notice.tone === 'error' ? 'linear-gradient(135deg,#ef4444,#dc2626)' : 'linear-gradient(135deg,#3b82f6,#2563eb)',
+            color: 'white', padding: '10px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 700,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap'
+          }}>
+            {notice.message}
+            <button onClick={() => setNotice(null)} aria-label="Dismiss notice" style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: 0 }}>×</button>
+          </div>
+        )}
 
         {/* Left Panels */}
         <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: '12px', pointerEvents: 'none', maxWidth: '340px' }}>
@@ -529,7 +877,7 @@ export default function LiveMapPage() {
                   </div>
                 </div>
               </div>
-              {weather.code >= 51 && (
+              {weather.code >= HEAVY_RAIN_WEATHER_CODE_THRESHOLD && (
                 <div style={{ marginTop: '10px', padding: '8px', background: 'rgba(239,68,68,0.1)', borderLeft: '3px solid #ef4444', borderRadius: '4px', fontSize: '12px', color: '#ef4444', fontWeight: 600 }}>
                   ⚠️ Heavy precipitation — flood risk elevated
                 </div>
@@ -602,41 +950,79 @@ export default function LiveMapPage() {
 
         {/* Route Summary (Top Right) */}
         {routeData && (
-          <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, backgroundColor: recalculating ? 'rgba(239,68,68,0.95)' : bgUI, backdropFilter: 'blur(16px)', border: `1px solid ${recalculating ? 'transparent' : borderUI}`, borderRadius: '14px', padding: '14px 20px', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', transition: 'all 0.3s ease', minWidth: '160px' }}>
-            {recalculating ? (
-              <div style={{ color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                <RefreshCw size={16} className="spin" /> RECALCULATING...
-              </div>
-            ) : (
-              <>
-                <div style={{ fontSize: '11px', color: textSubUI, fontWeight: 700, marginBottom: '6px' }}>
-                  {oldRouteData ? <span style={{ color: '#10b981' }}>✓ SAFE ROUTE ACTIVE</span> : 'OPTIMAL ROUTE'}
+          <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ backgroundColor: recalculating ? 'rgba(239,68,68,0.95)' : bgUI, backdropFilter: 'blur(16px)', border: `1px solid ${recalculating ? 'transparent' : borderUI}`, borderRadius: '14px', padding: '14px 20px', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', transition: 'all 0.3s ease', minWidth: '220px' }}>
+              {recalculating ? (
+                <div style={{ color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                  <RefreshCw size={16} className="spin" /> RECALCULATING...
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                  <span style={{ fontSize: '30px', fontWeight: 900, color: '#10b981', lineHeight: 1 }}>{formatDuration(routeData.duration)}</span>
-                  <span style={{ fontSize: '16px', fontWeight: 600, color: textSubUI }}>{formatDistance(routeData.distance)}</span>
-                </div>
-                {oldRouteData && (
-                  <div style={{ marginTop: '8px', fontSize: '11px', color: '#ef4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Shield size={11} /> AVOIDS HAZARD ZONE
+              ) : (
+                <>
+                  <div style={{ fontSize: '11px', color: (routeData.recommended_route || routeData.route) ? textSubUI : '#ef4444', fontWeight: 700, marginBottom: '6px' }}>
+                    {(routeData.recommended_route || routeData.route) ? 'RECOMMENDED SAFE ROUTE' : 'NO SAFE ROUTE AVAILABLE'}
                   </div>
-                )}
-              </>
+
+                  {(routeData.recommended_route || routeData.route) && (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                        <span style={{ fontSize: '30px', fontWeight: 900, color: '#10b981', lineHeight: 1 }}>{formatDuration((routeData.recommended_route || routeData.route).duration)}</span>
+                        <span style={{ fontSize: '16px', fontWeight: 600, color: textSubUI }}>{formatDistance((routeData.recommended_route || routeData.route).distance)}</span>
+                      </div>
+                      <div style={{ marginTop: '8px', fontSize: '11px', color: textUI, fontWeight: 500 }}>
+                        Hazard exposure: {routeData.recommended_route?.hazardExposure || 0}
+                      </div>
+                      <div style={{ marginTop: '4px', fontSize: '11px', color: '#10b981', fontWeight: 800 }}>
+                        {routeData.recommended_route?.safety || 'SAFE'}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Alternatives List */}
+            {routeData.alternatives && routeData.alternatives.length > 0 && !recalculating && (
+              <div style={{ backgroundColor: bgUI, backdropFilter: 'blur(16px)', border: `1px solid ${borderUI}`, borderRadius: '10px', padding: '12px 16px', boxShadow: '0 10px 20px rgba(0,0,0,0.15)' }}>
+                <div style={{ fontSize: '10px', color: textSubUI, fontWeight: 700, marginBottom: '8px' }}>ALTERNATIVE ROUTES</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {routeData.alternatives.map((alt, i) => (
+                    <div key={alt.id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                      <span style={{ fontWeight: 600, color: textUI }}>Route {i + 1}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: textSubUI, fontWeight: 500 }}>{formatDistance(alt.distance)}</span>
+                        <span style={{ color: '#10b981', fontWeight: 800, fontSize: '10px' }}>SAFE</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Unsafe Routes Avoided */}
+            {routeData.unsafe_routes && routeData.unsafe_routes.length > 0 && !recalculating && (
+              <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', backdropFilter: 'blur(16px)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '10px 16px', boxShadow: '0 4px 12px rgba(239,68,68,0.1)' }}>
+                <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 800, marginBottom: '2px' }}>HAZARDOUS ROUTES AVOIDED</div>
+                <div style={{ fontSize: '12px', color: textUI, fontWeight: 600 }}>{routeData.unsafe_routes.length} route{routeData.unsafe_routes.length > 1 ? 's' : ''} rejected</div>
+              </div>
             )}
           </div>
         )}
 
         {/* Collapsible Legend */}
         <div style={{ position: 'absolute', bottom: 28, left: 16, zIndex: 10, backgroundColor: bgUI, backdropFilter: 'blur(12px)', border: `1px solid ${borderUI}`, borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)', overflow: 'hidden', minWidth: '145px' }}>
-          <button onClick={() => setLegendExpanded(!legendExpanded)}
+          <button onClick={() => setLegendExpanded(!legendExpanded)} aria-label={legendExpanded ? 'Collapse map legend' : 'Expand map legend'} aria-expanded={legendExpanded}
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'transparent', border: 'none', cursor: 'pointer', color: textSubUI, fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px' }}>
             MAP LEGEND {legendExpanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
           </button>
           {legendExpanded && (
             <div style={{ padding: '2px 12px 10px', display: 'flex', flexDirection: 'column', gap: '7px', fontSize: '11px', color: textUI, fontWeight: 600 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#3b82f6', border: '2px solid white', boxShadow: '0 0 0 2px rgba(59,130,246,0.3)', flexShrink: 0 }} /> YOU</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#06b6d4', borderRadius: '2px', boxShadow: '0 0 4px rgba(6,182,212,0.5)', flexShrink: 0 }} /> OPTIMAL ROUTE</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#f97316', borderRadius: '2px', boxShadow: '0 0 4px rgba(249,115,22,0.5)', flexShrink: 0 }} /> BLOCKED ROUTE</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#00D084', borderRadius: '2px', flexShrink: 0 }} /> SAFE ROUTE</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#eab308', borderRadius: '2px', flexShrink: 0 }} /> ALT ROUTE 1</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#64748b', borderRadius: '2px', flexShrink: 0 }} /> ALT ROUTE 2+</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#ef4444', borderRadius: '2px', flexShrink: 0 }} /> UNSAFE ROUTE</div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '16px', height: '4px', background: '#FF4D4F', border: '1px dashed #FF4D4F', borderRadius: '2px', flexShrink: 0 }} /> BLOCKED ROUTE</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '12px', height: '12px', background: 'rgba(239,68,68,0.2)', border: '1px dashed #ef4444', flexShrink: 0 }} /> HAZARD</div>
             </div>
           )}
@@ -648,7 +1034,6 @@ export default function LiveMapPage() {
           {...viewState}
           onMove={evt => setViewState(evt.viewState)}
           onClick={handleMapClick}
-          onLoad={() => setMapLoaded(true)}
           mapStyle={mapStyleUrl}
           interactive={true}
           cursor={userLocation && !destination ? 'crosshair' : 'grab'}
@@ -656,47 +1041,40 @@ export default function LiveMapPage() {
         >
           {/* Controls */}
           <div style={{ position: 'absolute', bottom: 28, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <button onClick={() => setViewState(p => ({...p, zoom: p.zoom+1}))} style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Plus size={17} /></button>
-            <button onClick={() => setViewState(p => ({...p, zoom: p.zoom-1}))} style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Minus size={17} /></button>
-            <button onClick={() => setViewState(p => ({...p, bearing: 0, pitch: 45}))} style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Compass size={17} /></button>
-            <button onClick={() => userLocation && setViewState(p => ({...p, longitude: userLocation[0], latitude: userLocation[1], zoom: 15}))} style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Navigation size={17} /></button>
+            <button onClick={() => setViewState(p => ({ ...p, zoom: p.zoom + 1 }))} aria-label="Zoom in" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Plus size={17} /></button>
+            <button onClick={() => setViewState(p => ({ ...p, zoom: p.zoom - 1 }))} aria-label="Zoom out" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Minus size={17} /></button>
+            <button onClick={() => setViewState(p => ({ ...p, bearing: 0, pitch: 45 }))} aria-label="Reset map orientation" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: textUI, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Compass size={17} /></button>
+            <button onClick={() => userLocation && setViewState(p => ({ ...p, longitude: userLocation[0], latitude: userLocation[1], zoom: 15 }))} aria-label="Recenter on my location" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Navigation size={17} /></button>
           </div>
 
           {/* HAZARD POLYGON */}
           {hazardPolygon && (
             <Source id="hazard-zone" type="geojson" data={hazardPolygon}>
-              <Layer id="hazard-fill" type="fill" paint={{ 'fill-color': '#ef4444', 'fill-opacity': 0.25 }} />
-              <Layer id="hazard-outline" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#ef4444', 'line-width': 3, 'line-dasharray': [2, 2] }} />
+              <Layer id="hazard-fill" type="fill" paint={hazardFillPaint} />
+              <Layer id="hazard-outline" type="line" layout={routeLayout} paint={hazardOutlinePaint} />
             </Source>
           )}
 
           {/* UNSAFE ROAD */}
           {unsafeRoadGeoJSON && (
             <Source id="unsafe-road-src" type="geojson" data={unsafeRoadGeoJSON}>
-              <Layer id="unsafe-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#ef4444', 'line-width': 10, 'line-opacity': 0.85 }} />
-              <Layer id="unsafe-stripes" type="line" layout={{ 'line-cap': 'butt', 'line-join': 'round' }} paint={{ 'line-color': '#ffffff', 'line-width': 4, 'line-dasharray': [1, 1], 'line-opacity': 0.6 }} />
+              <Layer id="unsafe-line" type="line" layout={routeLayout} paint={unsafeLinePaint} />
+              <Layer id="unsafe-stripes" type="line" layout={unsafeStripesLayout} paint={unsafeStripesPaint} />
             </Source>
           )}
 
-          {/* OLD BLOCKED ROUTE (Orange) */}
+          {/* OLD BLOCKED ROUTE */}
           {oldRouteData && oldRouteData.geojson && (
-            <Source id="old-route-src" type="geojson" data={oldRouteData.geojson}>
-              <Layer id="old-route-glow" type="line" layout={routeLayout} paint={blockedRouteGlowPaint} />
-              <Layer id="old-route-line" type="line" layout={routeLayout} paint={blockedRoutePaint} />
+            <Source id="s32-blocked-route" type="geojson" data={oldRouteData.geojson}>
+              <Layer id="s32-blocked-route-line" type="line" layout={routeLayout} paint={blockedRoutePaint} />
             </Source>
           )}
 
-          {/* CURRENT SAFE ROUTE (Cyan) */}
-          {routeData && routeData.geojson && (
-            <Source id="current-route-src" type="geojson" data={routeData.geojson}>
-              <Layer id="current-route-glow" type="line" layout={routeLayout} paint={safeRouteGlowPaint} />
-              <Layer id="current-route-line" type="line" layout={routeLayout} paint={safeRoutePaint} />
-            </Source>
-          )}
+
 
           {/* USER MARKER */}
-          {userLocation && (
-            <Marker longitude={userLocation[0]} latitude={userLocation[1]} anchor="center">
+          {activeUserLocation && (
+            <Marker longitude={activeUserLocation[0]} latitude={activeUserLocation[1]} anchor="center">
               <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ position: 'absolute', width: '40px', height: '40px', background: 'rgba(59,130,246,0.2)', borderRadius: '50%', top: '-10px', animation: 'pulse 2s infinite' }} />
                 <div style={{ width: '22px', height: '22px', backgroundColor: '#3b82f6', border: '3px solid white', borderRadius: '50%', boxShadow: '0 3px 10px rgba(0,0,0,0.4)', zIndex: 2 }} />
@@ -706,8 +1084,8 @@ export default function LiveMapPage() {
           )}
 
           {/* DESTINATION MARKER */}
-          {destination && (
-            <Marker longitude={destination[0]} latitude={destination[1]} anchor="bottom">
+          {activeDestination && (
+            <Marker longitude={activeDestination[0]} latitude={activeDestination[1]} anchor="bottom">
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ background: bgUI, color: textUI, fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', marginBottom: '4px', border: `1px solid ${borderUI}`, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', whiteSpace: 'nowrap' }}>DESTINATION</div>
                 <MapPin size={34} color="#ef4444" fill="#ef4444" />
@@ -725,10 +1103,160 @@ export default function LiveMapPage() {
           )}
         </Map>
 
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0, left: 0,
+            width: '100%', height: '100%',
+            pointerEvents: 'none',
+            zIndex: 5
+          }}
+        >
+          <defs>
+            <filter id="route-glow-green" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="route-glow-red" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="route-glow-yellow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="route-glow-gray" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          
+          {/* Unsafe Routes rendered at the very bottom */}
+          {routeData && routeData.unsafe_routes && routeData.unsafe_routes.map((alt, idx) => (
+            <g key={`unsafe-${alt.id || idx}`}>
+              <path
+                id={`unsafe-route-outline-${idx}`}
+                fill="none"
+                stroke="#ff0000"
+                strokeWidth="10"
+                strokeOpacity="0.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter="url(#route-glow-red)"
+                style={{ display: 'none' }}
+              />
+              <path
+                id={`unsafe-route-line-${idx}`}
+                fill="none"
+                stroke="#fca5a5"
+                strokeWidth="4"
+                strokeOpacity="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ display: 'none' }}
+              />
+              <path
+                id={`unsafe-route-highlight-${idx}`}
+                fill="none"
+                stroke="transparent"
+                style={{ display: 'none' }}
+              />
+              <text dy="4" fill="#ffffff" fontSize="14" fontWeight="900" opacity="0.9">
+                <textPath href={`#unsafe-route-line-${idx}`} startOffset="0%">
+                  {Array(100).fill('»').join('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')}
+                </textPath>
+              </text>
+            </g>
+          ))}
+          {/* Alternatives rendered above unsafe */}
+          {routeData && routeData.alternatives && routeData.alternatives.map((alt, idx) => (
+            <g key={`alt-${alt.id || idx}`}>
+              <path
+                id={`alt-route-outline-${idx}`}
+                fill="none"
+                stroke={idx === 0 ? '#eab308' : '#64748b'}
+                strokeWidth="10"
+                strokeOpacity="0.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter={idx === 0 ? "url(#route-glow-yellow)" : "url(#route-glow-gray)"}
+                style={{ display: 'none' }}
+              />
+              <path
+                id={`alt-route-line-${idx}`}
+                fill="none"
+                stroke={idx === 0 ? '#fde047' : '#cbd5e1'}
+                strokeWidth="4"
+                strokeOpacity="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ display: 'none' }}
+              />
+              <path
+                id={`alt-route-highlight-${idx}`}
+                fill="none"
+                stroke="transparent"
+                style={{ display: 'none' }}
+              />
+              <text dy="4" fill="#ffffff" fontSize="14" fontWeight="900" opacity="0.9">
+                <textPath href={`#alt-route-line-${idx}`} startOffset="0%">
+                  {Array(100).fill('»').join('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')}
+                </textPath>
+              </text>
+            </g>
+          ))}
+          {/* Main safe route on top */}
+          <path
+            ref={routeOutlineRef}
+            fill="none"
+            stroke="#00ff00"
+            strokeWidth="12"
+            strokeOpacity="0.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="url(#route-glow-green)"
+            style={{ display: 'none' }}
+          />
+          <path
+            ref={routeLineRef}
+            id="main-route-path"
+            fill="none"
+            stroke="#86efac"
+            strokeWidth="5"
+            strokeOpacity="1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ display: 'none' }}
+          />
+          <path
+            ref={routeHighlightRef}
+            fill="none"
+            stroke="transparent"
+            style={{ display: 'none' }}
+          />
+          <text dy="5" fill="#ffffff" fontSize="18" fontWeight="900" opacity="1">
+            <textPath href="#main-route-path" startOffset="0%">
+              {Array(150).fill('»').join('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')}
+            </textPath>
+          </text>
+        </svg>
+
         {/* Helper hint */}
-        {!destination && userLocation && (
+        {!activeDestination && activeUserLocation && (
           <div style={{ position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', color: 'white', padding: '12px 24px', borderRadius: '24px', fontSize: '13px', fontWeight: 700, boxShadow: '0 10px 30px rgba(59,130,246,0.4)', pointerEvents: 'none', animation: 'bounce 2s infinite', whiteSpace: 'nowrap', zIndex: 10 }}>
-            📍 Click anywhere on the map to set your destination
+            🖱️ Click anywhere on the map to set your destination
           </div>
         )}
       </div>
@@ -740,7 +1268,7 @@ export default function LiveMapPage() {
           <span>•</span>
           <span>Routing: OSRM</span>
           <span>•</span>
-          <span style={{ color: appMode === 'demo' ? '#f59e0b' : '#10b981', fontWeight: 700 }}>{appMode === 'demo' ? '⚠️ DEMO MODE' : '🟢 LIVE MODE'}</span>
+          <span style={{ color: appMode === 'demo' ? '#f59e0b' : '#10b981', fontWeight: 700 }}>{appMode === 'demo' ? '⚡ DEMO MODE' : '🟢 LIVE MODE'}</span>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           <Shield size={11} /> Live Multi-Hazard Monitoring

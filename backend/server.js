@@ -15,6 +15,7 @@ import notificationsRoutes from './routes/notifications.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import routingRoutes from './routes/routing.routes.js'
 import demoRoutes from './routes/demo.routes.js'
+import searchRoutes from './routes/search.routes.js'
 
 // Services
 import { initRealtime } from './services/realtime.service.js'
@@ -23,7 +24,7 @@ const app = express()
 const httpServer = createServer(app)
 
 // ─── CORS ────────────────────────────────────────────────────
-const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173'
+const corsOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:5173', 'http://localhost:5174']
 app.use(cors({ origin: corsOrigin, credentials: true }))
 
 // ─── Body parsing ────────────────────────────────────────────
@@ -46,6 +47,7 @@ app.use('/api/notifications', notificationsRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/routes', routingRoutes)
 app.use('/api/demo', demoRoutes)
+app.use('/api/search', searchRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -78,8 +80,12 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/hazardlens
 
 async function start() {
   try {
-    await mongoose.connect(MONGO_URI)
-    console.log('✓ MongoDB connected')
+    try {
+      await mongoose.connect(MONGO_URI)
+      console.log('✓ MongoDB connected')
+    } catch (dbErr) {
+      console.warn('⚠ MongoDB failed to connect. Running in memory-only mode for Map/Demo.', dbErr.message)
+    }
 
     httpServer.listen(PORT, () => {
       console.log(`✓ Server running on http://localhost:${PORT}`)

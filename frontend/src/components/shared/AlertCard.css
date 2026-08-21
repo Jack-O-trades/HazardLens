@@ -89,6 +89,17 @@
   border-color: hsla(0, 80%, 50%, 0.15);
 }
 
+.alert-card-field-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: hsla(195, 70%, 50%, 0.1);
+  color: hsl(195, 70%, 42%);
+  border: 1px solid hsla(195, 70%, 50%, 0.22);
+}
+
 .alert-card-arrow {
   color: var(--text-muted);
   transition: transform var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);

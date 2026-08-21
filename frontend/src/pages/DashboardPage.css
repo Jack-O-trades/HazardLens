@@ -27,6 +27,7 @@
   font-family: var(--font-heading);
   font-size: 1.5rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
@@ -86,7 +87,7 @@
 
 .dash-stat-card:hover {
   border-color: var(--border);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
@@ -123,8 +124,38 @@
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   margin-top: 4px;
+}
+
+/* =========================================================
+   PRIORITY / DIGEST BANNER
+   ========================================================= */
+
+.dash-priority-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin: 0 0 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-md);
+  background: hsla(5, 75%, 48%, 0.08);
+  border: 1px solid hsla(5, 75%, 48%, 0.2);
+  color: var(--sev-critical);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.dash-priority-banner-icon {
+  flex-shrink: 0;
+}
+
+.dash-priority-banner--digest {
+  background: hsla(230, 20%, 45%, 0.06);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 /* =========================================================
@@ -191,7 +222,7 @@
 
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 9px;
 }
 
 .dash-alerts-card-title svg {
@@ -199,27 +230,45 @@
   flex-shrink: 0;
 }
 
-.dash-priority-banner {
-  margin: 0 0 1rem;
-  padding: 0.8rem 1rem;
-  border-radius: var(--radius-md);
-  background: hsla(5, 75%, 48%, 0.1);
-  border: 1px solid hsla(5, 75%, 48%, 0.2);
-  color: var(--sev-critical);
-  font-size: 0.8rem;
+/* Live status badge next to the map title */
+.dash-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  padding: 3px 9px 3px 7px;
+  border-radius: 99px;
+  background: hsla(145, 55%, 36%, 0.1);
+  border: 1px solid hsla(145, 55%, 36%, 0.25);
+
+  font-size: 0.65rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-success);
 }
 
-.dash-priority-banner--digest {
-  background: hsla(230, 20%, 45%, 0.08);
-  border-color: var(--border-subtle);
-  color: var(--text-secondary);
+.dash-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-success);
+  position: relative;
 }
 
-.dash-map-card-title span {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-muted);
+.dash-live-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: var(--text-success);
+  opacity: 0.35;
+  animation: dash-live-pulse 1.8s ease-out infinite;
+}
+
+@keyframes dash-live-pulse {
+  from { transform: scale(0.6); opacity: 0.35; }
+  to   { transform: scale(1.8); opacity: 0; }
 }
 
 .dash-map-expand-btn {
@@ -295,6 +344,35 @@
 
 .dash-map-zoom-btn:last-child { border-bottom: none; }
 .dash-map-zoom-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+
+/* Map legend strip */
+.dash-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+
+  padding: 0.6rem 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.dash-map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.dash-map-legend-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 
 /* =========================================================
    LATEST ALERTS LIST
@@ -444,6 +522,8 @@
 
   .dash-map-preview { height: 220px; }
   .dash-panels--map-expanded .dash-map-preview { height: 380px; }
+
+  .dash-map-legend { gap: 4px 12px; padding: 0.6rem 1rem; }
 }
 
 /* =========================================================
@@ -483,6 +563,10 @@
   user-select: none;
 
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.layer-checkbox-label svg {
+  flex-shrink: 0;
 }
 
 .layer-checkbox-label:hover {

@@ -32,12 +32,26 @@ dist-ssr
 
 # Python and AI service exclusions
 __pycache__/
-*.pyc
+*.py[cod]
+*.class
+venv/
+.venv/
+env/
+.env/
 ai_service/.venv/
 ai_service/dataset/
 ai_service/dataset_color_bias/
 ai_service/runs/
 *.pt
 !ai_service/weights/best.pt
-
 runs/
+
+# Data and large files
+data/
+dataset/
+*.parquet
+*.db
+*.sqlite3
+
+# Temporary and output files
+output.json

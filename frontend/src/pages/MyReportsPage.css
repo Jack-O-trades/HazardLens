@@ -18,13 +18,27 @@
   flex-shrink: 0;
 }
 
+/* Visually hide the search label while keeping it available to screen readers.
+   Remove this if your global stylesheet already defines .sr-only. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* =========================================================
    SUMMARY CARDS
    ========================================================= */
 
 .my-reports-summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 1rem;
   margin-bottom: 1.25rem;
 }
@@ -65,6 +79,7 @@
 .my-reports-summary-card--pending  { --card-accent: var(--status-pending); }
 .my-reports-summary-card--verified { --card-accent: var(--status-verified); }
 .my-reports-summary-card--resolved { --card-accent: var(--status-resolved); }
+.my-reports-summary-card--rejected { --card-accent: var(--status-rejected); }
 
 .my-reports-summary-val {
   font-family: var(--font-heading);
@@ -172,16 +187,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-}
-
-/* =========================================================
-   TABLET
-   ========================================================= */
-
-@media (max-width: 900px) {
-  .my-reports-summary {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 /* =========================================================
