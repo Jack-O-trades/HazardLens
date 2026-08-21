@@ -252,26 +252,28 @@ router.get('/', async (req, res) => {
     console.log(`[S32 BRIDGE] Forwarding ${candidateRoutes.length} candidates to HazardLens AI...`)
     
     let pythonResult = null
+    const reqBody = {
+      start: { lng: parseFloat(startLng), lat: parseFloat(startLat) },
+      destination: { lng: parseFloat(endLng), lat: parseFloat(endLat) },
+      candidates: candidateRoutes,
+      hazards: hazardList
+    };
+    
     try {
       const pyResponse = await fetch('http://localhost:8000/analyze-route', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          start: { lng: parseFloat(startLng), lat: parseFloat(startLat) },
-          destination: { lng: parseFloat(endLng), lat: parseFloat(endLat) },
-          candidates: candidateRoutes,
-          hazards: hazardList
-        })
+        body: JSON.stringify(reqBody)
       })
 
       if (pyResponse.ok) {
         pythonResult = await pyResponse.json()
       } else {
          const errorText = await pyResponse.text()
-         console.warn(`[S32 BRIDGE] Python AI returned status ${pyResponse.status}: ${errorText}`)
+         console.warn(`[S32 BRIDGE ERROR] Python AI HTTP ${pyResponse.status}\nURL: http://localhost:8000/analyze-route\nCandidates: ${candidateRoutes.length}\nBody: ${errorText}`)
       }
     } catch (e) {
-      console.warn(`[S32 BRIDGE] Python AI unavailable: ${e.message}`)
+      console.warn(`[S32 BRIDGE ERROR] Network fetch failed: ${e.message}\nURL: http://localhost:8000/analyze-route\nCandidates: ${candidateRoutes.length}`)
     }
 
     // 4. Return Output
@@ -286,7 +288,8 @@ router.get('/', async (req, res) => {
             duration: alt.duration_s,
             score: alt.final_score,
             hazardExposure: alt.hazard_score,
-            safety: alt.safety_status
+            safety: alt.safety_status,
+            steps: alt.steps || []
         }));
         const unsafe_routes = (pythonResult.unsafe_routes || []).map(alt => ({
             id: alt.id,
@@ -295,7 +298,8 @@ router.get('/', async (req, res) => {
             duration: alt.duration_s,
             score: alt.final_score,
             hazardExposure: alt.hazard_score,
-            safety: alt.safety_status
+            safety: alt.safety_status,
+            steps: alt.steps || []
         }));
 
         let recFormatted = null;
@@ -307,7 +311,8 @@ router.get('/', async (req, res) => {
             duration: recommended.duration_s,
             score: recommended.final_score,
             hazardExposure: recommended.hazard_score,
-            safety: recommended.safety_status
+            safety: recommended.safety_status,
+            steps: recommended.steps || []
           };
           console.log(`Recommended: ${recommended.id}`);
         } else {

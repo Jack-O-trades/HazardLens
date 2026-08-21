@@ -15,6 +15,7 @@ import notificationsRoutes from './routes/notifications.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import routingRoutes from './routes/routing.routes.js'
 import demoRoutes from './routes/demo.routes.js'
+import searchRoutes from './routes/search.routes.js'
 
 // Services
 import { initRealtime } from './services/realtime.service.js'
@@ -46,6 +47,7 @@ app.use('/api/notifications', notificationsRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/routes', routingRoutes)
 app.use('/api/demo', demoRoutes)
+app.use('/api/search', searchRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) => {

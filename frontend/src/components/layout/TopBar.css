@@ -161,6 +161,12 @@
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+.topbar-search-wrap:has(form) > .topbar-search-icon,
+.topbar-search-wrap:has(form) > .topbar-search-input,
+.topbar-search-wrap:has(form) > .topbar-kbd {
+  display: none !important;
+}
+
 .topbar-kbd {
   position: absolute;
   right: 10px;
