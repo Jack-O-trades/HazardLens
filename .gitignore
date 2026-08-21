@@ -29,3 +29,23 @@ dist-ssr
 .env.development.local
 .env.test.local
 .env.production.local
+
+
+# Python
+__pycache__/
+*.py[cod]
+*.class
+venv/
+.venv/
+env/
+.env/
+
+# Data and large files
+data/
+dataset/
+*.parquet
+*.db
+*.sqlite3
+
+# Temporary and output files
+output.json

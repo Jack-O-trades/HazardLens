@@ -181,6 +181,7 @@ export default function LiveMapPage() {
 
   const routeOutlineRef = useRef(null);
   const routeLineRef = useRef(null);
+  const routeHighlightRef = useRef(null);
 
   // Keep route coords synced and force immediate update
   useEffect(() => {
@@ -208,18 +209,24 @@ export default function LiveMapPage() {
         const points = coords.map(c => {
           const p = map.project(c);
           return `${p.x},${p.y}`;
-        }).join(" ");
+        }).join(" L ");
+        const pathData = "M " + points;
         if (routeOutlineRef.current) {
-          routeOutlineRef.current.setAttribute("points", points);
+          routeOutlineRef.current.setAttribute("d", pathData);
           routeOutlineRef.current.style.display = 'block';
         }
         if (routeLineRef.current) {
-          routeLineRef.current.setAttribute("points", points);
+          routeLineRef.current.setAttribute("d", pathData);
           routeLineRef.current.style.display = 'block';
+        }
+        if (routeHighlightRef.current) {
+          routeHighlightRef.current.setAttribute("d", pathData);
+          routeHighlightRef.current.style.display = 'block';
         }
       } else {
         if (routeOutlineRef.current) routeOutlineRef.current.style.display = 'none';
         if (routeLineRef.current) routeLineRef.current.style.display = 'none';
+        if (routeHighlightRef.current) routeHighlightRef.current.style.display = 'none';
       }
 
       (routeData?.alternatives || []).forEach((alt, idx) => {
@@ -228,11 +235,14 @@ export default function LiveMapPage() {
           const points = altCoords.map(c => {
             const p = map.project(c);
             return `${p.x},${p.y}`;
-          }).join(" ");
+          }).join(" L ");
+          const pathData = "M " + points;
           const altOutlineEl = document.getElementById(`alt-route-outline-${idx}`);
           const altLineEl = document.getElementById(`alt-route-line-${idx}`);
-          if (altOutlineEl) { altOutlineEl.setAttribute("points", points); altOutlineEl.style.display = 'block'; }
-          if (altLineEl) { altLineEl.setAttribute("points", points); altLineEl.style.display = 'block'; }
+          const altHighlightEl = document.getElementById(`alt-route-highlight-${idx}`);
+          if (altOutlineEl) { altOutlineEl.setAttribute("d", pathData); altOutlineEl.style.display = 'block'; }
+          if (altLineEl) { altLineEl.setAttribute("d", pathData); altLineEl.style.display = 'block'; }
+          if (altHighlightEl) { altHighlightEl.setAttribute("d", pathData); altHighlightEl.style.display = 'block'; }
         }
       });
 
@@ -242,11 +252,14 @@ export default function LiveMapPage() {
           const points = unsafeCoords.map(c => {
             const p = map.project(c);
             return `${p.x},${p.y}`;
-          }).join(" ");
+          }).join(" L ");
+          const pathData = "M " + points;
           const unsafeOutlineEl = document.getElementById(`unsafe-route-outline-${idx}`);
           const unsafeLineEl = document.getElementById(`unsafe-route-line-${idx}`);
-          if (unsafeOutlineEl) { unsafeOutlineEl.setAttribute("points", points); unsafeOutlineEl.style.display = 'block'; }
-          if (unsafeLineEl) { unsafeLineEl.setAttribute("points", points); unsafeLineEl.style.display = 'block'; }
+          const unsafeHighlightEl = document.getElementById(`unsafe-route-highlight-${idx}`);
+          if (unsafeOutlineEl) { unsafeOutlineEl.setAttribute("d", pathData); unsafeOutlineEl.style.display = 'block'; }
+          if (unsafeLineEl) { unsafeLineEl.setAttribute("d", pathData); unsafeLineEl.style.display = 'block'; }
+          if (unsafeHighlightEl) { unsafeHighlightEl.setAttribute("d", pathData); unsafeHighlightEl.style.display = 'block'; }
         }
       });
     };
@@ -432,14 +445,73 @@ export default function LiveMapPage() {
 
   // ---- Search ----
   const geocode = async (query, { limit } = {}) => {
-    const params = new URLSearchParams({ format: 'json', q: query, addressdetails: '1' })
-    if (limit) params.set('limit', String(limit))
-    // Note: Nominatim's usage policy expects a descriptive User-Agent/Referer
-    // for anything beyond light, casual use — browsers won't let JS set a
-    // custom User-Agent, so for real traffic this should be proxied through
-    // your own backend instead of called directly from the client.
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`)
-    return res.json()
+    let localResults = [];
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.results?.length > 0) {
+          localResults = data.results.map(r => ({
+            ...r,
+            display_name: r.display_name,
+            lat: String(r.lat),
+            lon: String(r.lon),
+            source: 'local'
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn("Local search failed", err);
+    }
+
+    // If local database returns plenty of results, return them immediately
+    if (localResults.length >= (limit || 6)) {
+      return localResults.slice(0, limit || 6);
+    }
+
+    let nomResults = [];
+    try {
+      const params = new URLSearchParams({ format: 'json', q: query, addressdetails: '1', countrycodes: 'in' });
+      // Request enough to fill the remaining slots
+      const nomLimit = limit ? limit - localResults.length : 6;
+      params.set('limit', String(Math.max(1, nomLimit)));
+      
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.length > 0) {
+          nomResults = data.map(r => ({ ...r, source: 'nominatim' }));
+        }
+      }
+    } catch (err) {
+      console.warn("Nominatim search failed", err);
+    }
+
+    // Merge and deduplicate
+    const combined = [...localResults];
+    const seenNames = new Set(localResults.map(r => r.display_name.toLowerCase().trim()));
+    
+    for (const nr of nomResults) {
+      const nameKey = nr.display_name.toLowerCase().trim();
+      const nrLat = parseFloat(nr.lat);
+      const nrLon = parseFloat(nr.lon);
+      
+      const isNameDupe = Array.from(seenNames).some(seen => 
+         nameKey.includes(seen) || seen.includes(nameKey)
+      );
+      const isCoordDupe = localResults.some(lr => 
+         Math.abs(parseFloat(lr.lat) - nrLat) < 0.05 && 
+         Math.abs(parseFloat(lr.lon) - nrLon) < 0.05
+      );
+
+      if (!isNameDupe && !isCoordDupe) {
+        seenNames.add(nameKey);
+        combined.push(nr);
+      }
+    }
+
+    return combined.slice(0, limit || 6);
   }
 
   const handleSearch = async (e) => {
@@ -499,6 +571,9 @@ export default function LiveMapPage() {
     setSearchSuggestions([])
     setShowSuggestions(false)
     fetchWeather(lat, lng)
+    
+    // Route to the selected destination using existing logic
+    handleMapClick({ lngLat: { lng, lat } })
   }
 
   useEffect(() => {
@@ -674,7 +749,7 @@ export default function LiveMapPage() {
               const mainName = parts[0]?.trim()
               const subText = parts.slice(1, 3).join(',').trim()
               return (
-                <button key={item.place_id || i} onClick={() => selectSuggestion(item)}
+                <button key={item.place_id || i} onMouseDown={() => selectSuggestion(item)}
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', borderBottom: i < searchSuggestions.length - 1 ? `1px solid ${isDark ? '#1e293b' : '#f1f5f9'}` : 'none', cursor: 'pointer', textAlign: 'left', color: textUI }}
                   onMouseEnter={(e) => e.currentTarget.style.background = isDark ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.06)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
@@ -1022,75 +1097,149 @@ export default function LiveMapPage() {
             zIndex: 5
           }}
         >
+          <defs>
+            <filter id="route-glow-green" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="route-glow-red" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="route-glow-yellow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="route-glow-gray" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          
           {/* Unsafe Routes rendered at the very bottom */}
           {routeData && routeData.unsafe_routes && routeData.unsafe_routes.map((alt, idx) => (
             <g key={`unsafe-${alt.id || idx}`}>
-              <polyline
+              <path
                 id={`unsafe-route-outline-${idx}`}
                 fill="none"
-                stroke="#07110D"
-                strokeWidth="12"
+                stroke="#ff0000"
+                strokeWidth="10"
+                strokeOpacity="0.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                filter="url(#route-glow-red)"
                 style={{ display: 'none' }}
               />
-              <polyline
+              <path
                 id={`unsafe-route-line-${idx}`}
                 fill="none"
-                stroke="#ef4444"
-                strokeWidth="8"
+                stroke="#fca5a5"
+                strokeWidth="4"
+                strokeOpacity="1"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 style={{ display: 'none' }}
               />
+              <path
+                id={`unsafe-route-highlight-${idx}`}
+                fill="none"
+                stroke="transparent"
+                style={{ display: 'none' }}
+              />
+              <text dy="4" fill="#ffffff" fontSize="14" fontWeight="900" opacity="0.9">
+                <textPath href={`#unsafe-route-line-${idx}`} startOffset="0%">
+                  {Array(100).fill('»').join('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')}
+                </textPath>
+              </text>
             </g>
           ))}
           {/* Alternatives rendered above unsafe */}
           {routeData && routeData.alternatives && routeData.alternatives.map((alt, idx) => (
             <g key={`alt-${alt.id || idx}`}>
-              <polyline
+              <path
                 id={`alt-route-outline-${idx}`}
                 fill="none"
-                stroke="#07110D"
-                strokeWidth="12"
+                stroke={idx === 0 ? '#eab308' : '#64748b'}
+                strokeWidth="10"
+                strokeOpacity="0.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                filter={idx === 0 ? "url(#route-glow-yellow)" : "url(#route-glow-gray)"}
                 style={{ display: 'none' }}
               />
-              <polyline
+              <path
                 id={`alt-route-line-${idx}`}
                 fill="none"
-                stroke={idx === 0 ? '#eab308' : '#64748b'}
-                strokeWidth="8"
+                stroke={idx === 0 ? '#fde047' : '#cbd5e1'}
+                strokeWidth="4"
+                strokeOpacity="1"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 style={{ display: 'none' }}
               />
+              <path
+                id={`alt-route-highlight-${idx}`}
+                fill="none"
+                stroke="transparent"
+                style={{ display: 'none' }}
+              />
+              <text dy="4" fill="#ffffff" fontSize="14" fontWeight="900" opacity="0.9">
+                <textPath href={`#alt-route-line-${idx}`} startOffset="0%">
+                  {Array(100).fill('»').join('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')}
+                </textPath>
+              </text>
             </g>
           ))}
           {/* Main safe route on top */}
-          <polyline
+          <path
             ref={routeOutlineRef}
             fill="none"
-            stroke="#07110D"
+            stroke="#00ff00"
             strokeWidth="12"
+            strokeOpacity="0.7"
             strokeLinecap="round"
             strokeLinejoin="round"
+            filter="url(#route-glow-green)"
             style={{ display: 'none' }}
           />
-          <polyline
+          <path
             ref={routeLineRef}
+            id="main-route-path"
             fill="none"
-            stroke="#00D084"
-            strokeWidth="8"
+            stroke="#86efac"
+            strokeWidth="5"
+            strokeOpacity="1"
             strokeLinecap="round"
             strokeLinejoin="round"
             style={{ display: 'none' }}
           />
+          <path
+            ref={routeHighlightRef}
+            fill="none"
+            stroke="transparent"
+            style={{ display: 'none' }}
+          />
+          <text dy="5" fill="#ffffff" fontSize="18" fontWeight="900" opacity="1">
+            <textPath href="#main-route-path" startOffset="0%">
+              {Array(150).fill('»').join('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')}
+            </textPath>
+          </text>
         </svg>
 
         {/* Helper hint */}
-        {!destination && userLocation && (
+        {!activeDestination && activeUserLocation && (
           <div style={{ position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', color: 'white', padding: '12px 24px', borderRadius: '24px', fontSize: '13px', fontWeight: 700, boxShadow: '0 10px 30px rgba(59,130,246,0.4)', pointerEvents: 'none', animation: 'bounce 2s infinite', whiteSpace: 'nowrap', zIndex: 10 }}>
             🖱️ Click anywhere on the map to set your destination
           </div>
