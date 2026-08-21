@@ -1,0 +1,706 @@
+/* ══════════════════════════════════════════════
+   CommunityReportingPage — Beautiful redesign
+   ══════════════════════════════════════════════ */
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes lineGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.crg-page {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-bottom: 4rem;
+  font-family: var(--font-body);
+  animation: fadeSlideUp 0.45s var(--ease) both;
+}
+
+/* ─────────────────────────────────────────────
+   TWO-COLUMN LAYOUT
+   ───────────────────────────────────────────── */
+.crg-layout {
+  display: grid;
+  grid-template-columns: 1fr 270px;
+  gap: 1.6rem;
+  align-items: start;
+}
+
+.crg-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+/* ─────────────────────────────────────────────
+   HEADER — natural/earthy feel
+   ───────────────────────────────────────────── */
+.crg-header {
+  background: linear-gradient(135deg, hsl(75, 20%, 96%) 0%, hsl(155, 22%, 94%) 100%);
+  border: 1px solid hsl(100, 15%, 88%);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem 2rem;
+  margin-bottom: 0.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.crg-header::before {
+  content: '';
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, hsla(140, 40%, 60%, 0.08) 0%, transparent 70%);
+  bottom: -80px;
+  left: 30%;
+  pointer-events: none;
+}
+
+.crg-eyebrow {
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(140, 25%, 42%);
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.crg-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 1.5px;
+  background: hsl(140, 25%, 55%);
+  border-radius: 99px;
+}
+
+.crg-hero-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.crg-title {
+  font-family: var(--font-heading);
+  font-size: 2.1rem;
+  font-weight: 900;
+  color: hsl(150, 30%, 12%);
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  margin-bottom: 0.6rem;
+}
+
+[data-theme="dark"] .crg-title { color: var(--text-primary); }
+
+.crg-subtitle {
+  font-size: 0.9rem;
+  color: hsl(140, 15%, 38%);
+  line-height: 1.7;
+  max-width: 480px;
+}
+
+[data-theme="dark"] .crg-subtitle { color: var(--text-secondary); }
+
+.crg-hero-leaf {
+  flex-shrink: 0;
+  opacity: 0.7;
+  margin-top: -0.5rem;
+  filter: drop-shadow(0 4px 8px hsla(130, 40%, 30%, 0.15));
+}
+
+/* ─────────────────────────────────────────────
+   SECTION CARDS
+   ───────────────────────────────────────────── */
+.crg-section-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 1.35rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.crg-section-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.crg-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.crg-section-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px hsla(220, 30%, 20%, 0.10);
+}
+
+.crg-section-icon--teal  {
+  background: linear-gradient(135deg, hsla(170, 65%, 88%, 1) 0%, hsla(155, 55%, 85%, 1) 100%);
+  color: hsl(168, 68%, 28%);
+}
+.crg-section-icon--amber {
+  background: linear-gradient(135deg, hsla(42, 90%, 92%, 1) 0%, hsla(35, 85%, 88%, 1) 100%);
+  color: hsl(38, 88%, 32%);
+}
+.crg-section-icon--red {
+  background: linear-gradient(135deg, hsla(0, 80%, 94%, 1) 0%, hsla(10, 75%, 91%, 1) 100%);
+  color: hsl(2, 72%, 42%);
+}
+
+.crg-section-title {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.crg-section-body {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin-bottom: 0.45rem;
+}
+.crg-section-body:last-child { margin-bottom: 0; }
+
+.crg-section-italic {
+  font-size: 0.87rem;
+  color: hsl(140, 25%, 42%);
+  font-style: italic;
+  margin-top: 0.55rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid hsl(145, 40%, 65%);
+  background: hsla(140, 30%, 50%, 0.05);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ─────────────────────────────────────────────
+   WHAT TO INCLUDE — 5-column icon grid
+   ───────────────────────────────────────────── */
+.crg-report-fields {
+  display: flex;
+  gap: 0;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.crg-report-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.45rem;
+  flex: 1;
+  padding: 1rem 0.6rem;
+  border-right: 1px solid var(--border-subtle);
+  transition: background 0.15s ease;
+}
+.crg-report-field:last-child { border-right: none; }
+.crg-report-field:hover {
+  background: hsla(168, 40%, 50%, 0.05);
+}
+
+.crg-report-field-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: hsla(168, 50%, 50%, 0.10);
+  color: hsl(168, 60%, 30%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.1rem;
+}
+
+.crg-report-field-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.crg-report-field-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ─────────────────────────────────────────────
+   HOW TO SUBMIT — 4-step flow
+   ───────────────────────────────────────────── */
+.crg-steps-row {
+  display: flex;
+  gap: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  padding: 0.5rem 0;
+}
+
+/* dashed line connecting all steps */
+.crg-steps-row::before {
+  content: '';
+  position: absolute;
+  top: 21px;
+  left: 12.5%;
+  right: 12.5%;
+  height: 1.5px;
+  background: repeating-linear-gradient(
+    to right,
+    hsl(168, 40%, 72%) 0px,
+    hsl(168, 40%, 72%) 6px,
+    transparent 6px,
+    transparent 14px
+  );
+  z-index: 0;
+  transform-origin: left center;
+  animation: lineGrow 0.6s 0.3s ease both;
+}
+
+.crg-step-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+  padding: 0 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.crg-step-num-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.65rem;
+}
+
+.crg-step-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, hsl(168, 65%, 28%) 0%, hsl(155, 60%, 35%) 100%);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px hsla(168, 60%, 25%, 0.35);
+}
+
+.crg-step-connector { display: none; }
+
+.crg-step-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: hsla(168, 50%, 50%, 0.08);
+  color: hsl(168, 55%, 32%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  border: 1px solid hsla(168, 40%, 60%, 0.20);
+}
+
+.crg-step-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: 0.25rem;
+}
+
+.crg-step-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ─────────────────────────────────────────────
+   TWO-COLUMN: TIPS + AVOID
+   ───────────────────────────────────────────── */
+.crg-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem;
+}
+
+/* ── Tips for Better Reports ── */
+.crg-tips-card {
+  border-top: 3px solid hsl(42, 88%, 50%);
+}
+
+.crg-tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.crg-tip-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+}
+.crg-tip-item:hover { background: hsla(42, 70%, 50%, 0.06); }
+
+.crg-tip-bullet {
+  color: hsl(38, 90%, 38%);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.crg-tip-label {
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.crg-tip-sep { margin: 0 1px; }
+
+.crg-tip-text { color: var(--text-secondary); }
+
+/* ── What to Avoid ── */
+.crg-avoid-card {
+  border-top: 3px solid hsl(2, 72%, 50%);
+}
+
+.crg-avoid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.crg-avoid-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+}
+.crg-avoid-item:hover { background: hsla(0, 70%, 55%, 0.05); }
+
+.crg-avoid-icon {
+  color: hsl(2, 72%, 50%);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* ── Privacy card ── */
+.crg-privacy-card {
+  background: linear-gradient(135deg, hsla(168, 30%, 96%, 1) 0%, hsla(140, 20%, 97%, 1) 100%);
+  border-color: hsl(150, 20%, 86%);
+}
+
+/* ─────────────────────────────────────────────
+   SIDEBAR
+   ───────────────────────────────────────────── */
+.crg-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  position: sticky;
+  top: 1.5rem;
+}
+
+.crg-sidebar-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem 1.3rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.crg-sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ── Related resources list ── */
+.crg-related-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.crg-related-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.7rem 0.4rem;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease, padding-left 0.15s ease;
+}
+.crg-related-item:last-child { border-bottom: none; }
+.crg-related-item:hover {
+  background: var(--bg-card-hover);
+  padding-left: 0.6rem;
+}
+
+.crg-related-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.crg-related-icon--orange { background: hsla(25, 90%, 52%, 0.12); color: hsl(25, 80%, 38%); }
+.crg-related-icon--blue   { background: hsla(217, 80%, 56%, 0.12); color: hsl(217, 70%, 42%); }
+.crg-related-icon--green  { background: hsla(145, 55%, 40%, 0.12); color: hsl(145, 55%, 32%); }
+.crg-related-icon--red    { background: hsla(0, 75%, 50%, 0.10);   color: hsl(0, 65%, 42%); }
+
+.crg-related-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.crg-related-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  transition: color 0.15s ease;
+}
+
+.crg-related-desc {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+/* ─────────────────────────────────────────────
+   QUOTE / LANDSCAPE CARD
+   ───────────────────────────────────────────── */
+.crg-quote-card {
+  background: linear-gradient(160deg, hsl(75, 18%, 95%) 0%, hsl(155, 20%, 93%) 100%);
+  border: 1px solid hsl(120, 15%, 86%);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .crg-quote-card {
+  background: hsl(145, 15%, 11%);
+  border-color: hsl(145, 12%, 18%);
+}
+
+.crg-quote-text-top {
+  padding: 1.25rem 1.3rem 0.5rem;
+}
+
+.crg-quote-headline {
+  font-family: var(--font-heading);
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: hsl(155, 50%, 20%);
+  line-height: 1.3;
+}
+.crg-quote-headline:last-of-type {
+  margin-bottom: 0.1rem;
+}
+
+[data-theme="dark"] .crg-quote-headline { color: hsl(155, 40%, 65%); }
+
+.crg-quote-body {
+  font-size: 0.8rem;
+  color: hsl(140, 18%, 38%);
+  line-height: 1.6;
+  padding: 0.1rem 1.3rem 1rem;
+}
+
+[data-theme="dark"] .crg-quote-body { color: var(--text-secondary); }
+
+.crg-landscape {
+  width: 100%;
+  line-height: 0;
+  border-top: 1px solid hsl(120, 15%, 86%);
+}
+
+.crg-landscape-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ─────────────────────────────────────────────
+   RESPONSIVE
+   ───────────────────────────────────────────── */
+@media (max-width: 880px) {
+  .crg-layout { grid-template-columns: 1fr; }
+  .crg-sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
+  .crg-steps-row::before { display: none; }
+}
+
+@media (max-width: 680px) {
+  .crg-report-fields { flex-wrap: wrap; }
+  .crg-report-field { flex-basis: 45%; border-right: none; border-bottom: 1px solid var(--border-subtle); }
+  .crg-report-field:last-child { border-bottom: none; }
+  .crg-steps-row { flex-wrap: wrap; gap: 1rem; }
+  .crg-step-col { flex-basis: 40%; }
+  .crg-two-col { grid-template-columns: 1fr; }
+  .crg-sidebar { grid-template-columns: 1fr; }
+  .crg-title { font-size: 1.65rem; }
+  .crg-hero-leaf { display: none; }
+  .crg-header { padding: 1.35rem 1.25rem; }
+}
+
+/* ─────────────────────────────────────────────
+   DARK MODE — full overrides
+   CSS vars (--bg-surface etc.) adapt automatically.
+   Only hardcoded light-only values need overrides.
+   ───────────────────────────────────────────── */
+
+/* Header banner */
+[data-theme="dark"] .crg-header {
+  background: linear-gradient(135deg, hsl(145, 12%, 10%) 0%, hsl(160, 14%, 12%) 100%);
+  border-color: hsl(145, 10%, 17%);
+}
+[data-theme="dark"] .crg-eyebrow { color: hsl(145, 25%, 52%); }
+[data-theme="dark"] .crg-eyebrow::before { background: hsl(145, 20%, 40%); }
+
+/* Section icon badges — need lighter shades on dark bg */
+[data-theme="dark"] .crg-section-icon--teal {
+  background: linear-gradient(135deg, hsla(170, 50%, 30%, 0.5) 0%, hsla(155, 45%, 25%, 0.5) 100%);
+  color: hsl(168, 60%, 62%);
+}
+[data-theme="dark"] .crg-section-icon--amber {
+  background: linear-gradient(135deg, hsla(42, 70%, 30%, 0.5) 0%, hsla(35, 65%, 25%, 0.5) 100%);
+  color: hsl(38, 80%, 62%);
+}
+[data-theme="dark"] .crg-section-icon--red {
+  background: linear-gradient(135deg, hsla(0, 65%, 30%, 0.5) 0%, hsla(10, 60%, 26%, 0.5) 100%);
+  color: hsl(2, 75%, 65%);
+}
+
+/* Italic quote callout */
+[data-theme="dark"] .crg-section-italic {
+  color: hsl(140, 30%, 62%);
+  border-left-color: hsl(145, 35%, 38%);
+  background: hsla(140, 25%, 50%, 0.08);
+}
+
+/* Report field icons */
+[data-theme="dark"] .crg-report-field-icon {
+  background: hsla(168, 40%, 50%, 0.14);
+  color: hsl(168, 55%, 60%);
+}
+[data-theme="dark"] .crg-report-field:hover {
+  background: hsla(168, 30%, 50%, 0.07);
+}
+
+/* Step flow */
+[data-theme="dark"] .crg-steps-row::before {
+  background: repeating-linear-gradient(
+    to right,
+    hsl(168, 35%, 38%) 0px,
+    hsl(168, 35%, 38%) 6px,
+    transparent 6px,
+    transparent 14px
+  );
+}
+[data-theme="dark"] .crg-step-icon {
+  background: hsla(168, 40%, 50%, 0.12);
+  color: hsl(168, 55%, 58%);
+  border-color: hsla(168, 35%, 50%, 0.18);
+}
+
+/* Privacy card */
+[data-theme="dark"] .crg-privacy-card {
+  background: linear-gradient(135deg, hsla(168, 18%, 12%, 1) 0%, hsla(140, 14%, 11%, 1) 100%);
+  border-color: hsl(150, 14%, 18%);
+}
+
+/* Related resource icon tones — higher contrast on dark */
+[data-theme="dark"] .crg-related-icon--orange { background: hsla(25, 70%, 52%, 0.18); color: hsl(25, 80%, 62%); }
+[data-theme="dark"] .crg-related-icon--blue   { background: hsla(217, 60%, 56%, 0.18); color: hsl(217, 70%, 68%); }
+[data-theme="dark"] .crg-related-icon--green  { background: hsla(145, 45%, 40%, 0.18); color: hsl(145, 50%, 58%); }
+[data-theme="dark"] .crg-related-icon--red    { background: hsla(0, 60%, 50%, 0.16);   color: hsl(0, 70%, 65%); }
+
+/* Landscape card border */
+[data-theme="dark"] .crg-landscape { border-top-color: hsl(145, 12%, 18%); }
+
+/* OS-level dark fallback */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .crg-header {
+    background: linear-gradient(135deg, hsl(145, 12%, 10%) 0%, hsl(160, 14%, 12%) 100%);
+    border-color: hsl(145, 10%, 17%);
+  }
+  :root:not([data-theme="light"]) .crg-section-icon--teal {
+    background: linear-gradient(135deg, hsla(170, 50%, 30%, 0.5) 0%, hsla(155, 45%, 25%, 0.5) 100%);
+    color: hsl(168, 60%, 62%);
+  }
+  :root:not([data-theme="light"]) .crg-section-icon--amber {
+    background: linear-gradient(135deg, hsla(42, 70%, 30%, 0.5) 0%, hsla(35, 65%, 25%, 0.5) 100%);
+    color: hsl(38, 80%, 62%);
+  }
+  :root:not([data-theme="light"]) .crg-section-icon--red {
+    background: linear-gradient(135deg, hsla(0, 65%, 30%, 0.5) 0%, hsla(10, 60%, 26%, 0.5) 100%);
+    color: hsl(2, 75%, 65%);
+  }
+  :root:not([data-theme="light"]) .crg-report-field-icon {
+    background: hsla(168, 40%, 50%, 0.14);
+    color: hsl(168, 55%, 60%);
+  }
+  :root:not([data-theme="light"]) .crg-step-icon {
+    background: hsla(168, 40%, 50%, 0.12);
+    color: hsl(168, 55%, 58%);
+  }
+  :root:not([data-theme="light"]) .crg-privacy-card {
+    background: linear-gradient(135deg, hsla(168, 18%, 12%, 1) 0%, hsla(140, 14%, 11%, 1) 100%);
+    border-color: hsl(150, 14%, 18%);
+  }
+  :root:not([data-theme="light"]) .crg-quote-card {
+    background: hsl(145, 15%, 11%);
+    border-color: hsl(145, 12%, 18%);
+  }
+  :root:not([data-theme="light"]) .crg-quote-headline { color: hsl(155, 40%, 65%); }
+  :root:not([data-theme="light"]) .crg-quote-body { color: var(--text-secondary); }
+}

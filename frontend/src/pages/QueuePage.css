@@ -89,3 +89,24 @@
   .queue-table-wrap { overflow-x: auto; }
   .queue-table { min-width: 700px; }
 }
+
+@media (max-width: 480px) {
+  .queue-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.625rem;
+  }
+
+  .queue-stat {
+    min-width: 0;
+    padding: 0.75rem 1rem;
+  }
+
+  .queue-stat-val {
+    font-size: 1.4rem;
+  }
+
+  .queue-stat-label {
+    font-size: 0.67rem;
+  }
+}

@@ -616,11 +616,23 @@
 }
 
 /* ── Responsive ── */
+@media (max-width: 768px) {
+  .nc-title { font-size: 1.9rem; }
+}
+
 @media (max-width: 600px) {
   .nc-header { padding: 16px 14px 10px; }
   .nc-title  { font-size: 1.6rem; }
   .nc-scroll { padding: 0 10px 8px; }
   .nc-quiet-banner { margin: 0 10px 10px; }
+}
+
+@media (max-width: 480px) {
+  .nc-title { font-size: 1.35rem; }
+  .nc-header { padding: 12px 12px 8px; }
+  .nc-tabs { gap: 0; }
+  .nc-tab { font-size: 0.8rem; padding: 0.5rem 0.75rem; }
+  .nc-att-card { padding: 0.85rem; }
 }
 
 /* ── Reduced motion ── */

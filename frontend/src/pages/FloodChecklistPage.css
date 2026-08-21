@@ -1,0 +1,550 @@
+/* ══════════════════════════════════════════════
+   FloodChecklistPage — Beautiful redesign
+   ══════════════════════════════════════════════ */
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes checkPop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.fcp-page {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-bottom: 4rem;
+  font-family: var(--font-body);
+  animation: fadeSlideUp 0.45s var(--ease) both;
+}
+
+/* ─────────────────────────────────────────────
+   HERO HEADER — gradient banner
+   ───────────────────────────────────────────── */
+.fcp-page-header {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, hsl(210, 55%, 12%) 0%, hsl(200, 60%, 22%) 60%, hsl(185, 55%, 28%) 100%);
+  border-radius: var(--radius-xl);
+  padding: 2.2rem 2.4rem;
+  margin-bottom: 1.75rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  box-shadow: 0 8px 40px hsla(210, 60%, 15%, 0.35);
+}
+
+/* decorative bubble */
+.fcp-page-header::before {
+  content: '';
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, hsla(190, 70%, 60%, 0.15) 0%, transparent 70%);
+  top: -80px;
+  right: -60px;
+  pointer-events: none;
+}
+.fcp-page-header::after {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, hsla(160, 60%, 55%, 0.10) 0%, transparent 70%);
+  bottom: -50px;
+  left: 20%;
+  pointer-events: none;
+}
+
+.fcp-header-left {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.fcp-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsla(190, 80%, 85%, 0.80);
+  margin-bottom: 0.65rem;
+}
+
+.fcp-eyebrow-dash {
+  display: inline-block;
+  width: 24px;
+  height: 2px;
+  background: hsla(190, 80%, 75%, 0.6);
+  border-radius: 99px;
+}
+
+.fcp-title {
+  font-family: var(--font-heading);
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  margin-bottom: 0.6rem;
+  text-shadow: 0 2px 12px hsla(210, 60%, 10%, 0.4);
+}
+
+.fcp-subtitle {
+  font-size: 0.92rem;
+  color: hsla(200, 50%, 90%, 0.80);
+  line-height: 1.65;
+}
+
+.fcp-download-btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: flex-start;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.fcp-download-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px hsla(200, 60%, 15%, 0.35);
+}
+
+/* ─────────────────────────────────────────────
+   TWO-COLUMN LAYOUT
+   ───────────────────────────────────────────── */
+.fcp-layout {
+  display: grid;
+  grid-template-columns: 1fr 290px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* ─────────────────────────────────────────────
+   PHASE CARDS
+   ───────────────────────────────────────────── */
+.fcp-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.fcp-phase-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 0;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.fcp-phase-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.fcp-phase-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.1rem;
+  padding: 1.4rem 1.5rem 1rem;
+}
+
+.fcp-phase-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px hsla(220, 30%, 20%, 0.12);
+}
+
+.fcp-phase-title {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin-bottom: 0.25rem;
+  line-height: 1.25;
+}
+
+.fcp-phase-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.fcp-phase-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0 1.5rem 0.9rem;
+}
+
+/* ── Checklist ── */
+.fcp-checklist {
+  list-style: none;
+  padding: 0 1.25rem 1.35rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.fcp-checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  padding: 0.42rem 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+  cursor: default;
+}
+.fcp-checklist-item:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.fcp-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 2px solid hsl(220, 13%, 75%);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  background: transparent;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.fcp-checklist-item:hover .fcp-checkbox {
+  border-color: hsl(200, 60%, 42%);
+}
+
+/* ─────────────────────────────────────────────
+   SIDEBAR
+   ───────────────────────────────────────────── */
+.fcp-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  position: sticky;
+  top: 1.5rem;
+}
+
+.fcp-sidebar-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem 1.3rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
+}
+.fcp-sidebar-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.fcp-sidebar-section-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ── Quick Tips ── */
+.fcp-quick-tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.fcp-quick-tip-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 0.7rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.fcp-quick-tip-item:hover {
+  border-color: hsl(200, 50%, 75%);
+  background: hsla(200, 50%, 50%, 0.04);
+}
+
+.fcp-quick-tip-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: hsla(200, 65%, 50%, 0.10);
+  color: hsl(200, 60%, 38%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fcp-quick-tip-text {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  padding-top: 0.15rem;
+}
+
+/* ── Related Resources ── */
+.fcp-related-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.fcp-related-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.72rem 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease, padding-left 0.15s ease;
+  cursor: pointer;
+}
+.fcp-related-item:last-child { border-bottom: none; }
+.fcp-related-item:hover {
+  background: var(--bg-card-hover);
+  padding-left: 0.75rem;
+}
+.fcp-related-item:hover .fcp-related-title { color: hsl(205, 65%, 35%); }
+.fcp-related-item:hover .fcp-related-arrow { color: hsl(205, 65%, 35%); transform: translateX(2px); }
+
+.fcp-related-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: hsla(200, 55%, 50%, 0.10);
+  color: hsl(200, 55%, 38%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fcp-related-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fcp-related-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  transition: color 0.15s ease;
+}
+
+.fcp-related-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.fcp-related-arrow {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.fcp-view-all-btn {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.6rem 1rem;
+  background: hsla(205, 60%, 50%, 0.06);
+  border: 1.5px solid hsla(205, 55%, 50%, 0.20);
+  border-radius: var(--radius-md);
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: hsl(205, 60%, 35%);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  letter-spacing: 0.01em;
+}
+.fcp-view-all-btn:hover {
+  background: hsla(205, 60%, 50%, 0.12);
+  border-color: hsla(205, 55%, 50%, 0.40);
+  transform: translateY(-1px);
+}
+
+/* ─────────────────────────────────────────────
+   FOOTER BAR
+   ───────────────────────────────────────────── */
+.fcp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2.25rem;
+  padding: 1rem 1.4rem;
+  background: linear-gradient(90deg, hsla(210, 40%, 15%, 0.04) 0%, transparent 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.fcp-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.fcp-footer-right { font-size: 0.78rem; }
+
+.fcp-footer-link {
+  color: hsl(205, 65%, 38%);
+  text-decoration: none;
+  font-weight: 700;
+  transition: color 0.15s ease;
+}
+.fcp-footer-link:hover {
+  color: hsl(205, 65%, 28%);
+  text-decoration: underline;
+}
+
+/* ─────────────────────────────────────────────
+   RESPONSIVE
+   ───────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .fcp-layout { grid-template-columns: 1fr; }
+  .fcp-sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .fcp-page-header { padding: 1.75rem 1.5rem; }
+  .fcp-title { font-size: 2rem; }
+}
+
+@media (max-width: 600px) {
+  .fcp-title { font-size: 1.65rem; }
+  .fcp-sidebar { grid-template-columns: 1fr; }
+  .fcp-page-header { flex-direction: column; gap: 1.2rem; }
+  .fcp-footer { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .fcp-download-btn { width: 100%; justify-content: center; }
+}
+
+/* ─────────────────────────────────────────────
+   DARK MODE
+   The app sets data-theme="dark" on <html>.
+   CSS variables (--bg-surface, --border-subtle etc.)
+   already adapt automatically. Only hardcoded
+   light-only values need explicit overrides here.
+   ───────────────────────────────────────────── */
+[data-theme="dark"] .fcp-quick-tip-item {
+  background: hsl(220, 18%, 13%);
+  border-color: hsl(220, 14%, 20%);
+}
+[data-theme="dark"] .fcp-quick-tip-item:hover {
+  border-color: hsl(200, 40%, 30%);
+  background: hsl(200, 20%, 14%);
+}
+[data-theme="dark"] .fcp-quick-tip-icon {
+  background: hsla(200, 50%, 50%, 0.14);
+  color: hsl(200, 60%, 62%);
+}
+[data-theme="dark"] .fcp-related-icon {
+  background: hsla(200, 45%, 50%, 0.14);
+  color: hsl(200, 55%, 62%);
+}
+[data-theme="dark"] .fcp-related-item:hover .fcp-related-title { color: hsl(200, 60%, 68%); }
+[data-theme="dark"] .fcp-view-all-btn {
+  color: hsl(200, 55%, 65%);
+  border-color: hsla(200, 50%, 50%, 0.25);
+  background: hsla(200, 50%, 50%, 0.07);
+}
+[data-theme="dark"] .fcp-view-all-btn:hover {
+  background: hsla(200, 50%, 50%, 0.14);
+  border-color: hsla(200, 50%, 50%, 0.45);
+}
+[data-theme="dark"] .fcp-footer {
+  background: linear-gradient(90deg, hsla(220, 30%, 15%, 0.5) 0%, transparent 100%);
+}
+[data-theme="dark"] .fcp-footer-link { color: hsl(200, 60%, 62%); }
+[data-theme="dark"] .fcp-footer-link:hover { color: hsl(200, 60%, 72%); }
+[data-theme="dark"] .fcp-download-btn {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.18);
+}
+[data-theme="dark"] .fcp-download-btn:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.35);
+}
+[data-theme="dark"] .fcp-checkbox {
+  border-color: hsl(220, 14%, 38%);
+}
+[data-theme="dark"] .fcp-checklist-item:hover .fcp-checkbox {
+  border-color: hsl(200, 55%, 55%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fcp-quick-tip-item {
+    background: hsl(220, 18%, 13%);
+    border-color: hsl(220, 14%, 20%);
+  }
+  :root:not([data-theme="light"]) .fcp-quick-tip-icon {
+    background: hsla(200, 50%, 50%, 0.14);
+    color: hsl(200, 60%, 62%);
+  }
+  :root:not([data-theme="light"]) .fcp-related-icon {
+    background: hsla(200, 45%, 50%, 0.14);
+    color: hsl(200, 55%, 62%);
+  }
+  :root:not([data-theme="light"]) .fcp-view-all-btn {
+    color: hsl(200, 55%, 65%);
+    border-color: hsla(200, 50%, 50%, 0.25);
+    background: hsla(200, 50%, 50%, 0.07);
+  }
+  :root:not([data-theme="light"]) .fcp-footer-link { color: hsl(200, 60%, 62%); }
+  :root:not([data-theme="light"]) .fcp-download-btn {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.18);
+  }
+  :root:not([data-theme="light"]) .fcp-checkbox { border-color: hsl(220, 14%, 38%); }
+}
