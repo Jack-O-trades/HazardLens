@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    DashboardPage v2 ΓÇö LIGHT THEME (exact image match)
    ============================================================ */
 
@@ -640,4 +640,10 @@ html.hl-light .topbar-chevron { color: #5f6368; }
   .dash-main { flex-direction: column; }
   .dash-map-panel { height: 52vw; min-height: 250px; flex: none; }
   .dash-alerts-panel { width: 100%; min-width: 0; flex: 1; }
+}
+
+@media (min-width: 769px) {
+  .dash-filterbar {
+    overflow: visible !important;
+  }
 }

@@ -55,7 +55,7 @@ export default function LiveMapPage() {
   // Mode: 'live' or 'demo'
   const [appMode, setAppMode] = useState('live')
 
-  // ΓöÇΓöÇ Theme Effect ΓöÇΓöÇ
+  // ── Theme Effect ──
   useEffect(() => {
     localStorage.setItem('s32-theme', theme)
     document.documentElement.classList.toggle('hl-dark', theme === 'dark')
@@ -63,13 +63,13 @@ export default function LiveMapPage() {
 
   useEffect(() => { localStorage.setItem('s32-mapstyle', mapBaseStyle) }, [mapBaseStyle])
 
-  // ΓöÇΓöÇ Map Styles ΓöÇΓöÇ
+  // ── Map Styles ──
   const MAP_STYLES = {
-    hybrid:       { label: 'Satellite',     icon: '≡ƒ¢░∩╕Å', tile: 'hybrid',          ext: 'jpg' },
-    'streets-dk': { label: 'Streets Dark',  icon: '≡ƒîÖ', tile: 'streets-v2-dark', ext: 'png' },
-    'streets-lt': { label: 'Streets Light', icon: 'ΓÿÇ∩╕Å', tile: 'streets-v2-light', ext: 'png' },
-    outdoor:      { label: 'Outdoor',       icon: '≡ƒÅö∩╕Å', tile: 'outdoor-v2',       ext: 'png' },
-    topo:         { label: 'Topographic',   icon: '≡ƒù║∩╕Å', tile: 'topo-v2',          ext: 'png' },
+    hybrid:       { label: 'Satellite',     icon: '🛰️', tile: 'hybrid',          ext: 'jpg' },
+    'streets-dk': { label: 'Streets Dark',  icon: '🌙', tile: 'streets-v2-dark', ext: 'png' },
+    'streets-lt': { label: 'Streets Light', icon: '☀️', tile: 'streets-v2-light', ext: 'png' },
+    outdoor:      { label: 'Outdoor',       icon: '🏔️', tile: 'outdoor-v2',       ext: 'png' },
+    topo:         { label: 'Topographic',   icon: '🗺️', tile: 'topo-v2',          ext: 'png' },
   }
 
   const mapStyleUrl = useMemo(() => {
@@ -107,7 +107,7 @@ export default function LiveMapPage() {
     }
   }, [mapBaseStyle, theme])
 
-  // ΓöÇΓöÇ Geolocation + Socket ΓöÇΓöÇ
+  // ── Geolocation + Socket ──
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -139,7 +139,7 @@ export default function LiveMapPage() {
     return () => socket.disconnect()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ΓöÇΓöÇ Weather (OpenMeteo - free, no key needed) ΓöÇΓöÇ
+  // ── Weather (OpenMeteo - free, no key needed) ──
   const fetchWeather = async (lat, lng) => {
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&timezone=auto`
@@ -176,7 +176,7 @@ export default function LiveMapPage() {
   }
 
   const weatherIcon = (code) => {
-    if (code === 0) return 'ΓÿÇ∩╕Å'
+    if (code === 0) return '☀️'
     if (code <= 3) return 'Γ¢à'
     if (code <= 48) return '≡ƒî½∩╕Å'
     if (code <= 67) return '≡ƒîº∩╕Å'
@@ -185,7 +185,7 @@ export default function LiveMapPage() {
     return 'Γ¢ê∩╕Å'
   }
 
-  // ΓöÇΓöÇ Search ΓöÇΓöÇ
+  // ── Search ──
   const handleSearch = async (e) => {
     e.preventDefault()
     if (!searchQuery.trim()) return
@@ -244,7 +244,7 @@ export default function LiveMapPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // ΓöÇΓöÇ Routing ΓöÇΓöÇ
+  // ── Routing ──
   const handleMapClick = async (e) => {
     if (!userLocation) return alert('Waiting for your location. Check browser location permissions.')
     const dest = [e.lngLat.lng, e.lngLat.lat]
@@ -322,7 +322,7 @@ export default function LiveMapPage() {
     return <ArrowUp size={16} />
   }
 
-  // ΓöÇΓöÇ Theme ΓöÇΓöÇ
+  // ── Theme ──
   const isDark = theme === 'dark'
   const bgUI = isDark ? 'rgba(10, 17, 35, 0.96)' : 'rgba(255,255,255,0.96)'
   const borderUI = isDark ? 'rgba(51,65,85,0.8)' : '#e2e8f0'
@@ -355,7 +355,7 @@ export default function LiveMapPage() {
     }
   }
 
-  // ΓöÇΓöÇ Map Data ΓöÇΓöÇ
+  // ── Map Data ──
   const hazardPolygon = useMemo(() => {
     if (!incident || incident.confidence < 50 || !incident.hazardCenter) return null
     const [lng, lat] = incident.hazardCenter
@@ -451,10 +451,10 @@ export default function LiveMapPage() {
           {weather && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', borderRadius: '8px', border: `1px solid ${borderUI}`, fontSize: '12px' }}>
               <span style={{ fontSize: '16px' }}>{weatherIcon(weather.code)}</span>
-              <span style={{ fontWeight: 700, color: textUI }}>{weather.temp}┬░C</span>
+              <span style={{ fontWeight: 700, color: textUI }}>{weather.temp}°C</span>
               <span style={{ color: textSubUI }}>{weatherDesc(weather.code)}</span>
-              {weather.rain > 0 && <span style={{ color: '#60a5fa', fontWeight: 600 }}>≡ƒÆº{weather.rain}mm</span>}
-              <span style={{ color: textSubUI }}>≡ƒÆ¿{weather.wind}km/h</span>
+              {weather.rain > 0 && <span style={{ color: '#60a5fa', fontWeight: 600 }}>💧{weather.rain}mm</span>}
+              <span style={{ color: textSubUI }}>💨{weather.wind}km/h</span>
             </div>
           )}
 
@@ -489,7 +489,7 @@ export default function LiveMapPage() {
         </div>
       </div>
 
-      {/* ΓöÇΓöÇ MAP AREA ΓöÇΓöÇ */}
+      {/* ── MAP AREA ── */}
       <div className="dash-main" style={{ position: 'relative' }}>
 
         {/* Left Panels */}
@@ -504,7 +504,7 @@ export default function LiveMapPage() {
                   <Thermometer size={16} color="#f59e0b" />
                   <div>
                     <div style={{ fontSize: '11px', color: textSubUI }}>Temperature</div>
-                    <div style={{ fontSize: '16px', fontWeight: 700 }}>{weather.temp}┬░C</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700 }}>{weather.temp}°C</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -531,7 +531,7 @@ export default function LiveMapPage() {
               </div>
               {weather.code >= 51 && (
                 <div style={{ marginTop: '10px', padding: '8px', background: 'rgba(239,68,68,0.1)', borderLeft: '3px solid #ef4444', borderRadius: '4px', fontSize: '12px', color: '#ef4444', fontWeight: 600 }}>
-                  ΓÜá∩╕Å Heavy precipitation ΓÇö flood risk elevated
+                  ⚠️ Heavy precipitation — flood risk elevated
                 </div>
               )}
             </div>
@@ -546,7 +546,7 @@ export default function LiveMapPage() {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: textUI }}>{incident.title}</h3>
-                  <div style={{ fontSize: '11px', color: textSubUI, fontWeight: 600, marginTop: '1px' }}>LIVE INCIDENT {appMode === 'demo' ? '┬╖ DEMO MODE' : ''}</div>
+                  <div style={{ fontSize: '11px', color: textSubUI, fontWeight: 600, marginTop: '1px' }}>LIVE INCIDENT {appMode === 'demo' ? '· DEMO MODE' : ''}</div>
                 </div>
               </div>
 
@@ -564,7 +564,7 @@ export default function LiveMapPage() {
               {incident.status === 'CONFIRMED' && (
                 <div style={{ marginBottom: '16px', padding: '10px 14px', background: 'rgba(239,68,68,0.1)', borderLeft: '4px solid #ef4444', borderRadius: '6px' }}>
                   <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 700, marginBottom: '3px' }}>RECOMMENDED ACTION</div>
-                  <div style={{ fontSize: '14px', color: textUI, fontWeight: 700 }}>AVOID AFFECTED ROAD ┬╖ TAKE SAFE ROUTE</div>
+                  <div style={{ fontSize: '14px', color: textUI, fontWeight: 700 }}>AVOID AFFECTED ROAD · TAKE SAFE ROUTE</div>
                 </div>
               )}
 
@@ -574,7 +574,7 @@ export default function LiveMapPage() {
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px' }}>
                     <div style={{ color: '#10b981', marginTop: '2px', flexShrink: 0 }}><Check size={13} strokeWidth={3} /></div>
                     <div>
-                      <div style={{ color: textSubUI, fontSize: '10px', fontWeight: 600, marginBottom: '1px' }}>{ev.time} ┬╖ {ev.source}</div>
+                      <div style={{ color: textSubUI, fontSize: '10px', fontWeight: 600, marginBottom: '1px' }}>{ev.time} · {ev.source}</div>
                       <div style={{ color: textUI, fontWeight: 500 }}>{ev.message}</div>
                     </div>
                   </div>
@@ -610,7 +610,7 @@ export default function LiveMapPage() {
             ) : (
               <>
                 <div style={{ fontSize: '11px', color: textSubUI, fontWeight: 700, marginBottom: '6px' }}>
-                  {oldRouteData ? <span style={{ color: '#10b981' }}>Γ£ô SAFE ROUTE ACTIVE</span> : 'OPTIMAL ROUTE'}
+                  {oldRouteData ? <span style={{ color: '#10b981' }}>✓ SAFE ROUTE ACTIVE</span> : 'OPTIMAL ROUTE'}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                   <span style={{ fontSize: '30px', fontWeight: 900, color: '#10b981', lineHeight: 1 }}>{formatDuration(routeData.duration)}</span>
@@ -728,7 +728,7 @@ export default function LiveMapPage() {
         {/* Helper hint */}
         {!destination && userLocation && (
           <div style={{ position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', color: 'white', padding: '12px 24px', borderRadius: '24px', fontSize: '13px', fontWeight: 700, boxShadow: '0 10px 30px rgba(59,130,246,0.4)', pointerEvents: 'none', animation: 'bounce 2s infinite', whiteSpace: 'nowrap', zIndex: 10 }}>
-            ≡ƒû▒∩╕Å Click anywhere on the map to set your destination
+            📍 Click anywhere on the map to set your destination
           </div>
         )}
       </div>
@@ -737,10 +737,10 @@ export default function LiveMapPage() {
       <div className="dash-statusbar" style={{ backgroundColor: isDark ? '#060d1f' : '#f1f5f9', borderTop: `1px solid ${borderUI}`, color: textSubUI, padding: '4px 16px', fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <span>S32 Nav-Core Operational</span>
-          <span>ΓÇó</span>
+          <span>•</span>
           <span>Routing: OSRM</span>
-          <span>ΓÇó</span>
-          <span style={{ color: appMode === 'demo' ? '#f59e0b' : '#10b981', fontWeight: 700 }}>{appMode === 'demo' ? 'ΓÜí DEMO MODE' : '≡ƒƒó LIVE MODE'}</span>
+          <span>•</span>
+          <span style={{ color: appMode === 'demo' ? '#f59e0b' : '#10b981', fontWeight: 700 }}>{appMode === 'demo' ? '⚠️ DEMO MODE' : '🟢 LIVE MODE'}</span>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           <Shield size={11} /> Live Multi-Hazard Monitoring

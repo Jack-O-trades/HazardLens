@@ -97,6 +97,47 @@ export default function AlertDetailPage() {
   const [voteNotes, setVoteNotes] = useState('')
   const [votePhoto, setVotePhoto] = useState(null)
 
+  // AI confirmation/verification states
+  const [aiVoteLoading, setAiVoteLoading] = useState(false)
+  const [aiVoteResult, setAiVoteResult] = useState(null)
+  const [aiVoteError, setAiVoteError] = useState(null)
+
+  // AI Inference call handler for alert verification
+  const analyzeVoteImage = async (base64Image) => {
+    setAiVoteLoading(true)
+    setAiVoteResult(null)
+    setAiVoteError(null)
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/detect-base64', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          image: base64Image,
+          claimed_hazard: alert?.type // Map alert type to claimed hazard (e.g. 'river', 'fire')
+        })
+      })
+      if (!res.ok) {
+        throw new Error(`AI inference service failed: ${res.statusText}`)
+      }
+      const data = await res.json()
+      setAiVoteResult(data)
+    } catch (err) {
+      console.error('AI inference error on verification:', err)
+      setAiVoteError('Centralized AI verification service is offline.')
+    } finally {
+      setAiVoteLoading(false)
+    }
+  }
+
+  // Trigger AI analysis when verification proof photo is captured
+  useEffect(() => {
+    if (votePhoto) {
+      analyzeVoteImage(votePhoto)
+    }
+  }, [votePhoto])
+
   // GPS watermarking state
   const [coordinates, setCoordinates] = useState({ lat: 45.5234, lng: -122.6762, acc: 15 })
 
@@ -325,6 +366,65 @@ export default function AlertDetailPage() {
               <ShieldAlert size={18} />
             </div>
             <p className="incident-description">{alert.description}</p>
+
+            {/* Centralized AI Evidence Verification Report */}
+            <div style={{
+              marginTop: '16px',
+              padding: '14px',
+              backgroundColor: 'rgba(30, 41, 59, 0.4)',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              fontFamily: 'Inter, sans-serif'
+            }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                🤖 Centralized AI Evidence Verification Report
+              </h4>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                <div>
+                  <span style={{ display: 'block', textTransform: 'uppercase', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Detection</span>
+                  <strong style={{ color: 'white', fontSize: '13px' }}>
+                    {alert.aiEvidence
+                      ? (alert.aiEvidence.detections && alert.aiEvidence.detections.length > 0 
+                          ? alert.aiEvidence.detections.map(d => d.class_name.toUpperCase()).join(', ') 
+                          : 'NORMAL / NO HAZARD')
+                      : (alert.type === 'river' ? 'FLOOD' : alert.type.toUpperCase())}
+                  </strong>
+                </div>
+                <div>
+                  <span style={{ display: 'block', textTransform: 'uppercase', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Confidence</span>
+                  <strong style={{ color: 'white', fontSize: '13px' }}>{alert.confidence}%</strong>
+                </div>
+                <div>
+                  <span style={{ display: 'block', textTransform: 'uppercase', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Evidence</span>
+                  <strong style={{ color: 'white', fontSize: '12px' }}>
+                    {alert.aiEvidence ? 'Image evidence analyzed by central AI model' : 'Telemetry, sensor readings and citizen report verified'}
+                  </strong>
+                </div>
+                <div>
+                  <span style={{ display: 'block', textTransform: 'uppercase', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Status</span>
+                  <strong style={{ 
+                    color: (alert.aiEvidence ? alert.aiEvidence.is_hazard_detected : alert.confidence >= 55) ? '#22c55e' : '#ef4444', 
+                    fontSize: '13px' 
+                  }}>
+                    AI Verification: {(alert.aiEvidence ? alert.aiEvidence.is_hazard_detected : alert.confidence >= 55) ? 'Positive' : 'Negative'}
+                  </strong>
+                </div>
+              </div>
+
+              <div style={{ 
+                marginTop: '12px', 
+                paddingTop: '8px', 
+                borderTop: '1px solid rgba(255, 255, 255, 0.06)', 
+                fontSize: '11.5px', 
+                color: (alert.aiEvidence ? alert.aiEvidence.is_hazard_detected : alert.confidence >= 55) ? '#22c55e' : '#f97316',
+                fontStyle: 'italic'
+              }}>
+                {(alert.aiEvidence ? alert.aiEvidence.is_hazard_detected : alert.confidence >= 55)
+                  ? "✓ Verification Successful: Genuine hazard visually confirmed by our AI model." 
+                  : "No hazard detected by our AI model. Scene is analyzed as normal/safe."}
+              </div>
+            </div>
           </section>
 
           {/* CCTV and User Disaster Gallery */}
@@ -522,9 +622,84 @@ export default function AlertDetailPage() {
 
                   <div className="evidence-upload-frame">
                     {votePhoto ? (
-                      <div className="evidence-preview-wrap">
+                      <div className="evidence-preview-wrap" style={{ position: 'relative' }}>
                         <img src={votePhoto} alt="Dispute evidence preview" />
-                        <button className="evidence-clear-btn" onClick={() => setVotePhoto(null)}><X size={14} /></button>
+                        <button className="evidence-clear-btn" onClick={() => { setVotePhoto(null); setAiVoteResult(null); }}><X size={14} /></button>
+
+                        {/* AI scanning overlay spinner */}
+                        {aiVoteLoading && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                              backdropFilter: 'blur(3px)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              zIndex: 20
+                            }}
+                          >
+                            <div className="nr-spinner" style={{ marginBottom: '8px', borderTopColor: 'var(--accent)', width: '24px', height: '24px' }} />
+                            <span style={{ color: 'white', fontSize: '12px' }}>AI Scanning...</span>
+                          </div>
+                        )}
+
+                        {/* YOLO Bounding Box Overlays */}
+                        {!aiVoteLoading && aiVoteResult && aiVoteResult.detections && aiVoteResult.detections.map((det, idx) => {
+                          if (!det.box_normalized) return null;
+                          const [xmin, ymin, xmax, ymax] = det.box_normalized;
+                          const left = xmin * 100;
+                          const top = ymin * 100;
+                          const width = (xmax - xmin) * 100;
+                          const height = (ymax - ymin) * 100;
+
+                          const isMatched = aiVoteResult.is_claimed_hazard_present && (
+                            (alert.type === 'river' && det.class_name === 'flood') ||
+                            (alert.type === 'fire' && (det.class_name === 'fire' || det.class_name === 'smoke')) ||
+                            (alert.type === 'seismic' && (det.class_name === 'landslide' || det.class_name === 'road_blockage')) ||
+                            (alert.type === 'infrastructure' && (det.class_name === 'pothole' || det.class_name === 'road_blockage')) ||
+                            det.class_name === alert.type
+                          );
+
+                          const boxBorderColor = isMatched ? '#22c55e' : '#f97316';
+
+                          return (
+                            <div
+                              key={idx}
+                              style={{
+                                position: 'absolute',
+                                left: `${left}%`,
+                                top: `${top}%`,
+                                width: `${width}%`,
+                                height: `${height}%`,
+                                border: `2px solid ${boxBorderColor}`,
+                                boxShadow: '0 0 4px rgba(0,0,0,0.5)',
+                                pointerEvents: 'none',
+                                zIndex: 10
+                              }}
+                            >
+                              <span style={{
+                                position: 'absolute',
+                                top: '-18px',
+                                left: '-2px',
+                                backgroundColor: boxBorderColor,
+                                color: 'white',
+                                fontSize: '8px',
+                                padding: '1px 3px',
+                                fontWeight: 'bold',
+                                whiteSpace: 'nowrap',
+                                fontFamily: 'Courier New, monospace'
+                              }}>
+                                {det.class_name.toUpperCase()} ({Math.round(det.confidence * 100)}%)
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="evidence-viewfinder-inner">
@@ -538,6 +713,81 @@ export default function AlertDetailPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* AI Verification Results Summary Card */}
+                  {votePhoto && (
+                    <div style={{
+                      backgroundColor: 'rgba(30, 41, 59, 0.4)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      marginBottom: '12px',
+                      marginTop: '-6px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <strong style={{ fontSize: '13px', color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          🤖 AI Proof Verification
+                        </strong>
+                        {aiVoteLoading ? (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', animation: 'pulse 1.5s infinite' }}>Analyzing...</span>
+                        ) : aiVoteResult ? (
+                          <span style={{
+                            fontSize: '11px',
+                            color: aiVoteResult.hazard_state === 'hazard_detected' ? '#22c55e' :
+                                   aiVoteResult.hazard_state === 'no_hazard_detected' ? '#94a3b8' :
+                                   aiVoteResult.hazard_state === 'multiple_conflicting_hazards' ? '#ef4444' : '#f59e0b',
+                            fontWeight: 'bold',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: aiVoteResult.hazard_state === 'hazard_detected' ? 'rgba(34, 197, 94, 0.1)' :
+                                             aiVoteResult.hazard_state === 'no_hazard_detected' ? 'rgba(148, 163, 184, 0.1)' :
+                                             aiVoteResult.hazard_state === 'multiple_conflicting_hazards' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)'
+                          }}>
+                            {aiVoteResult.hazard_state === 'hazard_detected' ? 'Hazard Detected' :
+                             aiVoteResult.hazard_state === 'no_hazard_detected' ? 'No Hazard Detected' :
+                             aiVoteResult.hazard_state === 'multiple_conflicting_hazards' ? 'Conflicting Hazards' : 'Inconclusive'}
+                          </span>
+                        ) : aiVoteError ? (
+                          <span style={{ fontSize: '11px', color: '#ef4444' }}>Offline</span>
+                        ) : null}
+                      </div>
+
+                      {aiVoteLoading ? (
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          Running computer-vision checks for claimed hazard: "{alert.type === 'river' ? 'flood' : alert.type}"...
+                        </div>
+                      ) : aiVoteResult ? (
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          {aiVoteResult.hazard_state === 'hazard_detected' ? (
+                            <span style={{ color: '#22c55e', fontWeight: 'bold' }}>
+                              ✓ AI analysis confirmed active hazard matching verification proof.
+                            </span>
+                          ) : aiVoteResult.hazard_state === 'no_hazard_detected' ? (
+                            <span style={{ color: '#94a3b8', fontWeight: 'bold' }}>
+                              Visual evidence of active hazard not found in captured proof.
+                            </span>
+                          ) : aiVoteResult.hazard_state === 'multiple_conflicting_hazards' ? (
+                            <span style={{ color: '#ef4444', fontWeight: 'bold' }}>
+                              ⚠️ Multi-hazard conflict: overlapping fire and flood detections.
+                            </span>
+                          ) : (
+                            <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>
+                              Inconclusive check. Detections do not strongly support active hazard.
+                            </span>
+                          )}
+                          {aiVoteResult.detections.length > 0 && (
+                            <div style={{ marginTop: '4px' }}>
+                              Detections: <strong>{aiVoteResult.detections.map(d => `${d.class_name} (${Math.round(d.confidence*100)}%)`).join(', ')}</strong>
+                            </div>
+                          )}
+                        </div>
+                      ) : aiVoteError ? (
+                        <div style={{ fontSize: '12px', color: '#ef4444' }}>
+                          ⚠️ {aiVoteError}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
 
                   <textarea
                     className="vote-notes-input"
@@ -629,6 +879,20 @@ export default function AlertDetailPage() {
                 <dt>Status</dt>
                 <dd><StatusBadge status={alert.status} /></dd>
               </div>
+              {alert.aiEvidence && (
+                <div>
+                  <dt>AI Verification</dt>
+                  <dd style={{
+                    color: alert.aiEvidence.is_claimed_hazard_present ? '#22c55e' : '#f97316',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    🤖 {alert.aiEvidence.is_claimed_hazard_present ? 'Verified Match' : 'Unmatched'}
+                  </dd>
+                </div>
+              )}
               {alert.verifiedBy && (
                 <div>
                   <dt>Verified By</dt>

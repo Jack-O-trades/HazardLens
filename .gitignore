@@ -29,3 +29,15 @@ dist-ssr
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Python and AI service exclusions
+__pycache__/
+*.pyc
+ai_service/.venv/
+ai_service/dataset/
+ai_service/dataset_color_bias/
+ai_service/runs/
+*.pt
+!ai_service/weights/best.pt
+
+runs/
