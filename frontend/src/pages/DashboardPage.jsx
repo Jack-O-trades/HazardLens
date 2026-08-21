@@ -347,7 +347,7 @@ function LatestAlertRow({ alert, onClick }) {
   const quiet = alert.severity === 'low' || alert.confidence < 55
 
   return (
-    <button className={`dash-alert-row ${quiet ? 'dash-alert-row--quiet' : ''}`} onClick={() => onClick(alert.id)}>
+    <button className={`dash-alert-row dash-alert-row--${alert.severity} ${quiet ? 'dash-alert-row--quiet' : ''}`} onClick={() => onClick(alert.id)}>
       <span className="dash-alert-row-dot" style={{ background: dot, color: dot }} />
       <div className="dash-alert-row-body">
         <span className="dash-alert-row-title">{alert.title}</span>
@@ -443,17 +443,28 @@ export default function DashboardPage() {
   return (
     <div className="dash-page animate-fade-in">
 
-      {/* Greeting header */}
-      <div className="dash-greeting-row">
-        <div>
+      {/* Greeting hero banner */}
+      <div className="dash-greeting-hero">
+        <div className="dash-greeting-content">
+          <p className="dash-greeting-eyebrow">
+            <span className="dash-greeting-eyebrow-dot" />
+            Live Monitoring Active
+          </p>
           <h1 className="dash-greeting-title">
-            {getGreeting()}, {user?.name?.split(' ')[0] || 'there'}
+            {getGreeting()},{' '}
+            <span className="dash-greeting-name">{user?.name?.split(' ')[0] || 'there'}</span>
           </h1>
           <p className="dash-greeting-sub">Stay informed. Stay prepared.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate('/dashboard/report/new')}>
-          Quick Report <ArrowRight size={15} />
-        </button>
+        <div className="dash-greeting-actions">
+          <span className={`dash-risk-badge dash-risk-badge--${risk.tone}`}>
+            <Shield size={13} />
+            {risk.label} Risk
+          </span>
+          <button className="btn btn-primary" onClick={() => navigate('/dashboard/report/new')}>
+            Quick Report <ArrowRight size={15} />
+          </button>
+        </div>
       </div>
 
       {/* Stat cards */}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   LayoutGrid, Droplets, Wind, Flame, Activity, ShieldCheck,
   Landmark, ClipboardCheck, Home, Cloud, Users, Info, FileText,
@@ -28,6 +29,7 @@ const RESOURCE_CARDS = [
     desc: 'Step-by-step checklist to help you and your household prepare for flooding.',
     tag: { label: 'Checklist', icon: ClipboardCheck, tone: 'blue' },
     action: 'View',
+    route: '/dashboard/resources/flood-checklist',
     categories: ['flood', 'preparedness'],
   },
   {
@@ -38,6 +40,7 @@ const RESOURCE_CARDS = [
     desc: 'Understanding alert confidence scores and how they help you make informed decisions.',
     tag: { label: 'Guide', icon: Info, tone: 'blue' },
     action: 'View',
+    route: '/dashboard/resources/confidence-scores',
     categories: ['preparedness', 'official'],
   },
   {
@@ -46,8 +49,9 @@ const RESOURCE_CARDS = [
     iconTone: 'peach',
     title: 'Home Emergency Kit Guide',
     desc: 'A practical guide to building and maintaining an emergency kit at home.',
-    tag: { label: 'PDF', icon: FileText, tone: 'red' },
-    action: 'Download',
+    tag: { label: 'Guide', icon: FileText, tone: 'red' },
+    action: 'View',
+    route: '/dashboard/resources/emergency-kit',
     categories: ['preparedness'],
   },
   {
@@ -58,6 +62,7 @@ const RESOURCE_CARDS = [
     desc: 'Trusted agencies and websites for weather forecasts and warnings.',
     tag: { label: 'Link', icon: Link2, tone: 'blue' },
     action: 'View',
+    route: '/dashboard/resources/weather-sources',
     categories: ['official'],
   },
   {
@@ -68,6 +73,7 @@ const RESOURCE_CARDS = [
     desc: 'How to report hazards and incidents effectively in community.',
     tag: { label: 'Guide', icon: Info, tone: 'yellow' },
     action: 'View',
+    route: '/dashboard/resources/community-reporting',
     categories: ['official', 'preparedness'],
   },
 ]
@@ -80,7 +86,7 @@ const EMERGENCY_CONTACTS = [
   { name: 'Text Emergency Alerts', detail: 'Text "SAFE" to 0400 000 000', icon: MessageSquare, tone: 'orange' },
 ]
 
-function ResourceCard({ card }) {
+function ResourceCard({ card, onView }) {
   const CardIcon = card.icon
   const TagIcon = card.tag.icon
 
@@ -96,7 +102,11 @@ function ResourceCard({ card }) {
           <TagIcon size={13} />
           {card.tag.label}
         </span>
-        <button type="button" className="rp2-card-action">
+        <button
+          type="button"
+          className="rp2-card-action"
+          onClick={() => onView(card)}
+        >
           {card.action}
           {card.action === 'Download' ? <Download size={14} /> : <ChevronRight size={14} />}
         </button>
@@ -133,10 +143,19 @@ function EmergencyRow({ contact }) {
 
 export default function ResourcesPage() {
   const [activeFilter, setActiveFilter] = useState('all')
+  const navigate = useNavigate()
 
   const visibleCards = activeFilter === 'all'
     ? RESOURCE_CARDS
     : RESOURCE_CARDS.filter(c => c.categories.includes(activeFilter))
+
+  const handleCardAction = (card) => {
+    if (card.route) {
+      navigate(card.route)
+    } else if (card.action === 'Download') {
+      window.print()
+    }
+  }
 
   return (
     <div className="resources-page-v2 animate-fade-in">
@@ -167,7 +186,7 @@ export default function ResourcesPage() {
 
       <div className="rp2-layout">
         <div className="rp2-cards-grid">
-          {visibleCards.map(card => <ResourceCard key={card.id} card={card} />)}
+          {visibleCards.map(card => <ResourceCard key={card.id} card={card} onView={handleCardAction} />)}
           {visibleCards.length === 0 && (
             <p className="rp2-empty">No resources in this category yet.</p>
           )}

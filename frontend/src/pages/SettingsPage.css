@@ -797,3 +797,19 @@ html.hl-light .sp-page {
   .sp-profile-avatar { width: 52px; height: 52px; font-size: 1.1rem; }
   .sp-persona-grid { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 480px) {
+  .sp-container { padding: 0 12px; }
+  .sp-title { font-size: 1.3rem; }
+  .sp-header { padding: 12px 0 10px; margin-bottom: 12px; }
+  .sp-card-header { padding: 14px 14px 12px; }
+  .sp-card-body { padding: 14px; }
+  .sp-profile-row { gap: 12px; }
+  .sp-profile-avatar { width: 44px; height: 44px; font-size: 0.95rem; }
+  .sp-row-2col { gap: 14px; }
+}
+
+@media (max-width: 360px) {
+  .sp-title { font-size: 1.1rem; }
+  .sp-container { padding: 0 10px; }
+}

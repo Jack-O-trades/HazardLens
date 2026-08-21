@@ -144,3 +144,28 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
 }
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .login-roles {
+    grid-template-columns: 1fr;
+  }
+
+  /* Last-child span override no longer needed in single-column */
+  .login-roles > *:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .login-role-btn {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .login-title {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .login-role-name { font-size: 0.8rem; }
+  .login-role-desc { font-size: 0.67rem; }
+}

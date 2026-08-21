@@ -642,8 +642,7 @@ html.hl-light .topbar-chevron { color: #5f6368; }
   .dash-alerts-panel { width: 100%; min-width: 0; flex: 1; }
 }
 
-@media (min-width: 769px) {
-  .dash-filterbar {
-    overflow: visible !important;
-  }
+@media (max-width: 480px) {
+  .dash-map-panel { height: 60vw; min-height: 220px; }
+  .dash-alerts-panel { max-height: 45vh; }
 }

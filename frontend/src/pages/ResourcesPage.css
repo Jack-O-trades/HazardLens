@@ -51,11 +51,9 @@
 }
 
 /* ── Dark mode override ──────────────────────────────────────
-   Matches the dashboard's real dark theme: near-black page bg,
-   dark card surfaces one step lighter, subtle low-contrast
-   borders, and the same green accent used for "LIVE" / active
-   checkboxes elsewhere in the app. ── */
-.dark .resources-page-v2 {
+   App sets data-theme="dark" on <html>. Mirror with media query
+   for OS-level dark mode when no explicit theme is saved. ── */
+[data-theme="dark"] .resources-page-v2 {
   --rp2-bg: #0a0b0f;
   --rp2-surface: #13151b;
   --rp2-border: #232631;
@@ -82,6 +80,29 @@
   --rp2-orange-fg: #f5a13d;
   --rp2-yellow-bg: #2e260e;
   --rp2-yellow-fg: #eecb5f;
+}
+
+/* OS-level dark: fires when user hasn't saved a theme in localStorage */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .resources-page-v2 {
+    --rp2-bg: #0a0b0f;
+    --rp2-surface: #13151b;
+    --rp2-border: #232631;
+    --rp2-text-primary: #f2f3f5;
+    --rp2-text-secondary: #98a0ab;
+    --rp2-text-muted: #676d78;
+    --rp2-accent: #34a880;
+    --rp2-accent-dark: #1f6b52;
+    --rp2-shadow: 0 1px 3px rgba(0,0,0,0.45);
+    --rp2-mint-bg: #12291f; --rp2-mint-fg: #4ade95;
+    --rp2-blue-bg: #10202f; --rp2-blue-fg: #6ea8f5;
+    --rp2-peach-bg: #2e1d10; --rp2-peach-fg: #f0975a;
+    --rp2-green-bg: #142a1a; --rp2-green-fg: #6cc47f;
+    --rp2-red-bg: #2a1316; --rp2-red-fg: #f2726f;
+    --rp2-purple-bg: #1f1a33; --rp2-purple-fg: #b092f0;
+    --rp2-orange-bg: #2e1e0e; --rp2-orange-fg: #f5a13d;
+    --rp2-yellow-bg: #2e260e; --rp2-yellow-fg: #eecb5f;
+  }
 }
 
 .resources-page-v2.animate-fade-in {
