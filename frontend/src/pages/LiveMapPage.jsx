@@ -147,8 +147,9 @@ export default function LiveMapPage() {
   const avoidWaypointRef = useRef(null)
   const routeDataRef = useRef(null)
 
-  const activeUserLocation = appMode === 'demo' ? DEMO_CONFIG.start : userLocation
-  const activeDestination = appMode === 'demo' ? DEMO_CONFIG.dest : destination
+  const isFallbackDemo = appMode === 'demo' && !destination;
+  const activeUserLocation = isFallbackDemo ? DEMO_CONFIG.start : userLocation;
+  const activeDestination = isFallbackDemo ? DEMO_CONFIG.dest : destination;
 
   useEffect(() => { userLocationRef.current = activeUserLocation }, [activeUserLocation])
   useEffect(() => { destinationRef.current = activeDestination }, [activeDestination])
@@ -331,6 +332,10 @@ export default function LiveMapPage() {
       }
       const res = await fetch(`${API_BASE_URL}/api/routes?startLng=${start[0]}&startLat=${start[1]}&endLng=${end[0]}&endLat=${end[1]}${hazardQuery}`)
       const data = await res.json()
+
+      if (waypoint && !data.recommended_route && data.route) {
+        showNotice("⚠️ HazardLens AI service unavailable. Falling back to standard route.", "error");
+      }
 
       if (data.recommended_route || data.alternatives || data.unsafe_routes || data.route) {
 
@@ -647,10 +652,20 @@ export default function LiveMapPage() {
       setEvidenceStream([])
       setOldRouteData(null)
 
-      // Verified Phase 3.3 Demo Coordinates
-      const demoStart = DEMO_CONFIG.start;
-      const demoDest = DEMO_CONFIG.dest;
-      const demoHazard = DEMO_CONFIG.hazard;
+      // Use selected location/destination for dynamic demo, or fallback to Bhubaneswar
+      const isFallbackDemo = !destination;
+      const demoStart = isFallbackDemo ? DEMO_CONFIG.start : userLocation;
+      const demoDest = isFallbackDemo ? DEMO_CONFIG.dest : destination;
+      
+      let demoHazard = DEMO_CONFIG.hazard;
+      if (!isFallbackDemo && routeData && (routeData.recommended_route || routeData.route)) {
+        const coords = routeData.recommended_route?.geometry?.coordinates || routeData.route?.geometry?.coordinates;
+        if (coords && coords.length > 0) {
+          demoHazard = coords[Math.floor(coords.length / 2)];
+        }
+      } else if (!isFallbackDemo) {
+        demoHazard = [(demoStart[0] + demoDest[0]) / 2, (demoStart[1] + demoDest[1]) / 2];
+      }
 
       setAvoidWaypoint(demoHazard);
       setViewState(prev => ({ ...prev, longitude: demoStart[0], latitude: demoStart[1], zoom: 14.5 }));
