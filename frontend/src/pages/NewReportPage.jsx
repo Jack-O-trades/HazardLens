@@ -19,6 +19,8 @@ const SEVERITY = [
   { id: 'high',     label: 'High',     icon: '⊕' },
 ]
 
+const PYTHON_AI_URL = import.meta.env.VITE_PYTHON_AI_URL || 'http://localhost:8000'
+
 export default function NewReportPage() {
   const navigate = useNavigate()
   const { addAlert } = useAlerts()
@@ -55,7 +57,7 @@ export default function NewReportPage() {
     setAiResult(null)
     setAiError(null)
     try {
-      const res = await fetch('http://localhost:8000/api/v1/detect-base64', {
+      const res = await fetch(`${PYTHON_AI_URL}/api/v1/detect-base64`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

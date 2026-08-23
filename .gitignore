@@ -44,6 +44,7 @@ ai_service/dataset_color_bias/
 ai_service/runs/
 *.pt
 !ai_service/weights/best.pt
+!hazardlens-ai/weights/best.pt
 runs/
 
 # Data and large files

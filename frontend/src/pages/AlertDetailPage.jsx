@@ -28,6 +28,8 @@ import { SeverityBadge, StatusBadge } from '../components/shared/StatusBadge'
 import { formatDate, timeAgo } from '../data/mockData'
 import './AlertDetailPage.css'
 
+const PYTHON_AI_URL = import.meta.env.VITE_PYTHON_AI_URL || 'http://localhost:8000'
+
 const TYPE_ICONS = {
   river: '💧',
   fire: '🔥',
@@ -219,7 +221,7 @@ export default function AlertDetailPage() {
     setAiVoteResult(null)
     setAiVoteError(null)
     try {
-      const res = await fetch('http://localhost:8000/api/v1/detect-base64', {
+      const res = await fetch(`${PYTHON_AI_URL}/api/v1/detect-base64`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
