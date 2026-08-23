@@ -34,3 +34,10 @@
   .app-content { padding: 1.25rem 1rem; }
   .sidebar-overlay { display: block; }
 }
+
+.app-layout--fullwidth .sidebar {
+  display: none !important;
+}
+.app-layout--fullwidth .app-main {
+  width: 100% !important;
+}

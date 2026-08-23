@@ -98,10 +98,7 @@ export default function SettingsPage() {
   const { user, preferences, updatePreferences } = useAuth()
   const navigate = useNavigate()
 
-  useEffect(() => {
-    document.documentElement.classList.add('hl-light')
-    return () => document.documentElement.classList.remove('hl-light')
-  }, [])
+
 
   /* ── Profile state ── */
   const [profileName,  setProfileName]  = useState(user?.name || '')

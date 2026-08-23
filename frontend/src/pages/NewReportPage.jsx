@@ -7,9 +7,9 @@ import './NewReportPage.css'
 const HAZARD_TYPES = [
   { id: 'flood',          label: 'Flood',          icon: '💧' },
   { id: 'fire',           label: 'Fire',           icon: '🔥' },
-  { id: 'seismic',        label: 'Seismic',        icon: '📳' },
-  { id: 'infrastructure', label: 'Infrastructure', icon: '🏗' },
-  { id: 'weather',        label: 'Weather',        icon: '🌩' },
+  { id: 'seismic',        label: 'Landslide',      icon: '🏔️' },
+  { id: 'infrastructure', label: 'Infrastructure', icon: '🏗️' },
+  { id: 'weather',        label: 'Weather',        icon: '🌦️' },
   { id: 'other',          label: 'More',           icon: '···' },
 ]
 
@@ -301,6 +301,7 @@ export default function NewReportPage() {
           confidence: finalConfidence,
           aiEvidence: aiResult,
           reporterRole: user?.role,
+          coordinates,
         })
 
         // NOTE: field names here are a best guess based on the old
