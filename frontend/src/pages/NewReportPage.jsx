@@ -40,6 +40,7 @@ export default function NewReportPage() {
 
   // Camera integration states
   const [activeStream, setActiveStream] = useState(null)
+  const activeStreamRef = useRef(null)
   const [cameraError, setCameraError] = useState(null)
 
   // Upload simulation states
@@ -107,8 +108,8 @@ export default function NewReportPage() {
   const startCamera = useCallback(async () => {
     setCameraError(null)
     try {
-      if (activeStream) {
-        activeStream.getTracks().forEach(track => track.stop())
+      if (activeStreamRef.current) {
+        activeStreamRef.current.getTracks().forEach(track => track.stop())
       }
       
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -119,20 +120,22 @@ export default function NewReportPage() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream
       }
+      activeStreamRef.current = stream
       setActiveStream(stream)
     } catch (err) {
       console.error('Camera capture error: ', err)
       setCameraError('Unable to access device camera. Please grant camera permissions to capture live hazard evidence.')
     }
-  }, [activeStream])
+  }, [])
 
   // Stop Camera Stream
   const stopCamera = useCallback(() => {
-    if (activeStream) {
-      activeStream.getTracks().forEach(track => track.stop())
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach(track => track.stop())
+      activeStreamRef.current = null
       setActiveStream(null)
     }
-  }, [activeStream])
+  }, [])
 
   // Effect to manage camera stream lifecycle
   useEffect(() => {
@@ -329,7 +332,8 @@ export default function NewReportPage() {
 
   // ── Shared viewfinder panels ──────────────────────────────────
   const ViewfinderPanel = (
-    <div className="nr-viewfinder">
+    <>
+      <div className="nr-viewfinder">
       {uploadStatus === 'uploading' ? (
         <div className="nr-upload-loading">
           <div className="nr-spinner" />
@@ -510,14 +514,6 @@ export default function NewReportPage() {
             </div>
             
             {/* Geolocation Live Overlay */}
-            <div className="live-gps-telemetry">
-              <div className="gps-row font-mono">
-                <span className="text-green-500 font-bold animate-pulse">● LIVE TELEMETRY</span>
-                <span>LAT: {coordinates.lat}°</span>
-                <span>LNG: {coordinates.lng}°</span>
-                <span>ACC: ±{coordinates.acc}m</span>
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -570,7 +566,32 @@ export default function NewReportPage() {
         </div>
       )}
     </div>
-  )
+
+    {/* Geolocation Live Overlay (Moved below camera screen) */}
+    {!photo && !uploadStatus && (
+      <div style={{ marginTop: '16px', width: '100%' }}>
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: '12px',
+          padding: '10px 16px',
+          backgroundColor: 'rgba(30, 41, 59, 0.45)',
+          borderRadius: '8px',
+          border: '1px solid var(--border)',
+          fontFamily: 'monospace',
+          fontSize: '13px',
+          color: 'var(--text-muted)'
+        }}>
+          <span style={{ color: '#22c55e', fontWeight: 'bold' }}>● LIVE TELEMETRY</span>
+          <span>LAT: {coordinates.lat}°</span>
+          <span>LNG: {coordinates.lng}°</span>
+          <span>ACC: ±{coordinates.acc}m</span>
+        </div>
+      </div>
+    )}
+  </>
+)
 
   const LocationBar = (
     <div className="nr-location">
