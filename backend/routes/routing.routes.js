@@ -259,8 +259,16 @@ router.get('/', async (req, res) => {
       start: { lng: parseFloat(startLng), lat: parseFloat(startLat) },
       destination: { lng: parseFloat(endLng), lat: parseFloat(endLat) },
       candidates: candidateRoutes,
-      hazards: hazardList
+      hazards: hazardList,
+      image_data: null
     };
+
+    console.log(`\n[DIAGNOSTICS BEFORE FETCH]`);
+    console.log(`Start: ${JSON.stringify(reqBody.start)}`);
+    console.log(`Destination: ${JSON.stringify(reqBody.destination)}`);
+    console.log(`Candidate count: ${reqBody.candidates.length}`);
+    console.log(`Candidate IDs: ${reqBody.candidates.map(c => c.id).join(', ')}`);
+    console.log(`JSON body keys: ${Object.keys(reqBody).join(', ')}\n`);
     
     try {
       const pyResponse = await fetch(`${PYTHON_AI_URL}/analyze-route`, {

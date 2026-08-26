@@ -15,7 +15,6 @@ import notificationsRoutes from './routes/notifications.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import routingRoutes from './routes/routing.routes.js'
 import demoRoutes from './routes/demo.routes.js'
-import searchRoutes from './routes/search.routes.js'
 
 // Services
 import { initRealtime } from './services/realtime.service.js'
@@ -47,7 +46,6 @@ app.use('/api/notifications', notificationsRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/routes', routingRoutes)
 app.use('/api/demo', demoRoutes)
-app.use('/api/search', searchRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -59,24 +57,12 @@ app.get('/api/health', (_req, res) => {
   })
 })
 
-// ─── 404 catch-all ───────────────────────────────────────────
-app.use((_req, res) => {
-  res.status(404).json({ error: 'Route not found' })
-})
-
-// ─── Global error handler ────────────────────────────────────
-app.use((err, _req, res, _next) => {
-  console.error('Unhandled error:', err)
-  const status = err.statusCode || 500
-  res.status(status).json({
-    error: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  })
-})
 
 // ─── Start ───────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/hazardlens'
+
+import { ensureLocationDb } from './services/locationDbDownloader.js';
 
 async function start() {
   try {
@@ -86,6 +72,26 @@ async function start() {
     } catch (dbErr) {
       console.warn('⚠ MongoDB failed to connect. Running in memory-only mode for Map/Demo.', dbErr.message)
     }
+
+    await ensureLocationDb();
+    const { default: searchRoutes } = await import('./routes/search.routes.js');
+    app.use('/api/search', searchRoutes);
+
+    // ─── 404 catch-all ───────────────────────────────────────────
+    app.use((_req, res) => {
+      res.status(404).json({ error: 'Route not found' })
+    })
+
+    // ─── Global error handler ────────────────────────────────────
+    app.use((err, _req, res, _next) => {
+      console.error('Unhandled error:', err)
+      const status = err.statusCode || 500
+      res.status(status).json({
+        error: err.message || 'Internal server error',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      })
+    })
+
 
     httpServer.listen(PORT, () => {
       console.log(`✓ Server running on http://localhost:${PORT}`)
