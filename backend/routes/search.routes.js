@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -10,9 +9,10 @@ const __dirname = path.dirname(__filename);
 const dbPath = path.resolve(__dirname, '../../data/locations.db');
 let db;
 try {
+  const { default: Database } = await import('better-sqlite3');
   db = new Database(dbPath, { readonly: true });
 } catch (err) {
-  console.warn('Failed to open locations.db. Location search will return empty.', err.message);
+  console.warn('Failed to load better-sqlite3 or open locations.db. Offline location search will return empty.', err.message);
 }
 
 const router = Router();

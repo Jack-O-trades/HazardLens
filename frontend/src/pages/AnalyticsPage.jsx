@@ -4,7 +4,7 @@ import {
   PieChart, TrendingUp, BookOpen
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { MOCK_ALERTS } from '../data/mockData'
+import { useAlerts } from '../context/AlertsContext'
 import './AnalyticsPage.css'
 
 const TABS = [
@@ -211,13 +211,14 @@ function TrendChart({ series, days, height = 230, maxY = 500, uid = 'a' }) {
 
 export default function AnalyticsPage() {
   const { user } = useAuth()
+  const { alerts } = useAlerts()
 
   const [activeTab, setActiveTab] = useState('Risk Overview')
   const [dateRange, setDateRange] = useState('Last 7 Days')
 
-  const alertsThisWeek = MOCK_ALERTS.length
+  const alertsThisWeek = alerts.length
   const avgConfidence = Math.round(
-    MOCK_ALERTS.reduce((sum, a) => sum + (a.confidence || 0), 0) / (MOCK_ALERTS.length || 1)
+    alerts.reduce((sum, a) => sum + (a.confidence || 0), 0) / (alerts.length || 1)
   )
 
   const stats = STAT_CARDS.map(c => {

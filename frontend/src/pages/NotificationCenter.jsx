@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAlerts } from '../context/AlertsContext'
 import './NotificationCenter.css'
 
 /* ─── Static notification data matching reference image ─── */
@@ -242,12 +243,58 @@ export default function NotificationCenter() {
   const [digestMode, setDigestMode] = useState(true)
   const [quietExpanded, setQuietExpanded] = useState(true)
   const [activeTab, setActiveTab] = useState('notifications')
+  const { alerts } = useAlerts()
 
-  // Hide sidebar, full-width layout
-  useEffect(() => {
-    document.documentElement.classList.add('hl-light')
-    return () => document.documentElement.classList.remove('hl-light')
-  }, [])
+  const needsAttentionAlerts = useMemo(() => {
+    const approvedAlerts = alerts.filter(a => a.status === 'approved')
+    return approvedAlerts.map(a => {
+      let title = a.title || a.headline
+      if (title === 'Hazard reported' || !title || title === 'Hazard Report') {
+        const type = a.type || ''
+        if (type === 'river' || type === 'flood') title = "🌊 Flood Detected"
+        else if (type === 'fire') title = "🔥 Fire Detected"
+        else if (type === 'seismic' || type === 'landslide') title = "🪨 Landslide Detected"
+        else if (type === 'infrastructure' || type === 'pothole') title = "🚧 Pothole Detected"
+        else title = `${type.charAt(0).toUpperCase() + type.slice(1)} Detected`
+      }
+      
+      const chips = []
+      if (a.type === 'river') {
+        chips.push({ label: 'NOAA', type: 'source' })
+        chips.push({ label: 'Rainfall', type: 'source' })
+      } else if (a.type === 'fire') {
+        chips.push({ label: 'AirNow', type: 'source' })
+        chips.push({ label: 'Air Quality', type: 'source' })
+      } else {
+        chips.push({ label: 'Citizen', type: 'source' })
+        chips.push({ label: 'Verified', type: 'source' })
+      }
+      chips.push({ label: (a.severity.charAt(0).toUpperCase() + a.severity.slice(1)) + ' Severity', type: a.severity === 'critical' ? 'critical' : 'warning' })
+
+      const issuedTime = a.reportedAt ? new Date(a.reportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just Now'
+
+      const confidence = a.confidence ?? 85
+      let confidenceLevel = 'Medium'
+      if (confidence >= 85) confidenceLevel = 'High'
+      else if (confidence < 60) confidenceLevel = 'Low'
+
+      const action = a.action || (a.type === 'river' ? 'Avoid low-lying areas; move to higher ground.' : a.type === 'fire' ? 'Close windows; limit outdoor activity.' : 'Secure outdoor objects; stay informed.')
+
+      return {
+        id: a.id,
+        title,
+        area: a.affectedAreas?.[0] || a.location || 'Riverdale Heights',
+        chips,
+        issued: issuedTime,
+        confidence,
+        confidenceLevel,
+        action,
+        severity: a.severity || 'medium'
+      }
+    })
+  }, [alerts])
+
+
 
   return (
     <div className="nc-page">
@@ -300,7 +347,7 @@ export default function NotificationCenter() {
         <p className="nc-section-label">NEEDS ATTENTION</p>
 
         <div className="nc-attention-list">
-          {NEEDS_ATTENTION.map(item => (
+          {needsAttentionAlerts.map(item => (
             <div
               key={item.id}
               className={`nc-att-card nc-att-card--${item.severity}`}
@@ -320,7 +367,7 @@ export default function NotificationCenter() {
                 <span className={`nc-att-dot nc-att-dot--${item.severity}`} />
                 <span className="nc-att-title">{item.title}</span>
                 <span className={`nc-conf-badge nc-conf-badge--${item.severity}`}>
-                  {item.confidenceLevel} Confidence · {item.confidence}%
+                  {item.confidenceLevel} · {item.confidence}% Confidence
                 </span>
               </div>
 

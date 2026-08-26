@@ -6,7 +6,8 @@ import {
   Route as RouteIcon, Building2
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { MOCK_ALERTS, MOCK_SHELTERS, MOCK_ROUTES } from '../data/mockData'
+import { useAlerts } from '../context/AlertsContext'
+import { MOCK_SHELTERS, MOCK_ROUTES } from '../data/mockData'
 import './DashboardPage.css'
 
 /* ─── Severity dot colour map — exact image colours ─── */
@@ -346,15 +347,27 @@ function LatestAlertRow({ alert, onClick }) {
   const dot = SEV_DOT[alert.severity] || '#9ca3af'
   const quiet = alert.severity === 'low' || alert.confidence < 55
 
+  let displayTitle = alert.title
+  if (alert.title === 'Hazard reported' || !alert.title || alert.title === 'Hazard Report') {
+    const type = alert.type || ''
+    if (type === 'river' || type === 'flood') displayTitle = "🌊 Flood Detected"
+    else if (type === 'fire') displayTitle = "🔥 Fire Detected"
+    else if (type === 'seismic' || type === 'landslide') displayTitle = "🪨 Landslide Detected"
+    else if (type === 'infrastructure' || type === 'pothole') displayTitle = "🚧 Pothole Detected"
+    else displayTitle = `${type.charAt(0).toUpperCase() + type.slice(1)} Detected`
+  }
+
   return (
     <button className={`dash-alert-row dash-alert-row--${alert.severity} ${quiet ? 'dash-alert-row--quiet' : ''}`} onClick={() => onClick(alert.id)}>
       <span className="dash-alert-row-dot" style={{ background: dot, color: dot }} />
       <div className="dash-alert-row-body">
-        <span className="dash-alert-row-title">{alert.title}</span>
+        <span className="dash-alert-row-title">{displayTitle}</span>
         <span className="dash-alert-row-meta">
-          <span className="dash-alert-row-sev" style={{ color: dot }}>{alert.severity}</span>
+          <span className="dash-alert-row-sev" style={{ color: dot }}>
+            {alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)} Severity
+          </span>
           <span className="dash-alert-row-sep">•</span>
-          <span>{alert.confidence}%</span>
+          <span>{alert.confidence}% Confidence</span>
           {alert.duplicateCount > 1 && (
             <><span className="dash-alert-row-sep">•</span><span>{alert.duplicateCount} grouped</span></>
           )}
@@ -369,6 +382,7 @@ function LatestAlertRow({ alert, onClick }) {
 /* ─── Main Dashboard ─── */
 export default function DashboardPage() {
   const { user, preferences } = useAuth()
+  const { alerts } = useAlerts()
   const navigate = useNavigate()
 
   const [activeMarker, setActiveMarker] = useState(null)
@@ -379,29 +393,11 @@ export default function DashboardPage() {
   const [showRoutes, setShowRoutes]     = useState(true)
 
   const filteredAlerts = useMemo(() => {
-    const threshold = preferences?.severity ?? 2
-    const levelOrder = { low: 0, medium: 1, high: 2, critical: 3 }
-    const minLevel = ['low', 'medium', 'high', 'critical'][threshold] || 'high'
-    const mutedTypes = new Set(preferences?.mutedHazardTypes ?? [])
-    const mutedAreas = (preferences?.mutedAreas ?? []).map(area => area.toLowerCase())
-    const subscribed = new Set((preferences?.locationSubscriptions ?? []).map(area => area.toLowerCase()))
-
-    return MOCK_ALERTS.filter((alert) => {
-      if (alert.status === 'resolved') return false
-      if (mutedTypes.has(alert.type)) return false
-      if (mutedAreas.some(area => alert.location?.toLowerCase().includes(area))) return false
-      if (preferences?.highConfOnly && (alert.confidence ?? 0) < 70) return false
-      const rank = levelOrder[alert.severity] ?? 0
-      const minRank = levelOrder[minLevel] ?? 2
-      if (rank < minRank) return false
-      if (subscribed.size > 0 && !alert.affectedAreas?.some(area => subscribed.has(area.toLowerCase()))) {
-        const locationText = (alert.location || '').toLowerCase()
-        const matchesSub = [...subscribed].some(area => locationText.includes(area))
-        if (!matchesSub && !locationText.includes('citywide')) return false
-      }
-      return true
+    return alerts.filter((alert) => {
+      // Only show approved alerts on the public dashboard feed!
+      return alert.status === 'approved'
     })
-  }, [preferences])
+  }, [alerts])
 
   const dedupedAlerts = useMemo(() => {
     const grouped = new Map()
@@ -423,21 +419,22 @@ export default function DashboardPage() {
     }
 
     return [...grouped.values()].sort((a, b) => {
-      const order = { critical: 0, high: 1, medium: 2, low: 3 }
-      return order[a.severity] - order[b.severity]
+      const timeA = new Date(a.updatedAt || a.reportedAt || 0).getTime()
+      const timeB = new Date(b.updatedAt || b.reportedAt || 0).getTime()
+      return timeB - timeA // newest first
     })
   }, [filteredAlerts])
 
   const priorityAlerts = dedupedAlerts.filter(a => ['critical', 'high'].includes(a.severity))
   const lowPriorityAlerts = dedupedAlerts.filter(a => !['critical', 'high'].includes(a.severity))
-  const latestAlerts = priorityAlerts.length > 0 ? priorityAlerts.slice(0, 4) : lowPriorityAlerts.slice(0, 3)
+  const latestAlerts = dedupedAlerts.slice(0, 4)
 
   const todayStr = new Date().toDateString()
-  const reportsToday = MOCK_ALERTS.filter(
+  const reportsToday = alerts.filter(
     a => a.reportedAt && new Date(a.reportedAt).toDateString() === todayStr
   ).length
 
-  const risk = computeRisk(MOCK_ALERTS)
+  const risk = computeRisk(alerts)
   const digestSummary = lowPriorityAlerts.length > 0 ? `Digest view: ${lowPriorityAlerts.length} quiet updates grouped across ${[...new Set(lowPriorityAlerts.map(a => a.affectedAreas?.[0] || a.location?.split(',')[0]))].slice(0, 2).join(' / ')}` : null
 
   return (

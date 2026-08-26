@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ClipboardList, CheckCircle, Eye, Wrench } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { MOCK_ALERTS, timeAgo } from '../data/mockData'
+import { useAlerts } from '../context/AlertsContext'
+import { timeAgo } from '../data/mockData'
 import { SeverityBadge, StatusBadge } from '../components/shared/StatusBadge'
 import EmptyState from '../components/shared/EmptyState'
 import './QueuePage.css'
@@ -15,20 +16,21 @@ const TYPE_ICONS = {
 
 export default function QueuePage() {
   const { caps } = useAuth()
+  const { alerts } = useAlerts()
   const navigate = useNavigate()
   const [filter, setFilter] = useState('pending')
 
   // Queue shows alerts relevant to role
-  const queueAlerts = MOCK_ALERTS.filter(a => {
+  const queueAlerts = alerts.filter(a => {
     if (filter === 'all') return true
-    if (filter === 'pending') return a.status === 'pending'
+    if (filter === 'pending') return a.status === 'pending' || a.status === 'verified'
     if (filter === 'verified') return a.status === 'verified'
     return true
   })
 
-  const pendingCount  = MOCK_ALERTS.filter(a => a.status === 'pending').length
-  const verifiedCount = MOCK_ALERTS.filter(a => a.status === 'verified').length
-  const critCount     = MOCK_ALERTS.filter(a => a.severity === 'critical' && a.status === 'pending').length
+  const pendingCount  = alerts.filter(a => a.status === 'pending' || a.status === 'verified').length
+  const verifiedCount = alerts.filter(a => a.status === 'verified').length
+  const critCount     = alerts.filter(a => a.severity === 'critical' && (a.status === 'pending' || a.status === 'verified')).length
 
   return (
     <div className="queue-page animate-fade-in">

@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useAlerts } from '../context/AlertsContext'
 import {
   Shield, Users, AlertTriangle, CheckCircle, Activity,
   Database, Settings, ArrowLeft, ShieldAlert, Clock,
 } from 'lucide-react'
-import { MOCK_ALERTS } from '../data/mockData'
 import './AdminPage.css'
 
 /* ── Color tokens ──
@@ -79,12 +79,13 @@ function activate(fn) {
 
 export default function AdminPage() {
   const { user } = useAuth()
+  const { alerts } = useAlerts()
   const navigate = useNavigate()
 
-  const totalAlerts = MOCK_ALERTS.length
-  const pending      = MOCK_ALERTS.filter(a => a.status === 'pending').length
-  const verified     = MOCK_ALERTS.filter(a => a.status === 'verified').length
-  const critical     = MOCK_ALERTS.filter(a => a.severity === 'critical').length
+  const totalAlerts = alerts.length
+  const pending      = alerts.filter(a => a.status === 'pending').length
+  const verified     = alerts.filter(a => a.status === 'verified').length
+  const critical     = alerts.filter(a => a.severity === 'critical').length
 
   const liveSystems  = SYSTEMS.filter(s => s.status === 'ok').length
   const totalSystems = SYSTEMS.length
@@ -234,7 +235,7 @@ export default function AdminPage() {
           <span>Severity</span><span>Alert</span><span>Reporter</span><span>Status</span>
         </div>
         <div className="admin-alerts-list">
-          {MOCK_ALERTS.slice(0, 6).map(alert => {
+          {alerts.slice(0, 6).map(alert => {
             const sev = SEVERITY_STYLES[alert.severity] || SEVERITY_STYLES.default
             const statusColor = STATUS_COLORS[alert.status] || STATUS_COLORS.default
             const go = () => navigate(`/dashboard/alert/${alert.id}`)
