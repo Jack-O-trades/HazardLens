@@ -67,7 +67,7 @@ import { ensureLocationDb } from './services/locationDbDownloader.js';
 async function start() {
   try {
     try {
-      await mongoose.connect(MONGO_URI)
+      await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 2000 })
       console.log('✓ MongoDB connected')
     } catch (dbErr) {
       console.warn('⚠ MongoDB failed to connect. Running in memory-only mode for Map/Demo.', dbErr.message)

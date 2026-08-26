@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -19,11 +19,16 @@ import {
   X
 } from 'lucide-react'
 
+import Map, { Marker } from 'react-map-gl/maplibre'
+import 'maplibre-gl/dist/maplibre-gl.css'
+
 import { useAuth } from '../context/AuthContext'
 import { useAlerts } from '../context/AlertsContext'
 import { SeverityBadge, StatusBadge } from '../components/shared/StatusBadge'
 import { formatDate, timeAgo } from '../data/mockData'
 import './AlertDetailPage.css'
+
+const PYTHON_AI_URL = import.meta.env.VITE_PYTHON_AI_URL || 'http://localhost:8000'
 
 const TYPE_ICONS = {
   river: '💧',
@@ -73,13 +78,121 @@ const SEVERITY_CONFIG = {
   low:      { label: 'LOW',      description: 'Low immediate risk' },
 }
 
+const SATELLITE_MAP_STYLE = {
+  version: 8,
+  sources: {
+    'esri-sat': {
+      type: 'raster',
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      attribution: '&copy; Esri &copy; OpenStreetMap contributors'
+    }
+  },
+  layers: [{ id: 'esri-sat-layer', type: 'raster', source: 'esri-sat' }]
+}
+
 export default function AlertDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user, caps } = useAuth()
-  const { alerts, addEvidenceToAlert, submitCommunityVote } = useAlerts()
+  const { alerts, addEvidenceToAlert, submitCommunityVote, approveAlert, rejectAlert } = useAlerts()
 
   const alert = alerts.find((a) => a.id === id)
+
+  const integritySources = useMemo(() => {
+    if (!alert) return null
+    if (alert.integritySources && alert.integritySources.length > 0) {
+      return alert.integritySources
+    }
+
+    if (alert.verificationDetails) {
+      const v = alert.verificationDetails
+      const sources = []
+
+      // 1. River Gauge Sensor
+      if (v.river) {
+        if (v.river.data && v.river.data.sensorAvailable) {
+          sources.push({
+            name: `River Sensor (${v.river.data.station.split(' - ')[0]})`,
+            status: 'online',
+            value: `${v.river.data.waterLevel}m (Status: ${v.river.data.status})`,
+            contribution: 30,
+            type: 'sensor'
+          })
+        } else {
+          sources.push({
+            name: 'River Gauge Sensor Network',
+            status: 'offline',
+            reason: 'No monitored station within 50km',
+            contribution: 30,
+            type: 'sensor'
+          })
+        }
+      }
+
+      // 2. CCTV Camera
+      sources.push({
+        name: 'Southbank CCTV Camera',
+        status: 'offline',
+        reason: 'Feed offline in demo version',
+        contribution: 20,
+        type: 'cctv'
+      })
+
+      // 3. Satellite Water Surface Map
+      if (v.satellite) {
+        if (v.satellite.available) {
+          sources.push({
+            name: 'Satellite Water Surface Map',
+            status: 'online',
+            value: `Scene Acquired (${v.satellite.date})`,
+            contribution: 15,
+            type: 'satellite'
+          })
+        } else {
+          sources.push({
+            name: 'Satellite Water Surface Map',
+            status: 'limited',
+            reason: 'Coordinates outside standard orbit coverage',
+            contribution: 15,
+            type: 'satellite'
+          })
+        }
+      }
+
+      // 4. Doppler Weather Radar
+      if (v.weather && v.weather.data) {
+        sources.push({
+          name: 'Doppler Weather Radar (Open-Meteo)',
+          status: 'online',
+          value: `Temp: ${v.weather.data.temp}°C, Precip: ${v.weather.data.precipitation}mm`,
+          contribution: 20,
+          type: 'weather'
+        })
+      } else {
+        sources.push({
+          name: 'Doppler Weather Radar',
+          status: 'offline',
+          reason: 'Open-Meteo connection timed out',
+          contribution: 20,
+          type: 'weather'
+        })
+      }
+
+      // 5. Citizen Reports
+      sources.push({
+        name: 'Citizen Reports (Validated)',
+        status: 'online',
+        value: `AI Image Checked (${alert.confidence >= 70 ? 'High Confidence' : 'Medium Confidence'})`,
+        contribution: 15,
+        type: 'citizen'
+      })
+
+      return sources
+    }
+
+    return []
+  }, [alert])
 
   // Camera & Modal Evidence states
   const videoRef = useRef()
@@ -108,7 +221,7 @@ export default function AlertDetailPage() {
     setAiVoteResult(null)
     setAiVoteError(null)
     try {
-      const res = await fetch('http://localhost:8000/api/v1/detect-base64', {
+      const res = await fetch(`${PYTHON_AI_URL}/api/v1/detect-base64`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -266,7 +379,7 @@ export default function AlertDetailPage() {
   }
 
   // CCTV Availability Logic
-  const cctvSource = alert.integritySources?.find(s => s.type === 'cctv')
+  const cctvSource = integritySources?.find(s => s.type === 'cctv')
   const isCctvOffline = !cctvSource || cctvSource.status === 'offline'
 
   return (
@@ -279,6 +392,45 @@ export default function AlertDetailPage() {
         </button>
         <div className="alert-id">ALERT #{alert.id}</div>
       </div>
+
+      {/* Admin Action Banner */}
+      {user?.role === 'admin' && alert.status === 'verified' && (
+        <div className="admin-action-banner" style={{
+          backgroundColor: 'rgba(34, 197, 94, 0.12)',
+          border: '1.5px solid #22c55e',
+          borderRadius: '8px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '16px',
+          flexWrap: 'wrap'
+        }}>
+          <div>
+            <h4 style={{ margin: 0, color: '#4ade80', fontSize: '14px', fontWeight: 'bold' }}>🛡️ Admin Action Required</h4>
+            <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '12px' }}>
+              This report has completed automated multi-source evidence fusion. Please review the telemetry and confirm.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              className="btn btn-primary" 
+              style={{ backgroundColor: '#22c55e', borderColor: '#22c55e', color: 'white', padding: '6px 14px', fontSize: '12.5px', cursor: 'pointer' }}
+              onClick={() => approveAlert(alert.id, user.name)}
+            >
+              Approve & Publish
+            </button>
+            <button 
+              className="btn btn-secondary" 
+              style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', color: 'white', padding: '6px 14px', fontSize: '12.5px', cursor: 'pointer' }}
+              onClick={() => rejectAlert(alert.id, user.name)}
+            >
+              Reject Report
+            </button>
+          </div>
+        </div>
+      )}
 
       <section className={`alert-hero severity-${alert.severity}`}>
         <div className="alert-hero-main">
@@ -368,63 +520,177 @@ export default function AlertDetailPage() {
             <p className="incident-description">{alert.description}</p>
 
             {/* Centralized AI Evidence Verification Report */}
-            <div style={{
-              marginTop: '16px',
-              padding: '14px',
-              backgroundColor: 'rgba(30, 41, 59, 0.4)',
-              border: '1px solid var(--border)',
-              borderRadius: '6px',
-              fontFamily: 'Inter, sans-serif'
-            }}>
-              <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                🤖 Centralized AI Evidence Verification Report
-              </h4>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                <div>
-                  <span style={{ display: 'block', textTransform: 'uppercase', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Detection</span>
-                  <strong style={{ color: 'white', fontSize: '13px' }}>
-                    {alert.aiEvidence
-                      ? (alert.aiEvidence.detections && alert.aiEvidence.detections.length > 0 
-                          ? alert.aiEvidence.detections.map(d => d.class_name.toUpperCase()).join(', ') 
-                          : 'NORMAL / NO HAZARD')
-                      : (alert.type === 'river' ? 'FLOOD' : alert.type.toUpperCase())}
-                  </strong>
-                </div>
-                <div>
-                  <span style={{ display: 'block', textTransform: 'uppercase', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Confidence</span>
-                  <strong style={{ color: 'white', fontSize: '13px' }}>{alert.confidence}%</strong>
-                </div>
-                <div>
-                  <span style={{ display: 'block', textTransform: 'uppercase', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Evidence</span>
-                  <strong style={{ color: 'white', fontSize: '12px' }}>
-                    {alert.aiEvidence ? 'Image evidence analyzed by central AI model' : 'Telemetry, sensor readings and citizen report verified'}
-                  </strong>
-                </div>
-                <div>
-                  <span style={{ display: 'block', textTransform: 'uppercase', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Status</span>
-                  <strong style={{ 
-                    color: (alert.aiEvidence ? alert.aiEvidence.is_hazard_detected : alert.confidence >= 55) ? '#22c55e' : '#ef4444', 
-                    fontSize: '13px' 
-                  }}>
-                    AI Verification: {(alert.aiEvidence ? alert.aiEvidence.is_hazard_detected : alert.confidence >= 55) ? 'Positive' : 'Negative'}
-                  </strong>
-                </div>
-              </div>
-
-              <div style={{ 
-                marginTop: '12px', 
-                paddingTop: '8px', 
-                borderTop: '1px solid rgba(255, 255, 255, 0.06)', 
-                fontSize: '11.5px', 
-                color: (alert.aiEvidence ? alert.aiEvidence.is_hazard_detected : alert.confidence >= 55) ? '#22c55e' : '#f97316',
-                fontStyle: 'italic'
+            {/* Multi-Source Evidence Fusion verification section */}
+            {!alert.verificationDetails ? (
+              <div style={{
+                marginTop: '16px',
+                padding: '16px',
+                backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                border: '1px dashed var(--border)',
+                borderRadius: '8px',
+                fontFamily: 'Inter, sans-serif'
               }}>
-                {(alert.aiEvidence ? alert.aiEvidence.is_hazard_detected : alert.confidence >= 55)
-                  ? "✓ Verification Successful: Genuine hazard visually confirmed by our AI model." 
-                  : "No hazard detected by our AI model. Scene is analyzed as normal/safe."}
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="spin" style={{ display: 'inline-block' }}>⚙️</span> 
+                  Automated Evidence Fusion Pipeline Running...
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="spin" style={{ display: 'inline-block', fontSize: '13px' }}>🔄</span>
+                    <span>🌦️ Analyzing Open-Meteo weather parameters...</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="spin" style={{ display: 'inline-block', fontSize: '13px' }}>🔄</span>
+                    <span>🌊 Locating nearest river gauge telemetry sensors...</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="spin" style={{ display: 'inline-block', fontSize: '13px' }}>🔄</span>
+                    <span>🛰️ Aligning satellite Sentinel/Copernicus orbit passes...</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="spin" style={{ display: 'inline-block', fontSize: '13px' }}>🔄</span>
+                    <span>📹 Verifying local CCTV feeds...</span>
+                  </div>
+                </div>
+                <div style={{ marginTop: '14px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px', fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                  Awaiting multi-agent criteria scoring. User can leave this page; checks will conclude in background.
+                </div>
               </div>
-            </div>
+            ) : (
+              <div style={{
+                marginTop: '16px',
+                padding: '16px',
+                backgroundColor: 'rgba(30, 41, 59, 0.4)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                fontFamily: 'Inter, sans-serif'
+              }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🔎 Evidence Fusion Verification Report
+                </h4>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '14px' }}>
+                  <div>
+                    <span style={{ display: 'block', textTransform: 'uppercase', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>AI Image Detections</span>
+                    <strong style={{ color: 'white', fontSize: '13px' }}>
+                      {alert.aiEvidence
+                        ? (alert.aiEvidence.detections && alert.aiEvidence.detections.length > 0 
+                            ? alert.aiEvidence.detections.map(d => d.class_name.toUpperCase()).join(', ') 
+                            : 'NORMAL / NO HAZARD')
+                        : (alert.type === 'river' ? 'FLOOD' : alert.type.toUpperCase())}
+                    </strong>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', textTransform: 'uppercase', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Fused Confidence Score</span>
+                    <strong style={{ color: '#22c55e', fontSize: '14px', fontWeight: 'bold' }}>{alert.confidence}%</strong>
+                  </div>
+                </div>
+
+                {/* Evidence Fusion Breakdown Cards */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  
+                  {/* Weather evidence */}
+                  <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.4)', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <strong style={{ color: 'white', fontSize: '12px' }}>🌦️ Local Weather Evidence</strong>
+                      <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: 'bold' }}>Support: {alert.verificationDetails.weather.score}%</span>
+                    </div>
+                    {alert.verificationDetails.weather.data ? (
+                      <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                        Temp: {alert.verificationDetails.weather.data.temp}°C | Humidity: {alert.verificationDetails.weather.data.humidity}% | 
+                        Precipitation: {alert.verificationDetails.weather.data.precipitation}mm
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontStyle: 'italic' }}>No weather data collected.</div>
+                    )}
+                  </div>
+
+                  {/* River water sensor evidence */}
+                  <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.4)', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <strong style={{ color: 'white', fontSize: '12px' }}>🌊 Water-Level Sensor Telemetry</strong>
+                      <span style={{ fontSize: '11px', color: alert.verificationDetails.river.score !== null ? '#22c55e' : 'var(--text-muted)', fontWeight: 'bold' }}>
+                        Support: {alert.verificationDetails.river.score !== null ? alert.verificationDetails.river.score + '%' : 'N/A'}
+                      </span>
+                    </div>
+                    {alert.verificationDetails.river.data && alert.verificationDetails.river.data.sensorAvailable ? (
+                      <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                        Station: {alert.verificationDetails.river.data.station} ({alert.verificationDetails.river.data.distance} km away) | 
+                        Water Level: <strong style={{ color: alert.verificationDetails.river.data.status === 'HIGH' ? '#ef4444' : '#22c55e' }}>{alert.verificationDetails.river.data.status} ({alert.verificationDetails.river.data.waterLevel}m)</strong>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                        No monitored river telemetry stations within 50 km of report.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Satellite evidence with Esri Satellite Map */}
+                  <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.4)', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ color: 'white', fontSize: '12px' }}>🛰️ Satellite Scene Telemetry</strong>
+                      <span style={{ fontSize: '11px', color: alert.verificationDetails.satellite.score !== null ? '#22c55e' : 'var(--text-muted)', fontWeight: 'bold' }}>
+                        Support: {alert.verificationDetails.satellite.score !== null ? alert.verificationDetails.satellite.score + '%' : 'N/A'}
+                      </span>
+                    </div>
+                    {alert.verificationDetails.satellite.available ? (
+                      <div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                          Satellite Orbit Pass confirmed. Scene Acquired: {alert.verificationDetails.satellite.date}
+                        </div>
+                        {/* Interactive Satellite Imagery Canvas */}
+                        <div className="satellite-map-wrap" style={{ borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                          <Map
+                            initialViewState={{ longitude: alert.coordinates.lng, latitude: alert.coordinates.lat, zoom: 14 }}
+                            style={{ width: '100%', height: '170px' }}
+                            mapStyle={{
+                              version: 8,
+                              sources: {
+                                'esri-sat': {
+                                  type: 'raster',
+                                  tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                                  tileSize: 256,
+                                  attribution: '&copy; Esri &copy; OpenStreetMap contributors'
+                                }
+                              },
+                              layers: [{ id: 'esri-sat-layer', type: 'raster', source: 'esri-sat' }]
+                            }}
+                            interactive={false}
+                          >
+                            <Marker longitude={alert.coordinates.lng} latitude={alert.coordinates.lat} anchor="center">
+                              <div style={{ 
+                                width: '12px', 
+                                height: '12px', 
+                                backgroundColor: '#ef4444', 
+                                border: '2px solid white', 
+                                borderRadius: '50%',
+                                boxShadow: '0 0 6px rgba(0,0,0,0.6)' 
+                              }} />
+                            </Marker>
+                          </Map>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        Satellite imagery currently unavailable for this coordinates.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CCTV evidence */}
+                  <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.4)', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', opacity: 0.7 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <strong style={{ color: 'white', fontSize: '12px' }}>📹 CCTV Feed Evidence</strong>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Support: N/A</span>
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                      CCTV feeds unavailable at this location. (Not configured in demo version)
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
           </section>
 
           {/* CCTV and User Disaster Gallery */}
@@ -564,17 +830,25 @@ export default function AlertDetailPage() {
               <MapPin size={16} />
               <span>{alert.location}</span>
             </div>
-            <div className="alert-map">
-              <div className="map-grid" />
-              <div className="map-marker">
-                <div className="map-marker-pulse" />
-                <MapPin size={28} fill="currentColor" />
-              </div>
-              <div className="map-label">
+            <div className="alert-map" style={{ position: 'relative', overflow: 'hidden', height: '240px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <Map
+                initialViewState={{ longitude: alert.coordinates.lng, latitude: alert.coordinates.lat, zoom: 14 }}
+                style={{ width: '100%', height: '100%' }}
+                mapStyle={SATELLITE_MAP_STYLE}
+                interactive={false}
+              >
+                <Marker longitude={alert.coordinates.lng} latitude={alert.coordinates.lat} anchor="center">
+                  <div style={{ position: 'relative', width: '28px', height: '28px', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="map-marker-pulse" style={{ position: 'absolute', width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.4)', animation: 'pulse 1.5s infinite' }} />
+                    <MapPin size={28} fill="#ef4444" style={{ zIndex: 2 }} />
+                  </div>
+                </Marker>
+              </Map>
+              <div className="map-label" style={{ position: 'absolute', bottom: '12px', left: '12px', zIndex: 10 }}>
                 <strong>Incident Location</strong>
                 <span>{alert.location}</span>
               </div>
-              <button className="map-expand">
+              <button className="map-expand" style={{ position: 'absolute', bottom: '12px', right: '12px', zIndex: 10, cursor: 'pointer' }} onClick={() => navigate('/dashboard/live-map', { state: { centerTo: alert.coordinates } })}>
                 <Navigation size={14} /> View on Map
                 <ExternalLink size={12} />
               </button>
@@ -931,7 +1205,7 @@ export default function AlertDetailPage() {
             {/* Contributors details & health states */}
             <div className="confidence-contributors-list">
               <h5>Source Integrity & Telemetry</h5>
-              {alert.integritySources && alert.integritySources.map((src, i) => {
+              {integritySources && integritySources.map((src, i) => {
                 const isOnline = src.status === 'online'
                 const isLimited = src.status === 'limited'
                 const statusColor = isOnline ? 'var(--text-success)' : isLimited ? 'var(--sev-medium)' : 'var(--sev-critical)'

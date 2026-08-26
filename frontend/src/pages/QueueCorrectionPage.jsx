@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { MOCK_ALERTS } from '../data/mockData'
+import { useAlerts } from '../context/AlertsContext'
 import './CorrectionPage.css'
 
 const CORRECTION_PRIORITIES = [
@@ -34,9 +34,10 @@ export default function QueueCorrectionPage() {
   const { id }   = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { alerts } = useAlerts()
   const fileRef  = useRef()
 
-  const alert = MOCK_ALERTS.find(a => a.id === id) ?? MOCK_ALERTS[0]
+  const alert = alerts.find(a => a.id === id) || alerts[0]
 
   const [form, setForm] = useState({
     actionType: 'Physical removal',

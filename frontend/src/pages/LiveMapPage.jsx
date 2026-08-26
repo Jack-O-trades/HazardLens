@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation } from 'react-router-dom'
 import {
   Shield, Plus, Minus, Compass, AlertTriangle, Play, Navigation, MapPin, Search,
   Check, Moon, Sun, CornerUpLeft, CornerUpRight, ArrowUp, RefreshCw, Layers,
@@ -95,12 +96,27 @@ let previousMapStyle = null;
 
 export default function LiveMapPage() {
   const mapRef = useRef(null)
+  const location = useLocation()
 
   const [theme, setTheme] = useState(() => localStorage.getItem('s32-theme') || 'dark')
   const [viewState, setViewState] = useState({
     longitude: 0, latitude: 0,
     zoom: 2, pitch: 0, bearing: 0
   })
+
+  useEffect(() => {
+    if (location.state && location.state.centerTo) {
+      const { lat, lng } = location.state.centerTo
+      setViewState({
+        longitude: lng,
+        latitude: lat,
+        zoom: 15,
+        pitch: 0,
+        bearing: 0
+      })
+      setUserLocation([lng, lat])
+    }
+  }, [location.state])
 
   // Search
   const [searchQuery, setSearchQuery] = useState('')

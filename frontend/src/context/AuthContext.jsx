@@ -72,7 +72,7 @@ export const ROLE_CAPS = {
 const DEFAULT_PREFERENCES = {
   alertRole: 'citizen',
   distance: 15,
-  severity: 2,
+  severity: 1,
   quietHours: false,
   quietStart: '22:00',
   quietEnd: '07:00',
