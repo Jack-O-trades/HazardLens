@@ -8,7 +8,7 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const location = useLocation()
 
-  const isFullWidth = ['/dashboard/notifications', '/dashboard/settings'].includes(location.pathname)
+  const isFullWidth = ['/dashboard/settings'].includes(location.pathname)
 
   return (
     <div className={`app-layout ${isFullWidth ? 'app-layout--fullwidth' : ''}`}>
