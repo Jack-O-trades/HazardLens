@@ -15,6 +15,8 @@ import notificationsRoutes from './routes/notifications.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import routingRoutes from './routes/routing.routes.js'
 import demoRoutes from './routes/demo.routes.js'
+import sheltersRoutes from './routes/shelters.routes.js'
+import reliefCampsRoutes from './routes/relief-camps.routes.js'
 
 // Services
 import { initRealtime } from './services/realtime.service.js'
@@ -46,6 +48,8 @@ app.use('/api/notifications', notificationsRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/routes', routingRoutes)
 app.use('/api/demo', demoRoutes)
+app.use('/api/shelters', sheltersRoutes)
+app.use('/api/relief-camps', reliefCampsRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) => {
