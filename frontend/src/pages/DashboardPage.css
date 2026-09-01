@@ -80,11 +80,13 @@
 }
 
 .dash-greeting-name {
-  color: var(--accent-text);
+  color: #c2410c;
+  font-weight: 800;
 }
 
 [data-theme="dark"] .dash-greeting-name {
-  color: hsl(34, 92%, 65%);
+  color: #fbbf24;
+  font-weight: 800;
 }
 
 .dash-greeting-sub {

@@ -54,6 +54,12 @@
   overflow: hidden;
 }
 
+@media (max-width: 768px) {
+  .nc-page {
+    margin: -1.25rem -1rem;
+  }
+}
+
 [data-theme="dark"] .nc-page {
   --nc-bg: hsl(220, 20%, 8%);
   --nc-header-bg: hsl(220, 20%, 8%);

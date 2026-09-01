@@ -51,10 +51,6 @@ html.hl-light {
   --shadow-accent: 0 2px 8px rgba(60,64,67,0.2);
 }
 
-/* ΓöÇΓöÇ Sidebar hidden on dashboard for full-width layout ΓöÇΓöÇ */
-html.hl-light .sidebar { display: none; }
-html.hl-light .app-main { width: 100%; }
-
 /* ΓöÇΓöÇ Topbar light overrides (inherits via variables, fine-tuning below) ΓöÇΓöÇ */
 html.hl-light .topbar {
   background: #ffffff;
@@ -307,15 +303,15 @@ html.hl-light .topbar-chevron { color: #5f6368; }
   box-shadow: -2px 0 8px rgba(0,0,0,0.05);
 }
 
-.dash-alerts-header {
+.dash-alerts-panel .dash-alerts-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid #e8eaed;
+  border-bottom: 1px solid var(--border-subtle, #e8eaed);
   flex-shrink: 0;
   gap: 8px;
-  background: #ffffff;
+  background: var(--bg-surface, #ffffff);
 }
 
 .dash-alerts-title {
@@ -627,8 +623,8 @@ html.hl-light .topbar-chevron { color: #5f6368; }
 .dash-status-refresh:hover { color: #1a73e8; }
 
 /* Alerts header background matches panel */
-.dash-alerts-header {
-  background: #f8f9fa;
+.dash-alerts-panel .dash-alerts-header {
+  background: var(--bg-surface, #f8f9fa);
 }
 
 /* ΓöÇΓöÇ Responsive ΓöÇΓöÇ */

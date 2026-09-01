@@ -10,7 +10,7 @@ import './Sidebar.css'
 function HazardIcon() {
   return (
     <svg width="32" height="32" viewBox="0 0 64 64" fill="none">
-      <circle cx="32" cy="32" r="30" fill="hsl(220,25%,10%)" stroke="var(--accent)" strokeWidth="2.5"/>
+      <circle cx="32" cy="32" r="30" fill="var(--bg-surface)" stroke="var(--accent)" strokeWidth="2.5"/>
       <path d="M32 15 L50 47 H14 Z" fill="none" stroke="var(--accent)" strokeWidth="2.8" strokeLinejoin="round"/>
       <circle cx="32" cy="41" r="2.8" fill="var(--accent)"/>
       <rect x="30.5" y="25" width="3" height="12" rx="1.5" fill="var(--accent)"/>
@@ -44,12 +44,19 @@ export default function Sidebar({ isOpen, onClose }) {
 
   return (
     <aside
-      className={`sidebar ${isOpen ? 'sidebar--open' : ''} ${isAuthorized ? 'sidebar--authorized' : ''}`}
+      className={`sidebar ${isOpen ? 'sidebar--open' : 'sidebar--closed'} ${isAuthorized ? 'sidebar--authorized' : ''}`}
       style={isAuthorized ? { '--role-accent': roleStyle.text } : undefined}
     >
       {/* Header */}
       <div className="sidebar-header">
-        <div className="sidebar-logo">
+        <div
+          className="sidebar-logo"
+          onClick={() => { navigate('/'); onClose(); }}
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={e => e.key === 'Enter' && navigate('/')}
+        >
           <HazardIcon />
           <span className="sidebar-logo-name">Hazard<span>Lens</span></span>
         </div>

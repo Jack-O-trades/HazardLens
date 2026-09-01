@@ -111,24 +111,24 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 1.25rem;
-  height: 38px;
-  background: var(--accent);
-  color: hsl(220, 25%, 7%);
+  padding: 0 1.35rem;
+  height: 40px;
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  color: #ffffff !important;
   font-family: var(--font-body);
-  font-size: 0.875rem; /* optimized from 1.05rem */
+  font-size: 0.92rem;
   font-weight: 700;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  box-shadow: 0 0 0 1px hsla(35, 95%, 55%, 0.15), 0 8px 30px hsla(35, 95%, 55%, 0.2);
-  transition: background var(--dur-fast) var(--ease), transform 120ms var(--ease), box-shadow var(--dur-fast) var(--ease);
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.45);
+  transition: all var(--dur-fast) var(--ease);
   white-space: nowrap;
 }
 .lp-btn-primary:hover {
-  background: hsl(35, 95%, 62%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px hsla(35, 95%, 55%, 0.35);
+  background: linear-gradient(135deg, #d97706 0%, #c2410c 100%);
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 22px rgba(245, 158, 11, 0.6);
 }
 .lp-btn-primary:active { transform: translateY(0); }
 
@@ -228,12 +228,14 @@
 
 .lp-hero-inner {
   position: relative;
-  max-width: 1280px;
+  z-index: 10;
+  max-width: 1400px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 4rem;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 3rem;
   align-items: center;
+  pointer-events: none;
 }
 
 .lp-hero-content {
@@ -241,6 +243,7 @@
   flex-direction: column;
   gap: 1.5rem;
   padding-left: 0.5rem;
+  pointer-events: auto;
 }
 
 .lp-hero-eyebrow {
@@ -272,10 +275,10 @@
 
 .lp-hero-title {
   font-family: var(--font-heading);
-  font-size: clamp(3.1rem, 4.7vw, 6rem);
+  font-size: clamp(2.8rem, 4.3vw, 5.2rem);
   font-weight: 900;
   color: var(--text-primary);
-  line-height: 0.9;
+  line-height: 0.94;
   letter-spacing: -0.065em;
   margin: 0;
   max-width: 680px;
@@ -284,14 +287,17 @@
 
 .lp-hero-title em {
   font-style: normal;
-  color: var(--text-accent);
+  color: #f59e0b;
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .lp-hero-desc {
-  font-size: 1.12rem;
+  font-size: 1.1rem;
   color: var(--text-secondary);
   line-height: 1.65;
-  max-width: 720px;
+  max-width: 680px;
   margin-top: 0.3rem;
 }
 
@@ -320,20 +326,431 @@
 .lp-trust-item svg { color: var(--text-accent); flex-shrink: 0; }
 
 /* ================================================================
-   ALERT PREVIEW PANEL
+   HERO LIVE MAP (Full-Bleed Right side with Vanishing Left Mask)
    ================================================================ */
-.lp-preview {
-  width: 100%;
-  max-width: 380px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  padding: 1.25rem;
-  box-shadow: var(--shadow-lg);
+.lp-hero-map-full {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 68%;
+  height: calc(100% - 90px);
+  z-index: 1;
+  pointer-events: auto;
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.3) 16%, black 40%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.3) 16%, black 40%);
+}
+
+.lp-hero-map-full .maplibregl-map,
+.lp-hero-map-full .maplibregl-canvas-container,
+.lp-hero-map-full .maplibregl-canvas {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.lp-hero-map-full .maplibregl-marker {
+  position: absolute !important;
+  will-change: transform;
+}
+
+.lp-hero-right-col {
+  pointer-events: auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  padding-bottom: 1rem;
+}
+
+/* Hazard Marker Container */
+.lp-map-hazard-marker {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+  cursor: pointer;
+  transform: translateY(-4px);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 10;
+}
+
+.lp-map-hazard-marker:hover {
+  transform: translateY(-10px) scale(1.06);
+}
+
+/* Floating Card Badge */
+.lp-map-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  background: rgba(9, 13, 22, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--hazard-color);
+  border-radius: 10px;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    0 0 16px var(--hazard-glow);
+  white-space: nowrap;
+}
+
+.lp-map-card-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lp-map-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lp-map-card-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #f8fafc;
+  line-height: 1.1;
+}
+
+.lp-map-card-sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.lp-map-card-dot {
+  font-size: 0.6rem;
+  opacity: 0.5;
+}
+
+/* Live User Location Badge & Radar Ping */
+.lp-user-live-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.lp-user-live-badge {
+  background: rgba(34, 197, 94, 0.95);
+  color: #062410;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.8), 0 0 6px rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+
+.lp-user-live-ping {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #22c55e;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: lpRadarPulse 2s infinite ease-out;
+  pointer-events: none;
+}
+
+.lp-map-card-status {
+  font-weight: 700;
+}
+
+/* Pin Stem */
+.lp-map-marker-stem {
+  width: 2px;
+  height: 18px;
+  margin-top: -1px;
+}
+
+/* Ground Pin Dot & Radar Pulse */
+.lp-map-marker-ground {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lp-map-marker-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.lp-map-marker-pulse {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  animation: lp-map-ring 2.2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+@keyframes lp-map-ring {
+  0%   { transform: scale(0.2); opacity: 1; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/* ================================================================
+   EVIDENCE AGREEMENT WIDGET (Bottom Right on Map Canvas)
+   ================================================================ */
+.lp-evidence-panel {
+  position: absolute;
+  top: 340px;
+  right: 19px;
+  width: 250px;
+  background: rgba(9, 13, 22, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsla(220, 20%, 25%, 0.7);
+  border-radius: 16px;
+  padding: 13px 15px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  pointer-events: auto;
+}
+
+.lp-evidence-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lp-evidence-title {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.lp-evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lp-evidence-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.73rem;
+}
+
+.lp-evidence-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.lp-evidence-name svg {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.lp-evidence-status--strong {
+  color: #22c55e;
+  font-weight: 700;
+}
+
+.lp-evidence-status--moderate {
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+.lp-evidence-status--pending {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.lp-evidence-divider {
+  height: 1px;
+  background: hsla(220, 20%, 25%, 0.6);
+  margin: 1px 0;
+}
+
+.lp-evidence-score-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lp-evidence-score-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.lp-evidence-score-val {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: #f59e0b;
+  line-height: 1;
+}
+
+.lp-evidence-bar {
+  display: flex;
+  gap: 3.5px;
+  margin-top: 3px;
+}
+
+.lp-evidence-bar-segment {
+  flex: 1;
+  height: 7px;
+  border-radius: 2px;
+  background: hsla(220, 20%, 20%, 0.8);
+  transition: background 0.3s ease;
+}
+
+.lp-evidence-bar-segment.active {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.45);
+}
+
+.lp-evidence-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.64rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.lp-evidence-footer-lbl {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.lp-evidence-footer-time {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #94a3b8;
+}
+
+.lp-live-pulse-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+/* ================================================================
+   HERO EVIDENCE PIPELINE BAR
+   ================================================================ */
+.lp-hero-pipeline {
+  max-width: 1400px;
+  margin: 3.5rem auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(11, 15, 25, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsla(220, 20%, 22%, 0.7);
+  border-radius: 16px;
+  padding: 1rem 1.75rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.lp-pipeline-step {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  animation: lp-float 5s ease-in-out infinite;
+  flex: 1;
+}
+
+.lp-pipeline-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: hsla(220, 20%, 16%, 0.8);
+  border: 1px solid hsla(220, 20%, 28%, 0.7);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.lp-pipeline-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lp-pipeline-text strong {
+  font-family: var(--font-heading);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lp-pipeline-text span {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.lp-pipeline-arrow {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  padding: 0 0.85rem;
+  opacity: 0.45;
+}
+
+@media (max-width: 900px) {
+  .lp-hero-pipeline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+    padding: 1.25rem;
+  }
+  .lp-pipeline-arrow {
+    display: none;
+  }
+  .lp-hero-map-container {
+    height: 420px;
+  }
+  .lp-evidence-panel {
+    width: 220px;
+    padding: 10px 12px;
+    bottom: 10px;
+    right: 10px;
+  }
 }
 
 @keyframes lp-float {
@@ -1039,4 +1456,99 @@
   .lp-btn-primary svg {
     display: none !important;
   }
+}
+
+/* ================================================================
+   LIGHT THEME LANDING PAGE (VIVID COLOR MAP & CRISP WHITE CARDS)
+   ================================================================ */
+[data-theme='light'] .lp-map-card,
+html.hl-light .lp-map-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme='light'] .lp-map-card-title,
+html.hl-light .lp-map-card-title {
+  color: #0f172a !important;
+}
+
+[data-theme='light'] .lp-map-card-sub,
+html.hl-light .lp-map-card-sub {
+  color: #64748b !important;
+}
+
+[data-theme='light'] .lp-evidence-panel,
+html.hl-light .lp-evidence-panel {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme='light'] .lp-evidence-title,
+html.hl-light .lp-evidence-title {
+  color: #64748b !important;
+}
+
+[data-theme='light'] .lp-evidence-name,
+html.hl-light .lp-evidence-name,
+[data-theme='light'] .lp-evidence-score-label,
+html.hl-light .lp-evidence-score-label,
+[data-theme='light'] .lp-evidence-footer-lbl,
+html.hl-light .lp-evidence-footer-lbl {
+  color: #475569 !important;
+}
+
+[data-theme='light'] .lp-evidence-score-val,
+html.hl-light .lp-evidence-score-val {
+  color: #f59e0b !important;
+}
+
+[data-theme='light'] .lp-evidence-bar-segment,
+html.hl-light .lp-evidence-bar-segment {
+  background: #e2e8f0 !important;
+}
+
+[data-theme='light'] .lp-evidence-bar-segment.active,
+html.hl-light .lp-evidence-bar-segment.active {
+  background: linear-gradient(135deg, #f59e0b, #ea580c) !important;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4) !important;
+}
+
+[data-theme='light'] .lp-hero-pipeline,
+html.hl-light .lp-hero-pipeline {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme='light'] .lp-pipeline-text strong,
+html.hl-light .lp-pipeline-text strong {
+  color: #0f172a !important;
+}
+
+[data-theme='light'] .lp-pipeline-text span,
+html.hl-light .lp-pipeline-text span {
+  color: #64748b !important;
+}
+
+[data-theme='light'] .lp-pipeline-icon,
+html.hl-light .lp-pipeline-icon {
+  background: #fff7ed !important;
+  color: #ea580c !important;
+  border: 1px solid #ffedd5 !important;
+}
+
+[data-theme='light'] .lp-hero-trust .lp-trust-item,
+html.hl-light .lp-hero-trust .lp-trust-item {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  padding: 6px 14px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+}
+[data-theme='light'] .lp-hero-trust .lp-trust-item svg,
+html.hl-light .lp-hero-trust .lp-trust-item svg {
+  color: #ea580c !important;
 }
