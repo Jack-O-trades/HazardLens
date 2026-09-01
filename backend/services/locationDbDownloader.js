@@ -22,7 +22,8 @@ export async function ensureLocationDb() {
   const key = process.env.LOCATION_DB_S3_KEY;
 
   if (!region || !bucket || !key) {
-    throw new Error('Location database is missing locally and AWS S3 configuration (AWS_REGION, S3_BUCKET, LOCATION_DB_S3_KEY) is not set in environment variables.');
+    console.warn('⚠ Location database is missing locally and AWS S3 configuration is not set. Continuing in local dev mode.');
+    return;
   }
 
   // Ensure data directory exists

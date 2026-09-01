@@ -1,8 +1,13 @@
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Shield, Zap, MapPin, Eye, Wrench, Bell, ArrowRight,
-  CheckCircle, ChevronRight, Lock, Users, Sun, Moon
+  CheckCircle, ChevronRight, Lock, Users, Sun, Moon,
+  Mountain, Wind, Flame, Waves, AlertTriangle, CloudRain,
+  Cpu, Layers, Video, Droplets, Navigation
 } from 'lucide-react'
+import Map, { Marker } from 'react-map-gl/maplibre'
+import 'maplibre-gl/dist/maplibre-gl.css'
 import { useTheme } from '../context/ThemeContext'
 import './LandingPage.css'
 
@@ -21,83 +26,236 @@ function ShieldLogo({ size = 40 }) {
   )
 }
 
-/* ── Animated map marker ── */
-function MapDot({ x, y, color, delay = 0 }) {
+const DEFAULT_CENTER = { lat: 20.2960, lng: 85.8280 }
+
+/* ── Device Storage Caching Helper for 0ms Load Time ── */
+const getInitialLocation = () => {
+  try {
+    const cached = localStorage.getItem('hl_cached_user_loc')
+    if (cached) {
+      const parsed = JSON.parse(cached)
+      if (parsed.lat && parsed.lng) return parsed
+    }
+  } catch (e) {}
+  return DEFAULT_CENTER
+}
+
+/* ── Theme-Aware Map Style (MapTiler Raster Tiles using API Key) ── */
+const getLandingMapStyle = (theme = 'dark') => {
+  const key = import.meta.env.VITE_MAPTILER_KEY || '8oJS7UaNGu6yuoJGxY7P'
+  const styleTile = theme === 'light' ? 'streets-v2' : 'streets-v2-dark'
+  const tileUrl = `https://api.maptiler.com/maps/${styleTile}/256/{z}/{x}/{y}@2x.png?key=${key}`
+
+  return {
+    version: 8,
+    sources: {
+      'base-tiles': {
+        type: 'raster',
+        tiles: [tileUrl],
+        tileSize: 256,
+        maxzoom: 20
+      }
+    },
+    layers: [
+      {
+        id: 'base-tile-layer',
+        type: 'raster',
+        source: 'base-tiles',
+        minzoom: 0,
+        maxzoom: 20
+      }
+    ]
+  }
+}
+
+/* ── Dynamically Cluster Hazards Around User's Live Location (Spaced Wide & Clear) ── */
+const getHazardsAroundLocation = (center) => {
+  const baseLat = center?.lat || DEFAULT_CENTER.lat
+  const baseLng = center?.lng || DEFAULT_CENTER.lng
+
+  return [
+    { id: 'landslide', title: 'LANDSLIDE', zone: 'Zone 07', status: 'Watch', color: '#f59e0b', lat: baseLat + 0.0160, lng: baseLng - 0.0190, icon: Mountain },
+    { id: 'fire', title: 'FIRE', zone: 'Zone 11', status: 'Active', color: '#ef4444', lat: baseLat + 0.0240, lng: baseLng - 0.0030, icon: Flame },
+    { id: 'cyclone', title: 'CYCLONE', zone: 'Zone 03', status: 'Watch', color: '#a855f7', lat: baseLat + 0.0210, lng: baseLng + 0.0200, icon: Wind },
+    { id: 'flood', title: 'FLOOD', zone: 'Zone 04', status: 'Monitoring', color: '#3b82f6', lat: baseLat - 0.0090, lng: baseLng - 0.0240, icon: Waves },
+    { id: 'pothole', title: 'POTHOLE', zone: 'Zone 02', status: 'Reported', color: '#22c55e', lat: baseLat - 0.0160, lng: baseLng - 0.0080, icon: AlertTriangle },
+    { id: 'heavyrain', title: 'HEAVY RAIN', zone: 'Zone 09', status: 'Watch', color: '#0284c7', lat: baseLat - 0.0200, lng: baseLng + 0.0180, icon: CloudRain }
+  ]
+}
+
+function LandingMap({ theme }) {
+  const mapRef = useRef(null)
+  const initialLoc = useMemo(() => getInitialLocation(), [])
+  const [currentCenter, setCurrentCenter] = useState(initialLoc)
+  const [userLoc, setUserLoc] = useState(() => {
+    return initialLoc !== DEFAULT_CENTER ? initialLoc : null
+  })
+
+  const mapStyle = useMemo(() => getLandingMapStyle(theme), [theme])
+  const hazards = useMemo(() => getHazardsAroundLocation(currentCenter), [currentCenter])
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords
+          const newLoc = { lat: latitude, lng: longitude }
+          setUserLoc(newLoc)
+          setCurrentCenter(newLoc)
+          try {
+            localStorage.setItem('hl_cached_user_loc', JSON.stringify(newLoc))
+          } catch (e) {}
+
+          if (mapRef.current) {
+            mapRef.current.flyTo({
+              center: [longitude, latitude],
+              zoom: 13.5,
+              pitch: 52,
+              bearing: -15,
+              duration: 1200
+            })
+          }
+        },
+        (err) => console.log('Geolocation note:', err.message),
+        { timeout: 5000, maximumAge: 600000 }
+      )
+    }
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mapRef.current) {
+        mapRef.current.resize()
+      }
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [theme])
+
   return (
-    <div className="lp-map-dot" style={{ left: `${x}%`, top: `${y}%`, '--dot-color': color, '--dot-delay': `${delay}s` }}>
-      <span className="lp-map-dot-ring" />
-    </div>
+    <Map
+      ref={mapRef}
+      initialViewState={{
+        longitude: currentCenter.lng,
+        latitude: currentCenter.lat,
+        zoom: 13.5,
+        pitch: 54,
+        bearing: -18
+      }}
+      style={{ width: '100%', height: '100%' }}
+      mapStyle={mapStyle}
+      attributionControl={false}
+      fadeDuration={0}
+      maxTileCacheSize={150}
+      reuseMaps
+    >
+      {/* Live User Location Marker Prominently Centered */}
+      {userLoc && (
+        <Marker longitude={userLoc.lng} latitude={userLoc.lat} anchor="center">
+          <div className="lp-user-live-marker">
+            <div className="lp-user-live-badge">
+              <Navigation size={11} /> LIVE UNIT
+            </div>
+            <div className="lp-user-live-ping" />
+          </div>
+        </Marker>
+      )}
+      {hazards.map(h => {
+        const IconComponent = h.icon
+        return (
+          <Marker
+            key={h.id}
+            longitude={h.lng}
+            latitude={h.lat}
+            anchor="bottom"
+          >
+            <div className="lp-map-hazard-marker">
+              <div
+                className="lp-map-card"
+                style={{
+                  '--hazard-color': h.color,
+                  '--hazard-glow': `${h.color}35`,
+                  borderColor: `${h.color}70`
+                }}
+              >
+                <div className="lp-map-card-icon" style={{ backgroundColor: `${h.color}25`, color: h.color }}>
+                  <IconComponent size={16} />
+                </div>
+                <div className="lp-map-card-info">
+                  <div className="lp-map-card-title">{h.title}</div>
+                  <div className="lp-map-card-sub">
+                    <span>{h.zone}</span>
+                    <span className="lp-map-card-dot">•</span>
+                    <span className="lp-map-card-status" style={{ color: h.color }}>{h.status}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="lp-map-marker-stem" style={{ background: `linear-gradient(to bottom, ${h.color}, transparent)` }} />
+              <div className="lp-map-marker-ground">
+                <div className="lp-map-marker-dot" style={{ backgroundColor: h.color, boxShadow: `0 0 10px ${h.color}` }} />
+                <div className="lp-map-marker-pulse" style={{ borderColor: h.color }} />
+              </div>
+            </div>
+          </Marker>
+        )
+      })}
+    </Map>
   )
 }
 
-/* ── Live alert preview cards ── */
-function AlertPreview() {
+function EvidencePanel() {
   return (
-    <div className="lp-preview">
-      {/* Header bar */}
-      <div className="lp-preview-header">
-        <div className="lp-preview-header-left">
-          <ShieldLogo size={22} />
-          <span className="lp-preview-app-name">HazardLens</span>
+    <div className="lp-evidence-panel">
+      <div className="lp-evidence-header">
+        <span className="lp-evidence-title">EVIDENCE AGREEMENT</span>
+      </div>
+
+      <div className="lp-evidence-list">
+        <div className="lp-evidence-row">
+          <span className="lp-evidence-name"><Video size={13} /> CCTV Feed</span>
+          <span className="lp-evidence-status lp-evidence-status--strong">Strong</span>
         </div>
-        <div className="lp-preview-live">
-          <span className="lp-live-dot" />
-          Live
+        <div className="lp-evidence-row">
+          <span className="lp-evidence-name"><Droplets size={13} /> River Level Sensor</span>
+          <span className="lp-evidence-status lp-evidence-status--strong">Strong</span>
+        </div>
+        <div className="lp-evidence-row">
+          <span className="lp-evidence-name"><CloudRain size={13} /> Rainfall Sensor</span>
+          <span className="lp-evidence-status lp-evidence-status--strong">Strong</span>
+        </div>
+        <div className="lp-evidence-row">
+          <span className="lp-evidence-name"><AlertTriangle size={13} /> Weather Data</span>
+          <span className="lp-evidence-status lp-evidence-status--moderate">Moderate</span>
+        </div>
+        <div className="lp-evidence-row">
+          <span className="lp-evidence-name"><Users size={13} /> Citizen Reports</span>
+          <span className="lp-evidence-status lp-evidence-status--moderate">Moderate</span>
+        </div>
+        <div className="lp-evidence-row">
+          <span className="lp-evidence-name"><MapPin size={13} /> Satellite Imagery</span>
+          <span className="lp-evidence-status lp-evidence-status--strong">Active</span>
         </div>
       </div>
 
-      {/* Active alerts counter */}
-      <div className="lp-preview-summary">
-        <div className="lp-preview-sum-item">
-          <span className="lp-preview-sum-val" style={{ color: 'hsl(5,75%,56%)' }}>2</span>
-          <span className="lp-preview-sum-lbl">Critical</span>
-        </div>
-        <div className="lp-preview-sum-divider" />
-        <div className="lp-preview-sum-item">
-          <span className="lp-preview-sum-val" style={{ color: 'hsl(22,90%,55%)' }}>5</span>
-          <span className="lp-preview-sum-lbl">High</span>
-        </div>
-        <div className="lp-preview-sum-divider" />
-        <div className="lp-preview-sum-item">
-          <span className="lp-preview-sum-val" style={{ color: 'hsl(145,60%,45%)' }}>18</span>
-          <span className="lp-preview-sum-lbl">Resolved</span>
+      <div className="lp-evidence-divider" />
+
+      <div className="lp-evidence-score-section">
+        <div className="lp-evidence-score-label">AGREEMENT SCORE</div>
+        <div className="lp-evidence-score-val">94%</div>
+        <div className="lp-evidence-bar">
+          {[...Array(10)].map((_, i) => (
+            <div
+              key={i}
+              className={`lp-evidence-bar-segment ${i < 9 ? 'active' : ''}`}
+            />
+          ))}
         </div>
       </div>
 
-      {/* Alert cards */}
-      <div className="lp-preview-card lp-preview-card--critical">
-        <div className="lp-preview-card-top">
-          <span className="lp-preview-sev lp-preview-sev--critical">● Critical</span>
-          <span className="lp-preview-pill">Pending</span>
-        </div>
-        <p className="lp-preview-card-title">Chemical Spill — Warehouse B</p>
-        <p className="lp-preview-card-meta">📍 Rack 12, Aisle C · 13 min ago</p>
-        <div className="lp-preview-card-bar">
-          <span className="lp-preview-conf">AI Confidence: 91%</span>
-          <div className="lp-preview-bar-bg"><div className="lp-preview-bar-fill" style={{ width: '91%', background: 'hsl(5,75%,52%)' }} /></div>
-        </div>
-      </div>
-
-      <div className="lp-preview-card lp-preview-card--high">
-        <div className="lp-preview-card-top">
-          <span className="lp-preview-sev lp-preview-sev--high">● High</span>
-          <span className="lp-preview-pill lp-preview-pill--verified">Verified</span>
-        </div>
-        <p className="lp-preview-card-title">Loose Scaffolding — Block C Roof</p>
-        <p className="lp-preview-card-meta">📍 Level 5, North Wing · 1h ago</p>
-        <div className="lp-preview-card-bar">
-          <span className="lp-preview-conf">AI Confidence: 78%</span>
-          <div className="lp-preview-bar-bg"><div className="lp-preview-bar-fill" style={{ width: '78%', background: 'hsl(35,82%,52%)' }} /></div>
-        </div>
-      </div>
-
-      {/* Map preview */}
-      <div className="lp-preview-map">
-        <MapDot x={30} y={35} color="hsl(5,75%,56%)" delay={0} />
-        <MapDot x={55} y={50} color="hsl(22,90%,55%)" delay={0.4} />
-        <MapDot x={70} y={28} color="hsl(145,60%,45%)" delay={0.8} />
-        <MapDot x={20} y={65} color="hsl(42,95%,55%)" delay={1.2} />
-        <div className="lp-preview-map-label">Riverdale, WA — Active Monitoring</div>
+      <div className="lp-evidence-footer">
+        <span className="lp-evidence-footer-lbl">LAST UPDATED</span>
+        <span className="lp-evidence-footer-time">
+          <span className="lp-live-pulse-dot" /> Today, 10:24 AM
+        </span>
       </div>
     </div>
   )
@@ -229,6 +387,12 @@ export default function LandingPage() {
         {/* Background grid */}
         <div className="lp-hero-bg" aria-hidden="true" />
 
+        {/* Full Bleed Right Side Map Layer with Vanishing Gradient Blur */}
+        <div className="lp-hero-map-full">
+          <LandingMap theme={theme} />
+          <EvidencePanel />
+        </div>
+
         <div className="lp-hero-inner">
           <div className="lp-hero-content">
             <div className="lp-hero-eyebrow">
@@ -244,7 +408,7 @@ export default function LandingPage() {
 
             <p className="lp-hero-desc">
               HazardLens empowers teams to report, verify, and resolve
-              safety incidents in real time — with AI-powered workflows built
+              safety incidents in real time — with intelligent workflows built
               for workplaces, public spaces, and emergency operations.
             </p>
 
@@ -261,6 +425,43 @@ export default function LandingPage() {
               <div className="lp-trust-item"><CheckCircle size={14} />No credit card required</div>
               <div className="lp-trust-item"><Lock size={14} />SOC 2 compliant</div>
               <div className="lp-trust-item"><Shield size={14} />Used in 12+ cities</div>
+            </div>
+          </div>
+
+          <div className="lp-hero-spacer" />
+        </div>
+
+        {/* Evidence Fusion Pipeline Bar */}
+        <div className="lp-hero-pipeline">
+          <div className="lp-pipeline-step">
+            <div className="lp-pipeline-icon"><Users size={18} /></div>
+            <div className="lp-pipeline-text">
+              <strong>Multiple Sources</strong>
+              <span>CCTV, Sensors, Weather, Citizen Reports</span>
+            </div>
+          </div>
+          <div className="lp-pipeline-arrow">→</div>
+          <div className="lp-pipeline-step">
+            <div className="lp-pipeline-icon"><Cpu size={18} /></div>
+            <div className="lp-pipeline-text">
+              <strong>Signal Extraction</strong>
+              <span>Extracts insights from raw data</span>
+            </div>
+          </div>
+          <div className="lp-pipeline-arrow">→</div>
+          <div className="lp-pipeline-step">
+            <div className="lp-pipeline-icon"><Layers size={18} /></div>
+            <div className="lp-pipeline-text">
+              <strong>Evidence Fusion</strong>
+              <span>Verifies through multi-source agreement</span>
+            </div>
+          </div>
+          <div className="lp-pipeline-arrow">→</div>
+          <div className="lp-pipeline-step">
+            <div className="lp-pipeline-icon"><Bell size={18} /></div>
+            <div className="lp-pipeline-text">
+              <strong>Alert & Action</strong>
+              <span>Notifies teams & triggers response</span>
             </div>
           </div>
         </div>
