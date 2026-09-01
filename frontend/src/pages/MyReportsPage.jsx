@@ -28,7 +28,10 @@ export default function MyReportsPage({ showOnlyOwn = false }) {
   // this keeps working even before every alert record has reportedById.
   const myReports = useMemo(() => (
     restrictToOwn
-      ? alerts.filter(a => (a.reportedById ?? a.reportedBy) === (user.id ?? user.name))
+      ? alerts.filter(a => {
+          if (a.reportedById && user.id) return a.reportedById === user.id
+          return a.reportedBy === user.name
+        })
       : alerts
   ), [alerts, restrictToOwn, user.id, user.name])
 

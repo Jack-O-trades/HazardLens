@@ -207,6 +207,7 @@ export function AlertsProvider({ children }) {
       type: typeMap[report.hazardType] || 'other',
       status: 'pending',
       reportedBy: report.reportedBy,
+      reportedById: report.reportedById,
       reportedAt: now,
       updatedAt: now,
       images: report.photos ? (Array.isArray(report.photos) ? report.photos : [{ url: report.photos, caption: report.description }]) : [],

@@ -303,6 +303,7 @@ export default function NewReportPage() {
           description: desc || 'Citizen hazard report submitted via HazardLens.',
           location: 'Riverdale Heights',
           reportedBy: user?.name || 'Citizen Reporter',
+          reportedById: user?.id,
           confidence: finalConfidence,
           aiEvidence: aiResult,
           reporterRole: user?.role,

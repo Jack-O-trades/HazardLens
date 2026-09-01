@@ -1125,7 +1125,7 @@ export default function LiveMapPage() {
               ) : (
                 <>
                   <div style={{ fontSize: '11px', color: (routeData.recommended_route || routeData.route) ? textSubUI : '#ef4444', fontWeight: 700, marginBottom: '6px' }}>
-                    {(routeData.recommended_route || routeData.route) ? 'RECOMMENDED SAFE ROUTE' : 'ROUTE SAFETY UNAVAILABLE'}
+                    {(routeData.recommended_route || routeData.route) ? 'RECOMMENDED SAFE ROUTE' : (routeData.unsafe_routes && routeData.unsafe_routes.length > 0 ? 'NO SAFE ROUTE FOUND' : 'ROUTE SAFETY UNAVAILABLE')}
                   </div>
 
                   {(routeData.recommended_route || routeData.route) && (
