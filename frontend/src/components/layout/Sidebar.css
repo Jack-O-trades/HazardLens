@@ -175,9 +175,19 @@
 }
 
 .sidebar-link--active {
-  background: var(--accent-glow);
+  background: hsla(34, 92%, 50%, 0.14);
   color: var(--accent-text);
   font-weight: 600;
+}
+
+[data-theme="dark"] .sidebar-link--active {
+  background: hsla(34, 85%, 45%, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sidebar-link--active {
+    background: hsla(34, 85%, 45%, 0.18);
+  }
 }
 
 .sidebar-link--active::before {
