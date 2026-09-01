@@ -45,40 +45,27 @@ const MAP_STYLES = {
 
 const getStableMapStyle = (baseStyle, theme) => {
   const key = import.meta.env.VITE_MAPTILER_KEY || '8oJS7UaNGu6yuoJGxY7P'
-  const s = MAP_STYLES[baseStyle] || MAP_STYLES['streets-dk']
-  if (key) {
-    if (s.tile === 'hybrid') {
-      return {
-        version: 8,
-        sources: {
-          'maptiler-raster': {
-            type: 'raster',
-            tiles: [`https://api.maptiler.com/maps/${s.tile}/256/{z}/{x}/{y}@2x.${s.ext}?key=${key}`],
-            tileSize: 256,
-            attribution: '&copy; MapTiler &copy; OpenStreetMap contributors',
-            maxzoom: 22
-          }
-        },
-        layers: [{ id: 'maptiler-base', type: 'raster', source: 'maptiler-raster' }]
-      }
-    } else {
-      return `https://api.maptiler.com/maps/${s.tile}/style.json?key=${key}`
-    }
-  }
-  const basemap = theme === 'dark' ? 'dark_all' : 'voyager'
+  let sTile = baseStyle === 'streets-lt' ? 'streets-v2' : (baseStyle === 'streets-dk' ? 'streets-v2-dark' : 'streets-v2-dark')
+  if (theme === 'light' && (!baseStyle || baseStyle === 'streets-dk')) sTile = 'streets-v2'
+  if (baseStyle === 'hybrid') sTile = 'hybrid'
+  if (baseStyle === 'outdoor') sTile = 'outdoor-v2'
+  if (baseStyle === 'topo') sTile = 'topo-v2'
+  
+  const ext = sTile === 'hybrid' ? 'jpg' : 'png'
+  const tileUrl = `https://api.maptiler.com/maps/${sTile}/256/{z}/{x}/{y}@2x.${ext}?key=${key}`
+
   return {
     version: 8,
     sources: {
-      carto: {
+      'maptiler-raster': {
         type: 'raster',
-        tiles: [
-          `https://a.basemaps.cartocdn.com/${basemap}/{z}/{x}/{y}@2x.png`,
-          `https://b.basemaps.cartocdn.com/${basemap}/{z}/{x}/{y}@2x.png`,
-        ],
-        tileSize: 256
+        tiles: [tileUrl],
+        tileSize: 256,
+        attribution: '&copy; MapTiler &copy; OpenStreetMap contributors',
+        maxzoom: 22
       }
     },
-    layers: [{ id: 'carto-base', type: 'raster', source: 'carto' }]
+    layers: [{ id: 'maptiler-base', type: 'raster', source: 'maptiler-raster' }]
   }
 }
 

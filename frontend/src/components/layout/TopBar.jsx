@@ -119,8 +119,8 @@ export default function TopBar({ onMenuClick }) {
           <Menu size={20} />
         </button>
 
-        <div className="topbar-brand" onClick={() => navigate('/dashboard')} role="button" tabIndex={0}
-          onKeyDown={e => e.key === 'Enter' && navigate('/dashboard')}>
+        <div className="topbar-brand" onClick={() => navigate('/')} role="button" tabIndex={0}
+          onKeyDown={e => e.key === 'Enter' && navigate('/')}>
           <span className="topbar-brand-mark">
             <RiverdaleShieldIcon />
             <span className="topbar-brand-status" aria-hidden="true" title="Monitoring active" />
