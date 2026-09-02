@@ -654,7 +654,6 @@
     transform: none;
   }
 }
-=======
 /* ==========================================================================
    HAZARDLENS INCIDENT NOTIFICATION & BROADCAST COMMAND CENTER — CSS
    Enterprise Disaster Telemetry, Early Warning Siren Feeds & Dispatch Controls
@@ -2052,6 +2051,202 @@
   .nc-hero-title {
     font-size: 1.4rem;
   }
+}
+
+/* Audio Tone Grid */
+.nc-tone-button-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.nc-tone-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 120ms var(--ease);
+}
+
+.nc-tone-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.nc-tone-btn--active {
+  background: hsla(34, 92%, 50%, 0.12);
+  border-color: hsla(34, 92%, 50%, 0.4);
+  color: var(--accent-text);
+}
+
+[data-theme="dark"] .nc-tone-btn--active {
+  color: hsl(34, 95%, 68%);
+}
+
+.nc-sound-wave-anim {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.nc-sound-bar {
+  width: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: soundEqualizer 0.4s ease-in-out infinite alternate;
+}
+.nc-sound-bar-1 { height: 12px; animation-delay: 0.05s; }
+.nc-sound-bar-2 { height: 18px; animation-delay: 0.15s; }
+.nc-sound-bar-3 { height: 24px; animation-delay: 0.1s; }
+.nc-sound-bar-4 { height: 16px; animation-delay: 0.2s; }
+.nc-sound-bar-5 { height: 10px; animation-delay: 0.08s; }
+
+@keyframes soundEqualizer {
+  from { transform: scaleY(0.3); }
+  to   { transform: scaleY(1); }
+}
+
+.nc-sound-play-lbl {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+/* Side Action Card */
+.nc-side-card--action {
+  background: linear-gradient(135deg, hsla(34, 92%, 50%, 0.08) 0%, hsla(14, 90%, 55%, 0.04) 100%);
+  border-color: hsla(34, 92%, 50%, 0.25);
+}
+
+.nc-side-action-inner {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nc-side-action-ico {
+  color: var(--accent);
+}
+
+.nc-side-action-title {
+  font-family: var(--font-heading);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.nc-side-action-desc {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.nc-btn--side-action {
+  margin-top: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+.nc-btn--side-action:hover {
+  background: var(--bg-card);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+/* Empty State */
+.nc-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5rem 2rem;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xl);
+  text-align: center;
+}
+
+.nc-empty-icon-pod {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.nc-empty-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.nc-empty-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 380px;
+  margin-bottom: 1.25rem;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   8. RESPONSIVE BREAKPOINTS
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+  .nc-main-grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .nc-main-grid {
+    grid-template-columns: 1fr;
+  }
+  .nc-hero-title {
+    font-size: 1.6rem;
+  }
+  .nc-hero-right {
+    align-items: flex-start;
+    width: 100%;
+  }
+  .nc-telemetry-pill-strip {
+    width: 100%;
+  }
+  .nc-quiet-details-tray {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .nc-hero-header {
+    padding: 1.25rem 1.4rem;
+  }
+  .nc-hero-title {
+    font-size: 1.4rem;
+  }
   .nc-controls-strip {
     flex-direction: column;
     align-items: stretch;
@@ -2077,4 +2272,3 @@
     justify-content: space-between;
   }
 }
->>>>>>> Main

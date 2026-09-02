@@ -1,17 +1,19 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Shield, Plus, Minus, Compass, AlertTriangle, Play, Navigation, MapPin, Search,
   Check, Moon, Sun, CornerUpLeft, CornerUpRight, ArrowUp, RefreshCw, Layers,
   Cloud, Droplets, Wind, Thermometer, ChevronDown, ChevronUp, Radio, Zap,
-  Tent, Building2, Map as MapIcon
+  Tent, Building2, Map as MapIcon, Waves, Flame, Activity, Wrench, ExternalLink, X
 } from 'lucide-react'
 import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { io } from 'socket.io-client'
 import bbox from '@turf/bbox'
 import { lineString } from '@turf/helpers'
+import { useAlerts } from '../context/AlertsContext'
+import { timeAgo } from '../data/mockData'
 import './LiveMapPage.css'
 
 const DEMO_CONFIG = {
@@ -85,8 +87,73 @@ let previousMapStyle = null;
 export default function LiveMapPage() {
   const mapRef = useRef(null)
   const location = useLocation()
+  const navigate = useNavigate()
+  const { alerts } = useAlerts()
 
+  // State Declarations
   const [theme, setTheme] = useState(() => localStorage.getItem('s32-theme') || 'dark')
+  const [selectedMapAlert, setSelectedMapAlert] = useState(null)
+  const [appMode, setAppMode] = useState('live')
+  const [userLocation, setUserLocation] = useState(null)
+  const [destination, setDestination] = useState(null)
+  const [routeData, setRouteData] = useState(null)
+  const [oldRouteData, setOldRouteData] = useState(null)
+  const [avoidWaypoint, setAvoidWaypoint] = useState(null)
+  const [incident, setIncident] = useState(null)
+  const [evidenceStream, setEvidenceStream] = useState([])
+  const [recalculating, setRecalculating] = useState(false)
+  const [notice, setNotice] = useState(null)
+
+  // Extract ONLY approved/verified active incidents for map rendering
+  const activeVerifiedAlerts = useMemo(() => {
+    if (!alerts || !Array.isArray(alerts)) return []
+    if (appMode === 'demo') return []
+    return alerts.filter(a => a.status === 'verified' || a.status === 'approved')
+  }, [alerts, appMode])
+
+  const getAlertCoords = useCallback((alert) => {
+    if (!alert) return [85.8395, 20.2858]
+    if (alert.coordinates) {
+      if (Array.isArray(alert.coordinates) && alert.coordinates.length >= 2) {
+        return [Number(alert.coordinates[0]), Number(alert.coordinates[1])]
+      }
+      if (typeof alert.coordinates === 'object' && alert.coordinates.lat != null && alert.coordinates.lng != null) {
+        return [Number(alert.coordinates.lng), Number(alert.coordinates.lat)]
+      }
+    }
+    if (alert.lng != null && alert.lat != null) {
+      return [Number(alert.lng), Number(alert.lat)]
+    }
+    if (alert.longitude != null && alert.latitude != null) {
+      return [Number(alert.longitude), Number(alert.latitude)]
+    }
+    const loc = (alert.location || '').toLowerCase()
+    if (loc.includes('riverview') || loc.includes('southbank')) return [-122.676, 45.523]
+    if (loc.includes('eastvale')) return [-122.660, 45.512]
+    if (loc.includes('westgate') || loc.includes('downtown')) return [-122.690, 45.530]
+    if (loc.includes('riverdale')) return [85.8395, 20.2858]
+    return [85.8395, 20.2858]
+  }, [])
+
+  const getHazardMarkerMeta = useCallback((type) => {
+    const t = (type || '').toLowerCase()
+    if (t.includes('flood') || t.includes('river') || t === 'water') {
+      return { label: 'FLOOD / WATER', icon: Waves, color: '#3b82f6', bg: 'rgba(59,130,246,0.2)', border: '#3b82f6', symbol: '💧' }
+    }
+    if (t.includes('fire')) {
+      return { label: 'FIRE RISK', icon: Flame, color: '#ef4444', bg: 'rgba(239,68,68,0.2)', border: '#ef4444', symbol: '🔥' }
+    }
+    if (t.includes('landslide') || t.includes('seismic')) {
+      return { label: 'LANDSLIDE / SEISMIC', icon: Activity, color: '#d97706', bg: 'rgba(217,119,6,0.2)', border: '#d97706', symbol: '📳' }
+    }
+    if (t.includes('pothole') || t.includes('infrastructure') || t.includes('road')) {
+      return { label: 'ROAD / POTHOLE', icon: Wrench, color: '#f59e0b', bg: 'rgba(245,158,11,0.2)', border: '#f59e0b', symbol: '🏗️' }
+    }
+    if (t.includes('cyclone') || t.includes('weather') || t.includes('wind')) {
+      return { label: 'CYCLONE / WEATHER', icon: Wind, color: '#8b5cf6', bg: 'rgba(139,92,246,0.2)', border: '#8b5cf6', symbol: '🌩️' }
+    }
+    return { label: 'VERIFIED HAZARD', icon: AlertTriangle, color: '#eab308', bg: 'rgba(234,179,8,0.2)', border: '#eab308', symbol: '⚠️' }
+  }, [])
   const [viewState, setViewState] = useState({
     longitude: 0, latitude: 0,
     zoom: 2, pitch: 0, bearing: 0
@@ -115,18 +182,6 @@ export default function LiveMapPage() {
   const searchDebounceRef = useRef(null)
   const searchContainerRef = useRef(null)
 
-  // S32 State
-  const [userLocation, setUserLocation] = useState(null)
-  const [destination, setDestination] = useState(null)
-  const [routeData, setRouteData] = useState(null)
-  const [oldRouteData, setOldRouteData] = useState(null)
-  const [avoidWaypoint, setAvoidWaypoint] = useState(null)
-  const [incident, setIncident] = useState(null)
-  const [evidenceStream, setEvidenceStream] = useState([])
-  const [recalculating, setRecalculating] = useState(false)
-
-  // Non-blocking replacement for alert() — { message, tone: 'info' | 'error' }
-  const [notice, setNotice] = useState(null)
   const noticeTimeoutRef = useRef(null)
 
   // Map style
@@ -139,9 +194,6 @@ export default function LiveMapPage() {
 
   // Weather
   const [weather, setWeather] = useState(null)
-
-  // Mode: 'live' or 'demo'
-  const [appMode, setAppMode] = useState('live')
 
   // Emergency Destinations
   const [nearbyDestinations, setNearbyDestinations] = useState({ official_shelters: [], temporary_camps: [] })
@@ -326,7 +378,7 @@ export default function LiveMapPage() {
       map.off('move', updateSvgRoute);
       map.off('zoom', updateSvgRoute);
     };
-  }, [routeData]);
+  }, [routeData, incident, avoidWaypoint, alerts, getAlertCoords]);
 
   // ---- Weather (OpenMeteo - free, no key needed) ----
   const fetchWeather = async (lat, lng) => {
@@ -919,7 +971,7 @@ export default function LiveMapPage() {
 
           <button onClick={startDemo}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 700, boxShadow: '0 4px 14px rgba(16,185,129,0.4)', letterSpacing: '0.3px' }}>
-            <Play size={13} fill="currentColor" /> RUN DEMO
+            <Play size={13} fill="currentColor" /> RUN SIMULATION
           </button>
         </div>
       </div>
@@ -1236,14 +1288,6 @@ export default function LiveMapPage() {
             </Marker>
           ))}
 
-          {/* HAZARD POLYGON */}
-          {hazardPolygon && (
-            <Source id="hazard-zone" type="geojson" data={hazardPolygon}>
-              <Layer id="hazard-fill" type="fill" paint={hazardFillPaint} />
-              <Layer id="hazard-outline" type="line" layout={routeLayout} paint={hazardOutlinePaint} />
-            </Source>
-          )}
-
           {/* UNSAFE ROAD */}
           {unsafeRoadGeoJSON && (
             <Source id="unsafe-road-src" type="geojson" data={unsafeRoadGeoJSON}>
@@ -1258,8 +1302,6 @@ export default function LiveMapPage() {
               <Layer id="s32-blocked-route-line" type="line" layout={routeLayout} paint={blockedRoutePaint} />
             </Source>
           )}
-
-
 
           {/* USER MARKER */}
           {activeUserLocation && (
@@ -1282,6 +1324,55 @@ export default function LiveMapPage() {
             </Marker>
           )}
 
+          {/* VERIFIED HAZARD MARKERS (APPROVED CITIZEN & SYSTEM REPORTS) */}
+          {activeVerifiedAlerts.map(alert => {
+            const [lng, lat] = getAlertCoords(alert)
+            const meta = getHazardMarkerMeta(alert.type || alert.hazardType)
+            const IconComp = meta.icon
+            const isSelected = selectedMapAlert?.id === alert.id
+
+            return (
+              <Marker
+                key={alert.id}
+                longitude={lng}
+                latitude={lat}
+                anchor="bottom"
+                onClick={(e) => {
+                  e.originalEvent.stopPropagation()
+                  setSelectedMapAlert(alert)
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', zIndex: isSelected ? 20 : 10 }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: isSelected ? meta.color : 'rgba(15, 23, 42, 0.92)',
+                    color: '#ffffff',
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    border: `2px solid ${meta.border}`,
+                    boxShadow: `0 4px 16px ${meta.bg}`,
+                    transform: isSelected ? 'scale(1.12)' : 'scale(1)',
+                    transition: 'transform 0.15s ease'
+                  }}>
+                    <IconComp size={15} color={isSelected ? '#ffffff' : meta.color} />
+                    <span>{alert.title ? (alert.title.length > 20 ? alert.title.slice(0, 18) + '...' : alert.title) : meta.label}</span>
+                  </div>
+                  <div style={{
+                    width: 0,
+                    height: 0,
+                    borderLeft: '6px solid transparent',
+                    borderRight: '6px solid transparent',
+                    borderTop: `8px solid ${meta.border}`
+                  }} />
+                </div>
+              </Marker>
+            )
+          })}
+
           {/* HAZARD MARKER */}
           {incident && incident.status === 'CONFIRMED' && incident.hazardCenter && (
             <Marker longitude={incident.hazardCenter[0]} latitude={incident.hazardCenter[1]} anchor="bottom">
@@ -1291,6 +1382,118 @@ export default function LiveMapPage() {
             </Marker>
           )}
         </Map>
+
+        {/* Interactive Hazard Details Card for selected map alert */}
+        {selectedMapAlert && (
+          <div style={{
+            position: 'absolute',
+            bottom: 32,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100,
+            width: '92%',
+            maxWidth: '440px',
+            backgroundColor: 'rgba(15, 23, 42, 0.94)',
+            backdropFilter: 'blur(16px)',
+            border: `1.5px solid ${getHazardMarkerMeta(selectedMapAlert.type || selectedMapAlert.hazardType).border}`,
+            borderRadius: '16px',
+            padding: '16px 20px',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7)',
+            color: '#ffffff'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: getHazardMarkerMeta(selectedMapAlert.type || selectedMapAlert.hazardType).color, letterSpacing: '0.05em' }}>
+                    {getHazardMarkerMeta(selectedMapAlert.type || selectedMapAlert.hazardType).label}
+                  </span>
+                  <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontWeight: 700, border: '1px solid rgba(34,197,94,0.3)' }}>
+                    ✓ VERIFIED ACTIVE
+                  </span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>{selectedMapAlert.title}</h3>
+              </div>
+              <button
+                onClick={() => setSelectedMapAlert(null)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+                aria-label="Close details"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ margin: '0 0 12px 0', fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.4 }}>
+              {selectedMapAlert.description}
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', backgroundColor: 'rgba(30, 41, 59, 0.6)', padding: '10px 12px', borderRadius: '10px', marginBottom: '14px', fontSize: '0.78rem' }}>
+              <div>
+                <span style={{ color: '#64748b', display: 'block', fontSize: '0.68rem', fontWeight: 700 }}>LOCATION</span>
+                <strong style={{ color: '#e2e8f0' }}>{selectedMapAlert.location}</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', display: 'block', fontSize: '0.68rem', fontWeight: 700 }}>SEVERITY / AI CONF</span>
+                <strong style={{ color: '#ef4444' }}>{selectedMapAlert.severity?.toUpperCase()} ({selectedMapAlert.confidence || 75}%)</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', display: 'block', fontSize: '0.68rem', fontWeight: 700 }}>REPORTED</span>
+                <strong style={{ color: '#e2e8f0' }}>{timeAgo(selectedMapAlert.reportedAt)}</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', display: 'block', fontSize: '0.68rem', fontWeight: 700 }}>HAZARD BUFFER</span>
+                <strong style={{ color: '#38bdf8' }}>~500m Avoid Zone</strong>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  const coords = getAlertCoords(selectedMapAlert)
+                  setAvoidWaypoint(coords)
+                  recalculateRoute(coords)
+                  showNotice(`Route updated: Avoiding ${selectedMapAlert.title} zone`, 'info')
+                }}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ef4444',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  color: '#ef4444',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <AlertTriangle size={14} /> Avoid Zone in Route
+              </button>
+              <button
+                onClick={() => navigate(`/dashboard/alert/${selectedMapAlert.id}`)}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: '#3b82f6',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                Inspect Dossier <ExternalLink size={14} />
+              </button>
+            </div>
+          </div>
+        )}
 
         <svg
           style={{

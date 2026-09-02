@@ -16,7 +16,8 @@ import {
   Users,
   Camera,
   Check,
-  X
+  X,
+  Trash2
 } from 'lucide-react'
 
 import Map, { Marker } from 'react-map-gl/maplibre'
@@ -95,7 +96,7 @@ export default function AlertDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user, caps } = useAuth()
-  const { alerts, addEvidenceToAlert, submitCommunityVote, approveAlert, rejectAlert } = useAlerts()
+  const { alerts, addEvidenceToAlert, submitCommunityVote, verifyAlert, approveAlert, rejectAlert, deleteAlert } = useAlerts()
 
   const alert = alerts.find((a) => a.id === id)
 
@@ -463,7 +464,48 @@ export default function AlertDetailPage() {
             <span className="severity-summary-label">{severity.label}</span>
             <span className="severity-summary-description">{severity.description}</span>
           </div>
-          {caps.canCorrect && !isResolved && (
+
+          {(caps?.canAdmin || caps?.canQueue || user?.role === 'admin' || user?.role === 'verifier') && alert.status === 'pending' && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ backgroundColor: '#22c55e', borderColor: '#22c55e', color: '#ffffff', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => verifyAlert(alert.id, user?.name || 'Admin')}
+              >
+                <Check size={16} /> Approve (Verify)
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{ backgroundColor: 'hsla(0, 75%, 55%, 0.2)', color: '#ef4444', border: '1px solid #ef4444', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => rejectAlert(alert.id, user?.name || 'Admin')}
+              >
+                <X size={16} /> Reject (Fake)
+              </button>
+            </div>
+          )}
+
+          {(caps?.canAdmin || user?.role === 'admin') && (
+            <div style={{ marginTop: '10px' }}>
+              <button
+                type="button"
+                className="btn"
+                style={{ backgroundColor: 'hsla(0, 75%, 55%, 0.15)', color: '#ef4444', border: '1px solid #ef4444', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => {
+                  if (window.confirm(`Delete report "${alert.title}" permanently?`)) {
+                    deleteAlert(alert.id)
+                    navigate('/dashboard/my-reports')
+                  }
+                }}
+                title="Delete this report permanently"
+              >
+                <Trash2 size={16} /> Delete Report
+              </button>
+            </div>
+          )}
+
+          {caps.canCorrect && !isResolved && alert.status !== 'pending' && (
             <button className="btn btn-primary correction-action" onClick={() => navigate(`/dashboard/alert/${alert.id}/correct`)}>
               <Wrench size={16} /> Apply Correction
             </button>

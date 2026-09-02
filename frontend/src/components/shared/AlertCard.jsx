@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Clock, ChevronRight } from 'lucide-react'
+import { MapPin, Clock, ChevronRight, Check, X, Trash2 } from 'lucide-react'
 import { SeverityBadge, StatusBadge } from './StatusBadge'
 import { timeAgo } from '../../data/mockData'
+import { useAuth } from '../../context/AuthContext'
+import { useAlerts } from '../../context/AlertsContext'
 import './AlertCard.css'
 
 const TYPE_ICONS = {
@@ -24,8 +26,13 @@ const TYPE_ICONS = {
 
 export default function AlertCard({ alert, compact = false }) {
   const navigate = useNavigate()
+  const { user, caps } = useAuth()
+  const { verifyAlert, rejectAlert, deleteAlert } = useAlerts()
+
   const icon = TYPE_ICONS[alert.type] || TYPE_ICONS[alert.hazardType] || '⚠️'
   const confidenceTone = alert.confidence >= 75 ? 'high' : alert.confidence >= 50 ? 'medium' : 'low'
+  const isAdminOrVerifier = caps?.canAdmin || caps?.canQueue || user?.role === 'admin' || user?.role === 'verifier'
+  const isAdmin = caps?.canAdmin || user?.role === 'admin'
 
   return (
     <div
@@ -66,6 +73,56 @@ export default function AlertCard({ alert, compact = false }) {
           {timeAgo(alert.reportedAt)}
         </span>
       </div>
+
+      {isAdminOrVerifier && (
+        <div className="alert-card-admin-actions" onClick={(e) => e.stopPropagation()}>
+          {alert.status === 'pending' && (
+            <>
+              <button
+                type="button"
+                className="alert-card-admin-btn alert-card-admin-btn--verify"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  verifyAlert(alert.id, user?.name || 'Admin')
+                }}
+                title="Verify this report"
+              >
+                <Check size={13} />
+                Verify (Approve)
+              </button>
+              <button
+                type="button"
+                className="alert-card-admin-btn alert-card-admin-btn--reject"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  rejectAlert(alert.id, user?.name || 'Admin')
+                }}
+                title="Reject fake report"
+              >
+                <X size={13} />
+                Reject (Fake)
+              </button>
+            </>
+          )}
+
+          {isAdmin && (
+            <button
+              type="button"
+              className="alert-card-admin-btn alert-card-admin-btn--delete"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (window.confirm(`Delete report "${alert.title}" permanently?`)) {
+                  deleteAlert(alert.id)
+                }
+              }}
+              title="Delete report permanently"
+            >
+              <Trash2 size={13} />
+              Delete
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
