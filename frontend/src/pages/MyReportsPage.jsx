@@ -28,9 +28,13 @@ export default function MyReportsPage({ showOnlyOwn = false }) {
   // this keeps working even before every alert record has reportedById.
   const myReports = useMemo(() => (
     restrictToOwn
-      ? alerts.filter(a => (a.reportedById ?? a.reportedBy) === (user.id ?? user.name))
+      ? alerts.filter(a =>
+          (a.reportedById && user?.id && a.reportedById === user.id) ||
+          (a.reportedBy && user?.name && a.reportedBy === user.name) ||
+          (a.reportedById ?? a.reportedBy) === (user?.id ?? user?.name)
+        )
       : alerts
-  ), [alerts, restrictToOwn, user.id, user.name])
+  ), [alerts, restrictToOwn, user?.id, user?.name])
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase()

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
-    "dev": "concurrently \"cd backend && npm start\" \"cd frontend && npm run dev\"",
+    "dev": "concurrently -n \"BACKEND,FRONTEND,PYTHON-AI\" \"cd backend && npm start\" \"cd frontend && npm run dev\" \"cd hazardlens-ai && python -m uvicorn app:app --reload --port 8000\"",
     "start": "npm run dev"
   },
   "repository": {

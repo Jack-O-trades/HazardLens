@@ -160,7 +160,7 @@ export function AlertsProvider({ children }) {
       const now = new Date().toISOString()
       const updatedAlert = {
         ...targetAlert,
-        status: 'verified',
+        status: targetAlert.status,
         confidence: finalConf,
         verificationDetails: {
           weather: { data: weatherData, score: weatherScore },
@@ -173,7 +173,7 @@ export function AlertsProvider({ children }) {
           { 
             time: now, 
             actor: 'HazardLens AI Engine', 
-            action: `Auto-verification complete: Weather (${weatherScore}%), River (${riverScore !== null ? riverScore + '%' : 'N/A'}), Satellite (${satelliteScore !== null ? satelliteScore + '%' : 'N/A'}) analyzed. Combined Confidence: ${finalConf}%.`, 
+            action: `Telemetry analysis complete: Weather (${weatherScore}%), River (${riverScore !== null ? riverScore + '%' : 'N/A'}), Satellite (${satelliteScore !== null ? satelliteScore + '%' : 'N/A'}) analyzed. Fused Confidence: ${finalConf}%. Awaiting Admin Verification.`, 
             type: 'system' 
           }
         ]
@@ -206,7 +206,9 @@ export function AlertsProvider({ children }) {
       severity: severityMap[report.severity] || 'medium',
       type: typeMap[report.hazardType] || 'other',
       status: 'pending',
-      reportedBy: report.reportedBy,
+      reportedBy: report.reportedBy || 'Citizen Reporter',
+      reportedById: report.reportedById || null,
+      reportedByRole: report.reporterRole || report.reportedByRole || 'community',
       reportedAt: now,
       updatedAt: now,
       images: report.photos ? (Array.isArray(report.photos) ? report.photos : [{ url: report.photos, caption: report.description }]) : [],
@@ -218,7 +220,7 @@ export function AlertsProvider({ children }) {
       sources: ['Citizen Report'],
       warningText: null,
       timeline: [
-        { time: now, actor: report.reportedBy, action: 'Hazard reported via mobile app', type: 'report' },
+        { time: now, actor: report.reportedBy || 'Citizen Reporter', action: 'Hazard reported via mobile app', type: 'report' },
         { time: now, actor: 'HazardLens AI Engine', action: `Auto-verification initiated: Checking Weather, River sensors, and Satellite imagery...`, type: 'system' }
       ],
     }
@@ -371,6 +373,10 @@ export function AlertsProvider({ children }) {
     }))
   }, [alerts, persist])
 
+  const deleteAlert = useCallback((id) => {
+    persist(alerts.filter(a => a.id !== id))
+  }, [alerts, persist])
+
   const refreshAlerts = useCallback(() => {
     setLastRefresh(Date.now())
     setAlerts(loadAlerts())
@@ -408,6 +414,7 @@ export function AlertsProvider({ children }) {
       rejectAlert,
       correctAlert,
       resolveAlert,
+      deleteAlert,
       refreshAlerts,
       saveDraft,
       loadDraft,

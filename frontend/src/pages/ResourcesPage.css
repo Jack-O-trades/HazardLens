@@ -1,440 +1,463 @@
-/* ──────────────────────────────────────────────────────────
-   Resources page v2 — scoped to .resources-page-v2 so its
-   color palette doesn't leak into / fight the rest of the
-   app theme. All colors are local CSS variables defined on
-   the root wrapper below.
+/* ========================================================================
+   HAZARDLENS RESOURCES & EMERGENCY GUIDANCE
+   Knowledge Atlas with Search, Categorized Cards, Emergency Helpline Strip
+   ======================================================================== */
 
-   Light mode = the default values here.
-   Dark mode  = the ".dark .resources-page-v2" override block
-   further down, recalibrated to match the app's actual dark
-   dashboard (near-black page bg, dark card surfaces, subtle
-   borders). Nothing else in the file needs to change — every
-   rule already reads from these variables.
-   ────────────────────────────────────────────────────────── */
-
-.resources-page-v2 {
-  --rp2-bg: #faf8f4;
-  --rp2-surface: #ffffff;
-  --rp2-border: #ececE6;
-  --rp2-text-primary: #1c1c1e;
-  --rp2-text-secondary: #55565c;
-  --rp2-text-muted: #8a8b91;
-  --rp2-accent: #2f6f5e;
-  --rp2-accent-dark: #24564a;
-  --rp2-shadow: 0 1px 2px rgba(20, 20, 20, 0.03);
-
-  --rp2-mint-bg: #d9f1e2;
-  --rp2-mint-fg: #1f9d63;
-  --rp2-blue-bg: #dbe9fb;
-  --rp2-blue-fg: #2f6fd6;
-  --rp2-peach-bg: #fbe3d0;
-  --rp2-peach-fg: #d9722f;
-  --rp2-green-bg: #dcefdd;
-  --rp2-green-fg: #2f8f46;
-  --rp2-red-bg: #fbdcdc;
-  --rp2-red-fg: #d6423f;
-  --rp2-purple-bg: #e8def9;
-  --rp2-purple-fg: #7a4fd6;
-  --rp2-orange-bg: #fce6cf;
-  --rp2-orange-fg: #d9821f;
-  --rp2-yellow-bg: #faedc7;
-  --rp2-yellow-fg: #b8860b;
-
+.rsc-page {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 0;
-  background: var(--rp2-bg);
-  color: var(--rp2-text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  transition: background 0.15s ease, color 0.15s ease;
+  padding-bottom: 3rem;
+  animation: rscFadeIn 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ── Dark mode override ──────────────────────────────────────
-   App sets data-theme="dark" on <html>. Mirror with media query
-   for OS-level dark mode when no explicit theme is saved. ── */
-[data-theme="dark"] .resources-page-v2 {
-  --rp2-bg: #0a0b0f;
-  --rp2-surface: #13151b;
-  --rp2-border: #232631;
-  --rp2-text-primary: #f2f3f5;
-  --rp2-text-secondary: #98a0ab;
-  --rp2-text-muted: #676d78;
-  --rp2-accent: #34a880;
-  --rp2-accent-dark: #1f6b52;
-  --rp2-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-
-  --rp2-mint-bg: #12291f;
-  --rp2-mint-fg: #4ade95;
-  --rp2-blue-bg: #10202f;
-  --rp2-blue-fg: #6ea8f5;
-  --rp2-peach-bg: #2e1d10;
-  --rp2-peach-fg: #f0975a;
-  --rp2-green-bg: #142a1a;
-  --rp2-green-fg: #6cc47f;
-  --rp2-red-bg: #2a1316;
-  --rp2-red-fg: #f2726f;
-  --rp2-purple-bg: #1f1a33;
-  --rp2-purple-fg: #b092f0;
-  --rp2-orange-bg: #2e1e0e;
-  --rp2-orange-fg: #f5a13d;
-  --rp2-yellow-bg: #2e260e;
-  --rp2-yellow-fg: #eecb5f;
+@keyframes rscFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* OS-level dark: fires when user hasn't saved a theme in localStorage */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .resources-page-v2 {
-    --rp2-bg: #0a0b0f;
-    --rp2-surface: #13151b;
-    --rp2-border: #232631;
-    --rp2-text-primary: #f2f3f5;
-    --rp2-text-secondary: #98a0ab;
-    --rp2-text-muted: #676d78;
-    --rp2-accent: #34a880;
-    --rp2-accent-dark: #1f6b52;
-    --rp2-shadow: 0 1px 3px rgba(0,0,0,0.45);
-    --rp2-mint-bg: #12291f; --rp2-mint-fg: #4ade95;
-    --rp2-blue-bg: #10202f; --rp2-blue-fg: #6ea8f5;
-    --rp2-peach-bg: #2e1d10; --rp2-peach-fg: #f0975a;
-    --rp2-green-bg: #142a1a; --rp2-green-fg: #6cc47f;
-    --rp2-red-bg: #2a1316; --rp2-red-fg: #f2726f;
-    --rp2-purple-bg: #1f1a33; --rp2-purple-fg: #b092f0;
-    --rp2-orange-bg: #2e1e0e; --rp2-orange-fg: #f5a13d;
-    --rp2-yellow-bg: #2e260e; --rp2-yellow-fg: #eecb5f;
-  }
+/* ── Knowledge Search Hero ── */
+.rsc-search-hero {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem 2rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
 }
 
-.resources-page-v2.animate-fade-in {
-  animation: rp2FadeIn 240ms ease;
+[data-theme="dark"] .rsc-search-hero {
+  background: linear-gradient(175deg, hsl(220, 24%, 11%) 0%, hsl(220, 26%, 8%) 100%);
+  border-color: hsl(220, 18%, 17%);
 }
 
-@keyframes rp2FadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+.rsc-search-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 50% at 50% 0%, hsla(215, 80%, 55%, 0.06), transparent);
+  pointer-events: none;
 }
 
-/* ── Header ── */
-.rp2-header {
+.rsc-search-hero-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.rsc-search-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: hsla(145, 55%, 45%, 0.1);
+  border: 1px solid hsla(145, 55%, 45%, 0.25);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #10b981;
+}
+
+.rsc-search-hero-title {
+  font-family: var(--font-heading);
+  font-size: 1.65rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.rsc-search-hero-sub {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 460px;
+}
+
+.rsc-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.6rem 1rem;
+  margin-top: 0.5rem;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.rsc-search-bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px hsla(34, 92%, 50%, 0.15);
+}
+
+.rsc-search-icon { color: var(--text-muted); flex-shrink: 0; }
+
+.rsc-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.rsc-search-input::placeholder { color: var(--text-muted); }
+
+.rsc-search-clear {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.rsc-search-clear:hover { color: var(--text-primary); }
+
+/* ── Category Filter Pills ── */
+.rsc-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
   margin-bottom: 1.5rem;
 }
 
-.rp2-title {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 2.25rem;
-  font-weight: 700;
-  color: var(--rp2-text-primary);
-  letter-spacing: -0.01em;
-}
-
-.rp2-subtitle {
-  margin-top: 0.35rem;
-  font-size: 0.95rem;
-  color: var(--rp2-text-secondary);
-}
-
-/* ── Filter pills ── */
-.rp2-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-bottom: 1.75rem;
-}
-
-.rp2-filter-pill {
+.rsc-filter-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.95rem;
+  gap: 6px;
+  padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid var(--rp2-border);
-  background: var(--rp2-surface);
-  color: var(--rp2-text-secondary);
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: all 140ms ease;
+  white-space: nowrap;
 }
 
-.rp2-filter-pill:hover {
-  border-color: var(--rp2-accent);
-  color: var(--rp2-accent-dark);
+.rsc-filter-pill:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
 }
 
-.rp2-filter-pill--active {
-  background: var(--rp2-accent-dark);
-  border-color: var(--rp2-accent-dark);
+.rsc-filter-pill--active {
+  background: var(--accent);
+  border-color: var(--accent);
   color: #ffffff;
 }
 
-/* ── Layout: cards grid + sidebar ── */
-.rp2-layout {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
+[data-theme="dark"] .rsc-filter-pill--active { color: #0f172a; }
 
-@media (min-width: 900px) {
-  .rp2-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 300px;
-    align-items: start;
-    gap: 1.5rem;
-  }
-}
-
-/* ── Card grid ── */
-.rp2-cards-grid {
+/* ── Resource Cards Grid ── */
+.rsc-cards-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
 }
 
-@media (max-width: 640px) {
-  .rp2-cards-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.rp2-empty {
-  grid-column: 1 / -1;
-  padding: 2rem;
-  text-align: center;
-  color: var(--rp2-text-muted);
-  font-size: 0.9rem;
-}
-
-.rp2-card {
+.rsc-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.35rem 1.4rem;
   display: flex;
   flex-direction: column;
-  background: var(--rp2-surface);
-  border: 1px solid var(--rp2-border);
-  border-radius: 14px;
-  padding: 1.25rem;
-  box-shadow: var(--rp2-shadow);
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: all 180ms ease;
 }
 
-.rp2-card-icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  margin-bottom: 0.85rem;
+[data-theme="dark"] .rsc-card {
+  background: hsl(220, 22%, 10%);
+  border-color: hsl(220, 18%, 17%);
 }
 
-.rp2-card-icon--mint  { background: var(--rp2-mint-bg);  color: var(--rp2-mint-fg); }
-.rp2-card-icon--blue  { background: var(--rp2-blue-bg);  color: var(--rp2-blue-fg); }
-.rp2-card-icon--peach { background: var(--rp2-peach-bg); color: var(--rp2-peach-fg); }
-.rp2-card-icon--green { background: var(--rp2-green-bg); color: var(--rp2-green-fg); }
-
-.rp2-card-title {
-  font-size: 1.02rem;
-  font-weight: 700;
-  color: var(--rp2-text-primary);
-  margin-bottom: 0.4rem;
-  line-height: 1.3;
+.rsc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-hover);
 }
 
-.rp2-card-desc {
-  font-size: 0.85rem;
-  color: var(--rp2-text-secondary);
-  line-height: 1.5;
-  flex: 1;
-  margin-bottom: 1rem;
-}
-
-.rp2-card-footer {
+.rsc-card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 8px;
 }
 
-.rp2-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.28rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.rp2-tag--blue   { background: var(--rp2-blue-bg);   color: var(--rp2-blue-fg); }
-.rp2-tag--red    { background: var(--rp2-red-bg);    color: var(--rp2-red-fg); }
-.rp2-tag--yellow { background: var(--rp2-yellow-bg); color: var(--rp2-yellow-fg); }
-
-.rp2-card-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: transparent;
-  border: none;
-  color: var(--rp2-accent);
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
-}
-
-.rp2-card-action:hover {
-  color: var(--rp2-accent-dark);
-  text-decoration: underline;
-}
-
-/* ── Sidebar: Emergency Contacts ── */
-.rp2-sidebar {
-  min-width: 0;
-}
-
-.rp2-emergency-card {
-  background: var(--rp2-surface);
-  border: 1px solid var(--rp2-border);
-  border-radius: 14px;
-  padding: 1.25rem;
-  box-shadow: var(--rp2-shadow);
-}
-
-.rp2-emergency-header {
+.rsc-card-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 1.1rem;
-}
-
-.rp2-emergency-icon {
-  width: 2.1rem;
-  height: 2.1rem;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: var(--rp2-red-bg);
-  color: var(--rp2-red-fg);
   flex-shrink: 0;
 }
 
-.rp2-emergency-header h2 {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--rp2-text-primary);
-}
+.rsc-card-icon--mint   { background: hsla(145, 55%, 45%, 0.12); color: #10b981; }
+.rsc-card-icon--blue   { background: hsla(215, 80%, 55%, 0.12); color: #3b82f6; }
+.rsc-card-icon--peach  { background: hsla(25, 90%, 55%, 0.12); color: #f97316; }
+.rsc-card-icon--green  { background: hsla(145, 55%, 45%, 0.12); color: #22c55e; }
 
-.rp2-emergency-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  margin-bottom: 1.1rem;
-}
-
-.rp2-emergency-row {
+.rsc-card-badges {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 6px;
 }
 
-.rp2-emergency-row-icon {
-  width: 2rem;
-  height: 2rem;
+.rsc-format-pill {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  flex-shrink: 0;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-md);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
-.rp2-emergency-row-icon--red    { background: var(--rp2-red-bg);    color: var(--rp2-red-fg); }
-.rp2-emergency-row-icon--blue   { background: var(--rp2-blue-bg);   color: var(--rp2-blue-fg); }
-.rp2-emergency-row-icon--purple { background: var(--rp2-purple-bg); color: var(--rp2-purple-fg); }
-.rp2-emergency-row-icon--orange { background: var(--rp2-orange-bg); color: var(--rp2-orange-fg); }
+.rsc-format-pill--green  { background: hsla(145, 55%, 45%, 0.12); color: #10b981; }
+.rsc-format-pill--blue   { background: hsla(215, 80%, 55%, 0.12); color: #3b82f6; }
+.rsc-format-pill--orange { background: hsla(25, 90%, 55%, 0.12); color: #f97316; }
+.rsc-format-pill--gray   { background: var(--bg-card); color: var(--text-muted); }
 
-.rp2-emergency-row-name {
-  flex: 1;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--rp2-text-primary);
+.rsc-read-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-md);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
 }
 
-.rp2-emergency-row-sub {
-  font-weight: 400;
-  color: var(--rp2-text-muted);
-}
-
-.rp2-emergency-row-number {
+.rsc-card-title {
+  font-family: var(--font-heading);
   font-size: 1rem;
-  font-weight: 700;
-  color: var(--rp2-accent-dark);
-  flex-shrink: 0;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.25;
+  letter-spacing: -0.015em;
 }
 
-.rp2-emergency-row-stack {
+.rsc-card-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
 }
 
-.rp2-emergency-row-detail {
-  font-size: 0.78rem;
-  color: var(--rp2-text-muted);
-}
-
-.rp2-nonemergency-box {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-  background: var(--rp2-green-bg);
-  color: var(--rp2-green-fg);
-  border-radius: 10px;
-  padding: 0.8rem 0.9rem;
-  margin-bottom: 0.75rem;
-}
-
-.rp2-nonemergency-box svg {
-  flex-shrink: 0;
-  margin-top: 0.1rem;
-}
-
-.rp2-nonemergency-box p {
-  font-size: 0.8rem;
-  line-height: 1.45;
-  color: var(--rp2-text-secondary);
-}
-
-.rp2-find-local {
+.rsc-card-action {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.85rem;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
   font-weight: 700;
-  color: var(--rp2-accent);
+  color: var(--accent);
+  background: hsla(34, 92%, 50%, 0.08);
+  border: 1px solid hsla(34, 92%, 50%, 0.2);
+  cursor: pointer;
+  transition: all 140ms ease;
 }
 
-.rp2-find-local:hover {
-  color: var(--rp2-accent-dark);
-  text-decoration: underline;
+.rsc-card-action:hover {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
 }
 
-/* ── Footer ── */
-.rp2-footer {
+[data-theme="dark"] .rsc-card-action:hover { color: #0f172a; }
+
+/* ── Empty State ── */
+.rsc-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 3rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.rsc-empty p {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* ── Emergency Helpline Strip ── */
+.rsc-helpline-strip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+[data-theme="dark"] .rsc-helpline-strip {
+  background: hsl(220, 22%, 10%);
+  border-color: hsl(220, 18%, 17%);
+}
+
+.rsc-helpline-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+  color: #ef4444;
+}
+
+.rsc-helpline-header h2 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
+}
+
+.rsc-helpline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.rsc-hotline-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: border-color 140ms ease;
+}
+
+.rsc-hotline-row:hover { border-color: var(--border-hover); }
+
+.rsc-hotline-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rsc-hotline-icon--red    { background: hsla(0, 85%, 55%, 0.12); color: #ef4444; }
+.rsc-hotline-icon--blue   { background: hsla(215, 80%, 55%, 0.12); color: #3b82f6; }
+.rsc-hotline-icon--purple { background: hsla(275, 75%, 60%, 0.12); color: #8b5cf6; }
+.rsc-hotline-icon--orange { background: hsla(25, 90%, 55%, 0.12); color: #f97316; }
+
+.rsc-hotline-name {
+  flex: 1;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rsc-hotline-sub {
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.rsc-hotline-number {
+  font-size: 0.88rem;
+  font-weight: 900;
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.rsc-hotline-number:hover { color: var(--accent); }
+
+.rsc-hotline-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.rsc-hotline-detail {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.rsc-helpline-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-top: 2rem;
-  padding: 1rem 0 1.5rem;
-  border-top: 1px solid var(--rp2-border);
-  font-size: 0.78rem;
-  color: var(--rp2-text-muted);
+  flex-wrap: wrap;
 }
 
-@media (max-width: 480px) {
-  .rp2-footer {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.35rem;
-  }
+.rsc-helpline-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.rsc-helpline-notice svg { color: #10b981; flex-shrink: 0; }
+
+.rsc-find-local {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.rsc-find-local:hover { text-decoration: underline; }
+
+/* ── Page Footer ── */
+.rsc-page-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .rsc-search-hero { padding: 1.75rem 1.25rem; }
+  .rsc-search-hero-title { font-size: 1.3rem; }
+  .rsc-cards-grid { grid-template-columns: 1fr; }
+  .rsc-helpline-grid { grid-template-columns: 1fr; }
 }

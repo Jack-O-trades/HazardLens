@@ -8,10 +8,11 @@ const SEV_CONFIG = {
 }
 
 const STATUS_CONFIG = {
-  pending:  { label: 'Pending',  cls: 'badge--pending' },
-  verified: { label: 'Verified', cls: 'badge--verified' },
-  resolved: { label: 'Resolved', cls: 'badge--resolved' },
-  rejected: { label: 'Rejected', cls: 'badge--rejected' },
+  pending:  { label: 'Pending Verification', cls: 'badge--pending' },
+  verified: { label: 'Verified',             cls: 'badge--verified' },
+  approved: { label: 'Verified',             cls: 'badge--verified' },
+  resolved: { label: 'Resolved',             cls: 'badge--resolved' },
+  rejected: { label: 'Rejected (Fake)',      cls: 'badge--rejected' },
 }
 
 export function SeverityBadge({ severity }) {

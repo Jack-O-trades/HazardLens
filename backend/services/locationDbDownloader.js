@@ -46,13 +46,13 @@ export async function ensureLocationDb() {
       await pipeline(response.Body, fs.createWriteStream(dbPath));
       console.log('Location database download complete');
     } else {
-      throw new Error('S3 object body is empty');
+      console.warn('⚠ S3 object body is empty. Continuing in local dev mode.');
     }
   } catch (error) {
     // If download fails, ensure we don't leave a corrupted partial file
     if (fs.existsSync(dbPath)) {
       fs.unlinkSync(dbPath);
     }
-    throw new Error(`Failed to download location database from S3: ${error.message}`);
+    console.warn(`⚠ Failed to download location database from S3: ${error.message}. Continuing in local dev mode.`);
   }
 }

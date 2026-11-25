@@ -114,19 +114,19 @@
    opt-in via data-theme="dark", and automatic via OS preference
    (unless the user/app has explicitly forced data-theme="light"). */
 [data-theme="dark"] {
-  --bg-base:        hsl(220, 20%, 8%);
-  --bg-surface:     hsl(220, 18%, 11%);
-  --bg-card:        hsl(220, 16%, 13%);
-  --bg-card-hover:  hsl(220, 16%, 17%);
-  --bg-input:       hsl(220, 16%, 12%);
-  --bg-overlay:     hsla(220, 30%, 3%, 0.65);
-  --bg-nav:         hsla(220, 18%, 11%, 0.85);
+  --bg-base:        hsl(220, 22%, 7%);
+  --bg-surface:     hsl(220, 20%, 9%);
+  --bg-card:        hsl(220, 18%, 11%);
+  --bg-card-hover:  hsl(220, 17%, 15%);
+  --bg-input:       hsl(220, 18%, 10%);
+  --bg-overlay:     hsla(220, 30%, 3%, 0.72);
+  --bg-nav:         hsla(220, 20%, 9%, 0.88);
 
-  --border:         hsl(220, 14%, 22%);
-  --border-subtle:  hsl(220, 14%, 18%);
-  --border-hover:   hsl(220, 14%, 32%);
+  --border:         hsl(220, 15%, 20%);
+  --border-subtle:  hsl(220, 15%, 16%);
+  --border-hover:   hsl(220, 14%, 30%);
   --border-accent:  hsl(34, 92%, 55%);
-  --scrollbar-hover: hsl(220, 14%, 30%);
+  --scrollbar-hover: hsl(220, 14%, 28%);
 
   --accent:         hsl(34, 92%, 55%);
   --accent-dim:     hsl(34, 85%, 62%);
@@ -170,19 +170,19 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg-base:        hsl(220, 20%, 8%);
-    --bg-surface:     hsl(220, 18%, 11%);
-    --bg-card:        hsl(220, 16%, 13%);
-    --bg-card-hover:  hsl(220, 16%, 17%);
-    --bg-input:       hsl(220, 16%, 12%);
-    --bg-overlay:     hsla(220, 30%, 3%, 0.65);
-    --bg-nav:         hsla(220, 18%, 11%, 0.85);
+    --bg-base:        hsl(220, 22%, 7%);
+    --bg-surface:     hsl(220, 20%, 9%);
+    --bg-card:        hsl(220, 18%, 11%);
+    --bg-card-hover:  hsl(220, 17%, 15%);
+    --bg-input:       hsl(220, 18%, 10%);
+    --bg-overlay:     hsla(220, 30%, 3%, 0.72);
+    --bg-nav:         hsla(220, 20%, 9%, 0.88);
 
-    --border:         hsl(220, 14%, 22%);
-    --border-subtle:  hsl(220, 14%, 18%);
-    --border-hover:   hsl(220, 14%, 32%);
+    --border:         hsl(220, 15%, 20%);
+    --border-subtle:  hsl(220, 15%, 16%);
+    --border-hover:   hsl(220, 14%, 30%);
     --border-accent:  hsl(34, 92%, 55%);
-    --scrollbar-hover: hsl(220, 14%, 30%);
+    --scrollbar-hover: hsl(220, 14%, 28%);
 
     --accent:         hsl(34, 92%, 55%);
     --accent-dim:     hsl(34, 85%, 62%);

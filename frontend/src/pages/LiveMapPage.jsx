@@ -1,16 +1,19 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Shield, Plus, Minus, Compass, AlertTriangle, Play, Navigation, MapPin, Search,
   Check, Moon, Sun, CornerUpLeft, CornerUpRight, ArrowUp, RefreshCw, Layers,
-  Cloud, Droplets, Wind, Thermometer, ChevronDown, ChevronUp, Radio, Zap
+  Cloud, Droplets, Wind, Thermometer, ChevronDown, ChevronUp, Radio, Zap,
+  Tent, Building2, Map as MapIcon, Waves, Flame, Activity, Wrench, ExternalLink, X
 } from 'lucide-react'
 import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { io } from 'socket.io-client'
 import bbox from '@turf/bbox'
 import { lineString } from '@turf/helpers'
+import { useAlerts } from '../context/AlertsContext'
+import { timeAgo } from '../data/mockData'
 import './LiveMapPage.css'
 
 const DEMO_CONFIG = {
@@ -84,8 +87,73 @@ let previousMapStyle = null;
 export default function LiveMapPage() {
   const mapRef = useRef(null)
   const location = useLocation()
+  const navigate = useNavigate()
+  const { alerts } = useAlerts()
 
+  // State Declarations
   const [theme, setTheme] = useState(() => localStorage.getItem('s32-theme') || 'dark')
+  const [selectedMapAlert, setSelectedMapAlert] = useState(null)
+  const [appMode, setAppMode] = useState('live')
+  const [userLocation, setUserLocation] = useState(null)
+  const [destination, setDestination] = useState(null)
+  const [routeData, setRouteData] = useState(null)
+  const [oldRouteData, setOldRouteData] = useState(null)
+  const [avoidWaypoint, setAvoidWaypoint] = useState(null)
+  const [incident, setIncident] = useState(null)
+  const [evidenceStream, setEvidenceStream] = useState([])
+  const [recalculating, setRecalculating] = useState(false)
+  const [notice, setNotice] = useState(null)
+
+  // Extract ONLY approved/verified active incidents for map rendering
+  const activeVerifiedAlerts = useMemo(() => {
+    if (!alerts || !Array.isArray(alerts)) return []
+    if (appMode === 'demo') return []
+    return alerts.filter(a => a.status === 'verified' || a.status === 'approved')
+  }, [alerts, appMode])
+
+  const getAlertCoords = useCallback((alert) => {
+    if (!alert) return [85.8395, 20.2858]
+    if (alert.coordinates) {
+      if (Array.isArray(alert.coordinates) && alert.coordinates.length >= 2) {
+        return [Number(alert.coordinates[0]), Number(alert.coordinates[1])]
+      }
+      if (typeof alert.coordinates === 'object' && alert.coordinates.lat != null && alert.coordinates.lng != null) {
+        return [Number(alert.coordinates.lng), Number(alert.coordinates.lat)]
+      }
+    }
+    if (alert.lng != null && alert.lat != null) {
+      return [Number(alert.lng), Number(alert.lat)]
+    }
+    if (alert.longitude != null && alert.latitude != null) {
+      return [Number(alert.longitude), Number(alert.latitude)]
+    }
+    const loc = (alert.location || '').toLowerCase()
+    if (loc.includes('riverview') || loc.includes('southbank')) return [-122.676, 45.523]
+    if (loc.includes('eastvale')) return [-122.660, 45.512]
+    if (loc.includes('westgate') || loc.includes('downtown')) return [-122.690, 45.530]
+    if (loc.includes('riverdale')) return [85.8395, 20.2858]
+    return [85.8395, 20.2858]
+  }, [])
+
+  const getHazardMarkerMeta = useCallback((type) => {
+    const t = (type || '').toLowerCase()
+    if (t.includes('flood') || t.includes('river') || t === 'water') {
+      return { label: 'FLOOD / WATER', icon: Waves, color: '#3b82f6', bg: 'rgba(59,130,246,0.2)', border: '#3b82f6', symbol: '💧' }
+    }
+    if (t.includes('fire')) {
+      return { label: 'FIRE RISK', icon: Flame, color: '#ef4444', bg: 'rgba(239,68,68,0.2)', border: '#ef4444', symbol: '🔥' }
+    }
+    if (t.includes('landslide') || t.includes('seismic')) {
+      return { label: 'LANDSLIDE / SEISMIC', icon: Activity, color: '#d97706', bg: 'rgba(217,119,6,0.2)', border: '#d97706', symbol: '📳' }
+    }
+    if (t.includes('pothole') || t.includes('infrastructure') || t.includes('road')) {
+      return { label: 'ROAD / POTHOLE', icon: Wrench, color: '#f59e0b', bg: 'rgba(245,158,11,0.2)', border: '#f59e0b', symbol: '🏗️' }
+    }
+    if (t.includes('cyclone') || t.includes('weather') || t.includes('wind')) {
+      return { label: 'CYCLONE / WEATHER', icon: Wind, color: '#8b5cf6', bg: 'rgba(139,92,246,0.2)', border: '#8b5cf6', symbol: '🌩️' }
+    }
+    return { label: 'VERIFIED HAZARD', icon: AlertTriangle, color: '#eab308', bg: 'rgba(234,179,8,0.2)', border: '#eab308', symbol: '⚠️' }
+  }, [])
   const [viewState, setViewState] = useState({
     longitude: 0, latitude: 0,
     zoom: 2, pitch: 0, bearing: 0
@@ -114,18 +182,6 @@ export default function LiveMapPage() {
   const searchDebounceRef = useRef(null)
   const searchContainerRef = useRef(null)
 
-  // S32 State
-  const [userLocation, setUserLocation] = useState(null)
-  const [destination, setDestination] = useState(null)
-  const [routeData, setRouteData] = useState(null)
-  const [oldRouteData, setOldRouteData] = useState(null)
-  const [avoidWaypoint, setAvoidWaypoint] = useState(null)
-  const [incident, setIncident] = useState(null)
-  const [evidenceStream, setEvidenceStream] = useState([])
-  const [recalculating, setRecalculating] = useState(false)
-
-  // Non-blocking replacement for alert() — { message, tone: 'info' | 'error' }
-  const [notice, setNotice] = useState(null)
   const noticeTimeoutRef = useRef(null)
 
   // Map style
@@ -139,8 +195,12 @@ export default function LiveMapPage() {
   // Weather
   const [weather, setWeather] = useState(null)
 
-  // Mode: 'live' or 'demo'
-  const [appMode, setAppMode] = useState('live')
+  // Emergency Destinations
+  const [nearbyDestinations, setNearbyDestinations] = useState({ official_shelters: [], temporary_camps: [] })
+  const [designateCampMode, setDesignateCampMode] = useState(false)
+  const [showCampForm, setShowCampForm] = useState(false)
+  const [campForm, setCampForm] = useState({ name: '', capacity: '', notes: '', lat: 0, lng: 0 })
+
 
   // Refs mirroring the latest state, so long-lived callbacks (socket handlers,
   // the memoized recalculateRoute) never read stale values from a closure
@@ -150,9 +210,28 @@ export default function LiveMapPage() {
   const avoidWaypointRef = useRef(null)
   const routeDataRef = useRef(null)
 
+  
+  const fetchNearbyDestinations = async (lat, lng) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/shelters/nearby?lat=${lat}&lng=${lng}&radius=15000`)
+      if (res.ok) {
+        const data = await res.json()
+        setNearbyDestinations(data)
+      }
+    } catch (e) {
+      console.error('Failed to fetch nearby destinations', e)
+    }
+  }
+
   const isFallbackDemo = appMode === 'demo' && !destination;
   const activeUserLocation = isFallbackDemo ? DEMO_CONFIG.start : userLocation;
   const activeDestination = isFallbackDemo ? DEMO_CONFIG.dest : destination;
+
+  useEffect(() => {
+    if (activeUserLocation) {
+      fetchNearbyDestinations(activeUserLocation[1], activeUserLocation[0])
+    }
+  }, [activeUserLocation])
 
   useEffect(() => { userLocationRef.current = activeUserLocation }, [activeUserLocation])
   useEffect(() => { destinationRef.current = activeDestination }, [activeDestination])
@@ -189,7 +268,9 @@ export default function LiveMapPage() {
 
   // Keep route coords synced and force immediate update
   useEffect(() => {
-    if (routeData) {
+    const hasRecommendedRoute = !!(routeData?.recommended_route || routeData?.route);
+
+    if (routeData && hasRecommendedRoute) {
       const coords = routeData.recommended_route?.geometry?.coordinates || routeData.route?.geometry?.coordinates;
       console.log("[ROUTE SVG DEBUG]");
       console.log(`route exists: ${!!coords}`);
@@ -205,10 +286,17 @@ export default function LiveMapPage() {
     const map = mapRef.current.getMap();
     if (!map) return;
 
+    const clearSvgElement = (el) => {
+      if (el) {
+        el.setAttribute("d", "");
+        el.style.display = 'none';
+      }
+    };
+
     const updateSvgRoute = () => {
       if (typeof map.project !== 'function') return;
 
-      const coords = routeData?.recommended_route?.geometry?.coordinates || routeData?.route?.geometry?.coordinates;
+      const coords = hasRecommendedRoute ? (routeData?.recommended_route?.geometry?.coordinates || routeData?.route?.geometry?.coordinates) : null;
       if (coords && coords.length > 1) {
         const points = coords.map(c => {
           const p = map.project(c);
@@ -228,44 +316,56 @@ export default function LiveMapPage() {
           routeHighlightRef.current.style.display = 'block';
         }
       } else {
-        if (routeOutlineRef.current) routeOutlineRef.current.style.display = 'none';
-        if (routeLineRef.current) routeLineRef.current.style.display = 'none';
-        if (routeHighlightRef.current) routeHighlightRef.current.style.display = 'none';
+        clearSvgElement(routeOutlineRef.current);
+        clearSvgElement(routeLineRef.current);
+        clearSvgElement(routeHighlightRef.current);
       }
 
-      (routeData?.alternatives || []).forEach((alt, idx) => {
-        const altCoords = alt.geometry?.coordinates;
+      const maxAlternatives = Math.max((routeData?.alternatives || []).length, 5);
+      for (let idx = 0; idx < maxAlternatives; idx++) {
+        const alt = routeData?.alternatives?.[idx];
+        const altCoords = alt?.geometry?.coordinates;
+        const altOutlineEl = document.getElementById(`alt-route-outline-${idx}`);
+        const altLineEl = document.getElementById(`alt-route-line-${idx}`);
+        const altHighlightEl = document.getElementById(`alt-route-highlight-${idx}`);
         if (altCoords && altCoords.length > 1) {
           const points = altCoords.map(c => {
             const p = map.project(c);
             return `${p.x},${p.y}`;
           }).join(" L ");
           const pathData = "M " + points;
-          const altOutlineEl = document.getElementById(`alt-route-outline-${idx}`);
-          const altLineEl = document.getElementById(`alt-route-line-${idx}`);
-          const altHighlightEl = document.getElementById(`alt-route-highlight-${idx}`);
           if (altOutlineEl) { altOutlineEl.setAttribute("d", pathData); altOutlineEl.style.display = 'block'; }
           if (altLineEl) { altLineEl.setAttribute("d", pathData); altLineEl.style.display = 'block'; }
           if (altHighlightEl) { altHighlightEl.setAttribute("d", pathData); altHighlightEl.style.display = 'block'; }
+        } else {
+          clearSvgElement(altOutlineEl);
+          clearSvgElement(altLineEl);
+          clearSvgElement(altHighlightEl);
         }
-      });
+      }
 
-      (routeData?.unsafe_routes || []).forEach((alt, idx) => {
-        const unsafeCoords = alt.geometry?.coordinates;
+      const maxUnsafe = Math.max((routeData?.unsafe_routes || []).length, 5);
+      for (let idx = 0; idx < maxUnsafe; idx++) {
+        const alt = routeData?.unsafe_routes?.[idx];
+        const unsafeCoords = alt?.geometry?.coordinates;
+        const unsafeOutlineEl = document.getElementById(`unsafe-route-outline-${idx}`);
+        const unsafeLineEl = document.getElementById(`unsafe-route-line-${idx}`);
+        const unsafeHighlightEl = document.getElementById(`unsafe-route-highlight-${idx}`);
         if (unsafeCoords && unsafeCoords.length > 1) {
           const points = unsafeCoords.map(c => {
             const p = map.project(c);
             return `${p.x},${p.y}`;
           }).join(" L ");
           const pathData = "M " + points;
-          const unsafeOutlineEl = document.getElementById(`unsafe-route-outline-${idx}`);
-          const unsafeLineEl = document.getElementById(`unsafe-route-line-${idx}`);
-          const unsafeHighlightEl = document.getElementById(`unsafe-route-highlight-${idx}`);
           if (unsafeOutlineEl) { unsafeOutlineEl.setAttribute("d", pathData); unsafeOutlineEl.style.display = 'block'; }
           if (unsafeLineEl) { unsafeLineEl.setAttribute("d", pathData); unsafeLineEl.style.display = 'block'; }
           if (unsafeHighlightEl) { unsafeHighlightEl.setAttribute("d", pathData); unsafeHighlightEl.style.display = 'block'; }
+        } else {
+          clearSvgElement(unsafeOutlineEl);
+          clearSvgElement(unsafeLineEl);
+          clearSvgElement(unsafeHighlightEl);
         }
-      });
+      }
     };
 
     updateSvgRoute();
@@ -278,7 +378,7 @@ export default function LiveMapPage() {
       map.off('move', updateSvgRoute);
       map.off('zoom', updateSvgRoute);
     };
-  }, [routeData]);
+  }, [routeData, incident, avoidWaypoint, alerts, getAlertCoords]);
 
   // ---- Weather (OpenMeteo - free, no key needed) ----
   const fetchWeather = async (lat, lng) => {
@@ -390,8 +490,14 @@ export default function LiveMapPage() {
     const waypoint = waypointOverride !== undefined ? waypointOverride : avoidWaypointRef.current
     const newRoute = await fetchRoute(start, end, waypoint)
     setRecalculating(false)
-    if (newRoute) { setRouteData(newRoute); fitMapToRoute(newRoute.geojson) }
-    else {
+    setOldRouteData(null)
+    if (newRoute) {
+      setRouteData(newRoute)
+      if (newRoute.recommended_route || newRoute.route) {
+        fitMapToRoute(newRoute.geojson)
+      }
+    } else {
+      setRouteData(null)
       showNotice('Could not find safe route. Fallback to default.', 'error')
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -454,7 +560,7 @@ export default function LiveMapPage() {
   // ---- Search ----
   const geocode = async (query, { limit } = {}) => {
     let localResults = [];
-    
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(query)}`);
       if (res.ok) {
@@ -484,7 +590,7 @@ export default function LiveMapPage() {
       // Request enough to fill the remaining slots
       const nomLimit = limit ? limit - localResults.length : 6;
       params.set('limit', String(Math.max(1, nomLimit)));
-      
+
       const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
@@ -499,18 +605,18 @@ export default function LiveMapPage() {
     // Merge and deduplicate
     const combined = [...localResults];
     const seenNames = new Set(localResults.map(r => r.display_name.toLowerCase().trim()));
-    
+
     for (const nr of nomResults) {
       const nameKey = nr.display_name.toLowerCase().trim();
       const nrLat = parseFloat(nr.lat);
       const nrLon = parseFloat(nr.lon);
-      
-      const isNameDupe = Array.from(seenNames).some(seen => 
-         nameKey.includes(seen) || seen.includes(nameKey)
+
+      const isNameDupe = Array.from(seenNames).some(seen =>
+        nameKey.includes(seen) || seen.includes(nameKey)
       );
-      const isCoordDupe = localResults.some(lr => 
-         Math.abs(parseFloat(lr.lat) - nrLat) < 0.05 && 
-         Math.abs(parseFloat(lr.lon) - nrLon) < 0.05
+      const isCoordDupe = localResults.some(lr =>
+        Math.abs(parseFloat(lr.lat) - nrLat) < 0.05 &&
+        Math.abs(parseFloat(lr.lon) - nrLon) < 0.05
       );
 
       if (!isNameDupe && !isCoordDupe) {
@@ -579,7 +685,7 @@ export default function LiveMapPage() {
     setSearchSuggestions([])
     setShowSuggestions(false)
     fetchWeather(lat, lng)
-    
+
     // Route to the selected destination using existing logic
     handleMapClick({ lngLat: { lng, lat } })
   }
@@ -613,6 +719,13 @@ export default function LiveMapPage() {
   }, [showSuggestions, searchSuggestions])
 
   const handleMapClick = async (e) => {
+    if (designateCampMode) {
+      setCampForm({ ...campForm, lat: e.lngLat.lat, lng: e.lngLat.lng })
+      setShowCampForm(true)
+      setDesignateCampMode(false)
+      return
+    }
+
     if (!userLocation) {
       showNotice('Waiting for your location. Check browser location permissions.', 'error')
       return
@@ -628,7 +741,13 @@ export default function LiveMapPage() {
     setRouteData(null)
     setEvidenceStream([])
     const rData = await fetchRoute(userLocation, dest)
-    if (rData) { setRouteData(rData); fitMapToRoute(rData.geojson) }
+    setOldRouteData(null)
+    if (rData) {
+      setRouteData(rData)
+      if (rData.recommended_route || rData.route) {
+        fitMapToRoute(rData.geojson)
+      }
+    }
   }
 
   const formatDistance = (m) => m > 1000 ? (m / 1000).toFixed(1) + ' km' : Math.round(m) + ' m'
@@ -648,6 +767,31 @@ export default function LiveMapPage() {
   const textUI = isDark ? '#f1f5f9' : '#0f172a'
   const textSubUI = isDark ? '#94a3b8' : '#64748b'
 
+  
+  const handleCreateCamp = async (e) => {
+    e.preventDefault()
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/relief-camps`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(campForm)
+      })
+      if (res.ok) {
+        showNotice('Temporary relief camp created successfully', 'info')
+        setShowCampForm(false)
+        setCampForm({ name: '', capacity: '', notes: '', lat: 0, lng: 0 })
+        if (activeUserLocation) {
+          fetchNearbyDestinations(activeUserLocation[1], activeUserLocation[0])
+        }
+      } else {
+        showNotice('Failed to create relief camp', 'error')
+      }
+    } catch (err) {
+      console.error(err)
+      showNotice('Error creating relief camp', 'error')
+    }
+  }
+
   const startDemo = async () => {
     try {
       setAppMode('demo')
@@ -659,7 +803,7 @@ export default function LiveMapPage() {
       const isFallbackDemo = !destination;
       const demoStart = isFallbackDemo ? DEMO_CONFIG.start : userLocation;
       const demoDest = isFallbackDemo ? DEMO_CONFIG.dest : destination;
-      
+
       let demoHazard = DEMO_CONFIG.hazard;
       if (!isFallbackDemo && routeData && (routeData.recommended_route || routeData.route)) {
         const coords = routeData.recommended_route?.geometry?.coordinates || routeData.route?.geometry?.coordinates;
@@ -703,6 +847,7 @@ export default function LiveMapPage() {
     return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lng - d, lat - d], [lng + d, lat + d]] } }] }
   }, [incident])
 
+  const hasRecommendedRoute = !!(routeData?.recommended_route || routeData?.route);
 
   return (
     <div className="dash-v2" style={{ backgroundColor: isDark ? '#060d1f' : '#f8fafc', color: textUI, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -716,6 +861,10 @@ export default function LiveMapPage() {
             <button onClick={() => setAppMode('live')} aria-label="Switch to live mode" aria-pressed={appMode === 'live'} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: appMode === 'live' ? '#10b981' : (isDark ? '#1e293b' : '#f1f5f9'), color: appMode === 'live' ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Radio size={10} /> LIVE
             </button>
+            <button onClick={() => setDesignateCampMode(!designateCampMode)} aria-label="Designate Camp" aria-pressed={designateCampMode} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: designateCampMode ? '#f59e0b' : (isDark ? '#1e293b' : '#f1f5f9'), color: designateCampMode ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Tent size={10} /> {designateCampMode ? 'CLICK MAP' : '+ CAMP'}
+            </button>
+
             <button onClick={() => setAppMode('demo')} aria-label="Switch to demo mode" aria-pressed={appMode === 'demo'} style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '20px', border: 'none', cursor: 'pointer', background: appMode === 'demo' ? '#f59e0b' : (isDark ? '#1e293b' : '#f1f5f9'), color: appMode === 'demo' ? 'white' : textSubUI, display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Zap size={10} /> DEMO
             </button>
@@ -822,7 +971,7 @@ export default function LiveMapPage() {
 
           <button onClick={startDemo}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 700, boxShadow: '0 4px 14px rgba(16,185,129,0.4)', letterSpacing: '0.3px' }}>
-            <Play size={13} fill="currentColor" /> RUN DEMO
+            <Play size={13} fill="currentColor" /> RUN SIMULATION
           </button>
         </div>
       </div>
@@ -845,6 +994,72 @@ export default function LiveMapPage() {
 
         {/* Left Panels */}
         <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: '12px', pointerEvents: 'none', maxWidth: '340px' }}>
+
+          
+          {/* Emergency Destinations Panel */}
+          {activeUserLocation && appMode === 'live' && !incident && (
+            <div style={{ pointerEvents: 'auto', backgroundColor: bgUI, backdropFilter: 'blur(16px)', border: `1px solid ${borderUI}`, borderRadius: '14px', padding: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', maxHeight: '350px', overflowY: 'auto' }}>
+              <div style={{ fontSize: '10px', color: textSubUI, fontWeight: 700, letterSpacing: '0.5px', marginBottom: '12px' }}>EMERGENCY DESTINATIONS</div>
+              
+              {(!nearbyDestinations.official_shelters.length && !nearbyDestinations.temporary_camps.length) ? (
+                <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 600, padding: '8px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>
+                  NO OFFICIAL OSDMA SHELTER FOUND NEARBY
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {nearbyDestinations.official_shelters.length === 0 && (
+                     <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 600, padding: '8px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>
+                      NO OFFICIAL OSDMA SHELTER FOUND NEARBY
+                    </div>
+                  )}
+
+                  {nearbyDestinations.official_shelters.slice(0,2).map(s => (
+                    <div key={s.id} style={{ border: `1px solid rgba(16,185,129,0.3)`, borderRadius: '8px', padding: '10px', background: isDark ? 'rgba(16,185,129,0.05)' : '#f0fdf4' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                          <Building2 size={16} color="#10b981" style={{ marginTop: '2px' }} />
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: textUI }}>OSDMA MULTIPURPOSE SHELTER</div>
+                            <div style={{ fontSize: '11px', color: textSubUI, fontWeight: 600 }}>{formatDistance(s.distance)} · {s.district || s.block}</div>
+                            <div style={{ fontSize: '10px', color: '#10b981', fontWeight: 800, marginTop: '2px' }}>OFFICIAL</div>
+                          </div>
+                        </div>
+                      </div>
+                      <button onClick={() => { setDestination([s.longitude, s.latitude]); handleMapClick({ lngLat: { lng: s.longitude, lat: s.latitude }}) }} style={{ width: '100%', marginTop: '10px', background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', padding: '6px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                        ROUTE TO SHELTER
+                      </button>
+                    </div>
+                  ))}
+
+                  {nearbyDestinations.temporary_camps.length > 0 && (
+                    <div style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 700, marginTop: '4px' }}>TEMPORARY RELIEF CAMP AVAILABLE</div>
+                  )}
+
+                  {nearbyDestinations.temporary_camps.map(c => (
+                    <div key={c.id} style={{ border: `1px solid rgba(245,158,11,0.3)`, borderRadius: '8px', padding: '10px', background: isDark ? 'rgba(245,158,11,0.05)' : '#fffbeb' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                          <Tent size={16} color="#f59e0b" style={{ marginTop: '2px' }} />
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: textUI }}>TEMPORARY RELIEF CAMP</div>
+                            <div style={{ fontSize: '11px', color: textSubUI, fontWeight: 600 }}>{formatDistance(c.distance)} · {c.name}</div>
+                            <div style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 800, marginTop: '2px' }}>ACTIVE · Designated by {c.designated_by}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <button onClick={() => { setDestination([c.lng, c.lat]); handleMapClick({ lngLat: { lng: c.lng, lat: c.lat }}) }} style={{ width: '100%', marginTop: '10px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', padding: '6px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                        ROUTE TO CAMP
+                      </button>
+                    </div>
+                  ))}
+
+                  <div style={{ fontSize: '9px', color: textSubUI, textAlign: 'center', marginTop: '4px' }}>
+                    Source: Odisha State Disaster Management Authority (OSDMA)
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Weather Panel (live mode) */}
           {weather && appMode === 'live' && !incident && (
@@ -962,7 +1177,7 @@ export default function LiveMapPage() {
               ) : (
                 <>
                   <div style={{ fontSize: '11px', color: (routeData.recommended_route || routeData.route) ? textSubUI : '#ef4444', fontWeight: 700, marginBottom: '6px' }}>
-                    {(routeData.recommended_route || routeData.route) ? 'RECOMMENDED SAFE ROUTE' : 'NO SAFE ROUTE AVAILABLE'}
+                    {(routeData.recommended_route || routeData.route) ? 'RECOMMENDED SAFE ROUTE' : 'ROUTE SAFETY UNAVAILABLE'}
                   </div>
 
                   {(routeData.recommended_route || routeData.route) && (
@@ -1050,13 +1265,28 @@ export default function LiveMapPage() {
             <button onClick={() => userLocation && setViewState(p => ({ ...p, longitude: userLocation[0], latitude: userLocation[1], zoom: 15 }))} aria-label="Recenter on my location" style={{ width: '36px', height: '36px', backgroundColor: bgUI, border: `1px solid ${borderUI}`, borderRadius: '8px', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}><Navigation size={17} /></button>
           </div>
 
-          {/* HAZARD POLYGON */}
-          {hazardPolygon && (
-            <Source id="hazard-zone" type="geojson" data={hazardPolygon}>
-              <Layer id="hazard-fill" type="fill" paint={hazardFillPaint} />
-              <Layer id="hazard-outline" type="line" layout={routeLayout} paint={hazardOutlinePaint} />
-            </Source>
-          )}
+          
+          {/* OFFICIAL SHELTERS MARKERS */}
+          {nearbyDestinations.official_shelters.map(s => (
+            <Marker key={s.id} longitude={s.longitude} latitude={s.latitude} anchor="bottom">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: activeDestination && activeDestination[0] === s.longitude ? 0.3 : 1 }}>
+                <div style={{ backgroundColor: '#10b981', padding: '4px', borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
+                  <Building2 size={14} color="white" />
+                </div>
+              </div>
+            </Marker>
+          ))}
+
+          {/* TEMPORARY CAMPS MARKERS */}
+          {nearbyDestinations.temporary_camps.map(c => (
+            <Marker key={c.id} longitude={c.lng} latitude={c.lat} anchor="bottom">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: activeDestination && activeDestination[0] === c.lng ? 0.3 : 1 }}>
+                <div style={{ backgroundColor: '#f59e0b', padding: '4px', borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
+                  <Tent size={14} color="white" />
+                </div>
+              </div>
+            </Marker>
+          ))}
 
           {/* UNSAFE ROAD */}
           {unsafeRoadGeoJSON && (
@@ -1072,8 +1302,6 @@ export default function LiveMapPage() {
               <Layer id="s32-blocked-route-line" type="line" layout={routeLayout} paint={blockedRoutePaint} />
             </Source>
           )}
-
-
 
           {/* USER MARKER */}
           {activeUserLocation && (
@@ -1096,6 +1324,55 @@ export default function LiveMapPage() {
             </Marker>
           )}
 
+          {/* VERIFIED HAZARD MARKERS (APPROVED CITIZEN & SYSTEM REPORTS) */}
+          {activeVerifiedAlerts.map(alert => {
+            const [lng, lat] = getAlertCoords(alert)
+            const meta = getHazardMarkerMeta(alert.type || alert.hazardType)
+            const IconComp = meta.icon
+            const isSelected = selectedMapAlert?.id === alert.id
+
+            return (
+              <Marker
+                key={alert.id}
+                longitude={lng}
+                latitude={lat}
+                anchor="bottom"
+                onClick={(e) => {
+                  e.originalEvent.stopPropagation()
+                  setSelectedMapAlert(alert)
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', zIndex: isSelected ? 20 : 10 }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: isSelected ? meta.color : 'rgba(15, 23, 42, 0.92)',
+                    color: '#ffffff',
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    border: `2px solid ${meta.border}`,
+                    boxShadow: `0 4px 16px ${meta.bg}`,
+                    transform: isSelected ? 'scale(1.12)' : 'scale(1)',
+                    transition: 'transform 0.15s ease'
+                  }}>
+                    <IconComp size={15} color={isSelected ? '#ffffff' : meta.color} />
+                    <span>{alert.title ? (alert.title.length > 20 ? alert.title.slice(0, 18) + '...' : alert.title) : meta.label}</span>
+                  </div>
+                  <div style={{
+                    width: 0,
+                    height: 0,
+                    borderLeft: '6px solid transparent',
+                    borderRight: '6px solid transparent',
+                    borderTop: `8px solid ${meta.border}`
+                  }} />
+                </div>
+              </Marker>
+            )
+          })}
+
           {/* HAZARD MARKER */}
           {incident && incident.status === 'CONFIRMED' && incident.hazardCenter && (
             <Marker longitude={incident.hazardCenter[0]} latitude={incident.hazardCenter[1]} anchor="bottom">
@@ -1105,6 +1382,118 @@ export default function LiveMapPage() {
             </Marker>
           )}
         </Map>
+
+        {/* Interactive Hazard Details Card for selected map alert */}
+        {selectedMapAlert && (
+          <div style={{
+            position: 'absolute',
+            bottom: 32,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100,
+            width: '92%',
+            maxWidth: '440px',
+            backgroundColor: 'rgba(15, 23, 42, 0.94)',
+            backdropFilter: 'blur(16px)',
+            border: `1.5px solid ${getHazardMarkerMeta(selectedMapAlert.type || selectedMapAlert.hazardType).border}`,
+            borderRadius: '16px',
+            padding: '16px 20px',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7)',
+            color: '#ffffff'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: getHazardMarkerMeta(selectedMapAlert.type || selectedMapAlert.hazardType).color, letterSpacing: '0.05em' }}>
+                    {getHazardMarkerMeta(selectedMapAlert.type || selectedMapAlert.hazardType).label}
+                  </span>
+                  <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontWeight: 700, border: '1px solid rgba(34,197,94,0.3)' }}>
+                    ✓ VERIFIED ACTIVE
+                  </span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>{selectedMapAlert.title}</h3>
+              </div>
+              <button
+                onClick={() => setSelectedMapAlert(null)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+                aria-label="Close details"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ margin: '0 0 12px 0', fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.4 }}>
+              {selectedMapAlert.description}
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', backgroundColor: 'rgba(30, 41, 59, 0.6)', padding: '10px 12px', borderRadius: '10px', marginBottom: '14px', fontSize: '0.78rem' }}>
+              <div>
+                <span style={{ color: '#64748b', display: 'block', fontSize: '0.68rem', fontWeight: 700 }}>LOCATION</span>
+                <strong style={{ color: '#e2e8f0' }}>{selectedMapAlert.location}</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', display: 'block', fontSize: '0.68rem', fontWeight: 700 }}>SEVERITY / AI CONF</span>
+                <strong style={{ color: '#ef4444' }}>{selectedMapAlert.severity?.toUpperCase()} ({selectedMapAlert.confidence || 75}%)</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', display: 'block', fontSize: '0.68rem', fontWeight: 700 }}>REPORTED</span>
+                <strong style={{ color: '#e2e8f0' }}>{timeAgo(selectedMapAlert.reportedAt)}</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', display: 'block', fontSize: '0.68rem', fontWeight: 700 }}>HAZARD BUFFER</span>
+                <strong style={{ color: '#38bdf8' }}>~500m Avoid Zone</strong>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  const coords = getAlertCoords(selectedMapAlert)
+                  setAvoidWaypoint(coords)
+                  recalculateRoute(coords)
+                  showNotice(`Route updated: Avoiding ${selectedMapAlert.title} zone`, 'info')
+                }}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ef4444',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  color: '#ef4444',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <AlertTriangle size={14} /> Avoid Zone in Route
+              </button>
+              <button
+                onClick={() => navigate(`/dashboard/alert/${selectedMapAlert.id}`)}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: '#3b82f6',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                Inspect Dossier <ExternalLink size={14} />
+              </button>
+            </div>
+          </div>
+        )}
 
         <svg
           style={{
@@ -1145,7 +1534,7 @@ export default function LiveMapPage() {
               </feMerge>
             </filter>
           </defs>
-          
+
           {/* Unsafe Routes rendered at the very bottom */}
           {routeData && routeData.unsafe_routes && routeData.unsafe_routes.map((alt, idx) => (
             <g key={`unsafe-${alt.id || idx}`}>
@@ -1255,6 +1644,25 @@ export default function LiveMapPage() {
             </textPath>
           </text>
         </svg>
+
+        
+        {/* Admin Form Modal */}
+        {showCampForm && (
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ backgroundColor: bgUI, padding: '24px', borderRadius: '12px', width: '400px', border: `1px solid ${borderUI}` }}>
+              <h2 style={{ marginTop: 0, color: textUI }}>Designate Relief Camp</h2>
+              <form onSubmit={handleCreateCamp} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <input required placeholder="Camp Name" value={campForm.name} onChange={e => setCampForm({...campForm, name: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: `1px solid ${borderUI}`, background: isDark ? '#1e293b' : '#fff', color: textUI }} />
+                <input type="number" placeholder="Capacity (optional)" value={campForm.capacity} onChange={e => setCampForm({...campForm, capacity: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: `1px solid ${borderUI}`, background: isDark ? '#1e293b' : '#fff', color: textUI }} />
+                <textarea placeholder="Notes (optional)" value={campForm.notes} onChange={e => setCampForm({...campForm, notes: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: `1px solid ${borderUI}`, background: isDark ? '#1e293b' : '#fff', color: textUI }} />
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button type="button" onClick={() => setShowCampForm(false)} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: `1px solid ${borderUI}`, background: 'transparent', color: textUI, cursor: 'pointer' }}>Cancel</button>
+                  <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: '#f59e0b', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Create Camp</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Helper hint */}
         {!activeDestination && activeUserLocation && (
