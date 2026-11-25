@@ -183,3 +183,60 @@
     gap: 8px;
   }
 }
+
+/* Admin Quick Action Buttons */
+.alert-card-admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.alert-card-admin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.alert-card-admin-btn--verify {
+  background: hsla(145, 60%, 45%, 0.15);
+  color: hsl(145, 60%, 48%);
+  border-color: hsla(145, 60%, 45%, 0.3);
+}
+
+.alert-card-admin-btn--verify:hover {
+  background: hsl(145, 60%, 45%);
+  color: #ffffff;
+}
+
+.alert-card-admin-btn--reject {
+  background: hsla(0, 75%, 55%, 0.15);
+  color: hsl(0, 75%, 55%);
+  border-color: hsla(0, 75%, 55%, 0.3);
+}
+
+.alert-card-admin-btn--reject:hover {
+  background: hsl(0, 75%, 55%);
+  color: #ffffff;
+}
+
+.alert-card-admin-btn--delete {
+  background: hsla(0, 75%, 55%, 0.1);
+  color: #ef4444;
+  border-color: hsla(0, 75%, 55%, 0.25);
+  margin-left: auto;
+}
+
+.alert-card-admin-btn--delete:hover {
+  background: #ef4444;
+  color: #ffffff;
+}

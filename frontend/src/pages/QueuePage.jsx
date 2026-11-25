@@ -6,7 +6,8 @@ import {
   ChevronRight, SlidersHorizontal, Download, RefreshCw,
   Flame, Waves, Wind, Activity, Shield, ShieldCheck,
   Layers, ExternalLink, FileText, Sparkles, Filter,
-  ArrowUpDown, Check, RotateCcw, UserCheck, CornerDownRight
+  ArrowUpDown, Check, RotateCcw, UserCheck, CornerDownRight,
+  Trash2
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useAlerts } from '../context/AlertsContext'
@@ -43,7 +44,7 @@ function QueueHazardIcon({ type, className = '' }) {
 
 export default function QueuePage() {
   const { caps, user } = useAuth()
-  const { alerts, verifyAlert, resolveAlert } = useAlerts()
+  const { alerts, verifyAlert, rejectAlert, resolveAlert } = useAlerts()
   const navigate = useNavigate()
 
   // State
@@ -52,7 +53,6 @@ export default function QueuePage() {
   const [selectedHazard, setSelectedHazard] = useState('all')
   const [sortBy, setSortBy] = useState('sla') // 'sla' | 'newest' | 'severity' | 'confidence'
   const [selectedIds, setSelectedIds] = useState(new Set())
-  const [inspectingAlert, setInspectingAlert] = useState(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [toastMessage, setToastMessage] = useState(null)
 
@@ -272,7 +272,7 @@ export default function QueuePage() {
             className="qp-btn qp-btn--primary"
             onClick={() => {
               const firstPending = enrichedAlerts.find(a => a.status === 'pending')
-              if (firstPending) setInspectingAlert(firstPending)
+              if (firstPending) navigate(`/dashboard/alert/${firstPending.id}`)
               else showToast('All pending items have been reviewed.')
             }}
           >
@@ -532,7 +532,8 @@ export default function QueuePage() {
                   <tr
                     key={alert.id}
                     className={`qp-matrix-row ${isSelected ? 'qp-matrix-row--selected' : ''} ${isCritical ? 'qp-matrix-row--critical' : ''}`}
-                    onClick={() => setInspectingAlert(alert)}
+                    onClick={() => navigate(`/dashboard/alert/${alert.id}`)}
+                    style={{ cursor: 'pointer' }}
                   >
                     {/* Checkbox */}
                     <td className="qp-td-check" onClick={(e) => e.stopPropagation()}>
@@ -604,7 +605,7 @@ export default function QueuePage() {
                     {/* Status Badge */}
                     <td className="qp-td-status">
                       <span className={`qp-status-badge qp-status-badge--${alert.status}`}>
-                        {alert.status === 'pending' ? 'Needs Verification' : alert.status === 'verified' ? 'Needs Correction' : 'Resolved'}
+                        {alert.status === 'pending' ? 'Needs Verification' : alert.status === 'verified' ? 'Verified' : 'Resolved'}
                       </span>
                     </td>
 
@@ -620,42 +621,92 @@ export default function QueuePage() {
 
                     {/* Actions */}
                     <td className="qp-td-actions" onClick={(e) => e.stopPropagation()}>
-                      <div className="qp-action-cell">
-                        {/* Primary Context Action */}
+                      <div className="qp-action-cell" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {isPending && (
+                          <>
+                            <button
+                              className="qp-btn qp-btn--verify"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                verifyAlert(alert.id, user?.name || 'Admin')
+                                showToast(`Incident #${alert.reportCode} approved.`)
+                              }}
+                              title="Approve and verify hazard report"
+                            >
+                              <CheckCircle2 size={13} />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              className="qp-btn"
+                              style={{
+                                backgroundColor: 'hsla(0, 75%, 55%, 0.15)',
+                                color: '#ef4444',
+                                border: '1px solid hsla(0, 75%, 55%, 0.3)',
+                                padding: '4px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                borderRadius: '4px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                rejectAlert(alert.id, user?.name || 'Admin')
+                                showToast(`Incident #${alert.reportCode} rejected.`)
+                              }}
+                              title="Reject fake hazard report"
+                            >
+                              <X size={13} />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        )}
+
                         {isVerified && caps.canCorrect && (
                           <button
                             className="qp-btn qp-btn--correct"
-                            onClick={() => navigate(`/dashboard/queue/correct/${alert.id}`)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigate(`/dashboard/queue/correct/${alert.id}`)
+                            }}
                             title="Open Correction Protocol"
                           >
                             <Wrench size={13} />
-                            <span>Apply Correction</span>
+                            <span>Correct</span>
                           </button>
                         )}
 
-                        {isPending && (
-                          <button
-                            className="qp-btn qp-btn--verify"
-                            onClick={() => {
-                              verifyAlert(alert.id)
-                              showToast(`Incident #${alert.reportCode} verified by operator.`)
-                            }}
-                            title="Verify and Approve Alert"
-                          >
-                            <CheckCircle2 size={13} />
-                            <span>Verify</span>
-                          </button>
-                        )}
-
-                        {/* Quick Inspect Drawer Button */}
+                        {/* View Full Detailed Hazard Page Button */}
                         <button
                           className="qp-icon-btn"
-                          onClick={() => setInspectingAlert(alert)}
-                          title="Inspect Dossier"
-                          aria-label="Inspect Dossier"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/dashboard/alert/${alert.id}`)
+                          }}
+                          title="View Full Detailed Hazard Page"
+                          aria-label="View Full Detailed Hazard Page"
                         >
                           <Eye size={15} />
                         </button>
+
+                        {(caps?.canAdmin || user?.role === 'admin') && (
+                          <button
+                            className="qp-icon-btn"
+                            style={{ color: '#ef4444' }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (window.confirm(`Delete report #${alert.reportCode} permanently?`)) {
+                                deleteAlert(alert.id)
+                                showToast(`Incident #${alert.reportCode} deleted.`)
+                              }
+                            }}
+                            title="Delete Report Permanently"
+                            aria-label="Delete Report Permanently"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -693,6 +744,23 @@ export default function QueuePage() {
               <span>Escalate to Emergency</span>
             </button>
 
+            {(caps?.canAdmin || user?.role === 'admin') && (
+              <button
+                className="qp-btn"
+                style={{ backgroundColor: 'hsla(0, 75%, 55%, 0.2)', color: '#ef4444', border: '1px solid #ef4444', fontWeight: 700 }}
+                onClick={() => {
+                  if (window.confirm(`Delete ${selectedIds.size} selected reports permanently?`)) {
+                    selectedIds.forEach(id => deleteAlert(id))
+                    showToast(`Deleted ${selectedIds.size} reports.`)
+                    setSelectedIds(new Set())
+                  }
+                }}
+              >
+                <Trash2 size={14} />
+                <span>Batch Delete ({selectedIds.size})</span>
+              </button>
+            )}
+
             <button
               className="qp-btn qp-btn--batch-clear"
               onClick={() => setSelectedIds(new Set())}
@@ -702,143 +770,6 @@ export default function QueuePage() {
             </button>
           </div>
         </aside>
-      )}
-
-      {/* =====================================================================
-          6. SLIDE-OVER INCIDENT INSPECTOR DRAWER
-          ===================================================================== */}
-      {inspectingAlert && (
-        <div className="qp-drawer-backdrop" onClick={() => setInspectingAlert(null)}>
-          <div className="qp-drawer-panel" onClick={(e) => e.stopPropagation()}>
-            
-            {/* Drawer Header */}
-            <div className="qp-drawer-header">
-              <div className="qp-drawer-title-box">
-                <div className="qp-drawer-badge-strip">
-                  <span className="qp-report-code">{inspectingAlert.reportCode}</span>
-                  <span className={`qp-sev-tag qp-sev-tag--${inspectingAlert.severity}`}>
-                    {inspectingAlert.severity.toUpperCase()}
-                  </span>
-                </div>
-                <h2 className="qp-drawer-title">{inspectingAlert.title}</h2>
-              </div>
-              <button
-                className="qp-drawer-close"
-                onClick={() => setInspectingAlert(null)}
-                aria-label="Close Inspector Drawer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Drawer Body */}
-            <div className="qp-drawer-body">
-              
-              {/* Location & Sector Box */}
-              <div className="qp-drawer-section">
-                <span className="qp-drawer-section-lbl">GEOGRAPHIC TARGET</span>
-                <div className="qp-drawer-loc-box">
-                  <MapPin size={16} className="text-amber-500" />
-                  <div>
-                    <p className="qp-drawer-loc-name">{inspectingAlert.location}</p>
-                    <p className="qp-drawer-loc-zone">{inspectingAlert.zone}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Confidence & Validation Meter */}
-              <div className="qp-drawer-section">
-                <span className="qp-drawer-section-lbl">AI VALIDATION TELEMETRY</span>
-                <div className="qp-drawer-conf-box">
-                  <div className="qp-drawer-conf-top">
-                    <span>Cross-Sensor Confidence Score</span>
-                    <strong>{inspectingAlert.confidence}% High</strong>
-                  </div>
-                  <div className="qp-conf-meter-track">
-                    <div
-                      className="qp-conf-meter-fill qp-conf-meter-fill--high"
-                      style={{ width: `${inspectingAlert.confidence}%` }}
-                    />
-                  </div>
-                  <p className="qp-drawer-conf-note">
-                    Verified against NOAA gauge telemetry and municipal sensor array #R-104.
-                  </p>
-                </div>
-              </div>
-
-              {/* Description & Citizen Statement */}
-              <div className="qp-drawer-section">
-                <span className="qp-drawer-section-lbl">INCIDENT STATEMENT</span>
-                <div className="qp-drawer-desc-box">
-                  <p>{inspectingAlert.description || 'Rapid water elevation detected along municipal underpass. Debris blocking storm drains.'}</p>
-                </div>
-              </div>
-
-              {/* Metadata Grid */}
-              <div className="qp-drawer-meta-grid">
-                <div className="qp-drawer-meta-item">
-                  <span className="qp-drawer-meta-k">Reported By</span>
-                  <span className="qp-drawer-meta-v">{inspectingAlert.reportedBy || 'Verified Citizen'}</span>
-                </div>
-                <div className="qp-drawer-meta-item">
-                  <span className="qp-drawer-meta-k">Timestamp</span>
-                  <span className="qp-drawer-meta-v">{timeAgo(inspectingAlert.reportedAt)}</span>
-                </div>
-                <div className="qp-drawer-meta-item">
-                  <span className="qp-drawer-meta-k">Assigned Source</span>
-                  <span className="qp-drawer-meta-v">{inspectingAlert.sourceAgency}</span>
-                </div>
-                <div className="qp-drawer-meta-item">
-                  <span className="qp-drawer-meta-k">SLA Target</span>
-                  <span className="qp-drawer-meta-v text-critical">{inspectingAlert.slaMinutes}m Remaining</span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Drawer Footer Actions */}
-            <div className="qp-drawer-footer">
-              <button
-                className="qp-btn qp-btn--secondary"
-                onClick={() => {
-                  navigate(`/dashboard/alert/${inspectingAlert.id}`)
-                  setInspectingAlert(null)
-                }}
-              >
-                <span>Full Alert Page</span>
-                <ExternalLink size={14} />
-              </button>
-
-              {inspectingAlert.status === 'pending' && (
-                <button
-                  className="qp-btn qp-btn--primary"
-                  onClick={() => {
-                    verifyAlert(inspectingAlert.id)
-                    showToast(`Incident #${inspectingAlert.reportCode} verified by operator.`)
-                    setInspectingAlert(null)
-                  }}
-                >
-                  <CheckCircle2 size={15} />
-                  <span>Verify Incident Dossier</span>
-                </button>
-              )}
-
-              {inspectingAlert.status === 'verified' && caps.canCorrect && (
-                <button
-                  className="qp-btn qp-btn--primary"
-                  onClick={() => {
-                    navigate(`/dashboard/queue/correct/${inspectingAlert.id}`)
-                    setInspectingAlert(null)
-                  }}
-                >
-                  <Wrench size={15} />
-                  <span>Apply Corrective Action</span>
-                </button>
-              )}
-            </div>
-
-          </div>
-        </div>
       )}
 
     </div>

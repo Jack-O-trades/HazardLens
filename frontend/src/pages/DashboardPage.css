@@ -147,15 +147,18 @@
   margin-bottom: 0.4rem;
 }
 
-.dash-hero-user-name {
-  background: linear-gradient(135deg, var(--accent) 0%, hsl(22, 90%, 55%) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: inline-block;
+.dash-greeting-name {
+  color: #c2410c;
+  font-weight: 800;
 }
 
-.dash-hero-desc {
-  font-size: 0.9rem;
+[data-theme="dark"] .dash-greeting-name {
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+.dash-greeting-sub {
+  font-size: 0.875rem;
   color: var(--text-muted);
   line-height: 1.5;
   max-width: 580px;

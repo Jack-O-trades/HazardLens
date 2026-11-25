@@ -304,9 +304,9 @@ export default function NewReportPage() {
           location: 'Riverdale Heights',
           reportedBy: user?.name || 'Citizen Reporter',
           reportedById: user?.id,
+          reporterRole: user?.role || 'community',
           confidence: finalConfidence,
           aiEvidence: aiResult,
-          reporterRole: user?.role,
           coordinates,
         })
 

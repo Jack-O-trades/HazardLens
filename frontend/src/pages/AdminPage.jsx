@@ -79,11 +79,12 @@ function activate(fn) {
 
 export default function AdminPage() {
   const { user } = useAuth()
-  const { alerts } = useAlerts()
+  const { alerts, verifyAlert, rejectAlert, deleteAlert } = useAlerts()
   const navigate = useNavigate()
 
+  const pendingAlertsList = alerts.filter(a => a.status === 'pending')
   const totalAlerts = alerts.length
-  const pending      = alerts.filter(a => a.status === 'pending').length
+  const pending      = pendingAlertsList.length
   const verified     = alerts.filter(a => a.status === 'verified').length
   const critical     = alerts.filter(a => a.severity === 'critical').length
 
@@ -224,6 +225,108 @@ export default function AdminPage() {
           </div>
         </div>
 
+      </div>
+
+      {/* Pending Reports Verification Console */}
+      <div className="card admin-alerts-card" style={{ borderColor: 'hsla(35,95%,55%,0.3)', marginBottom: '1.25rem' }}>
+        <CardTitle icon={Clock} meta={`${pendingAlertsList.length} AWAITING VERIFICATION`}>
+          Admin Verification Console
+        </CardTitle>
+
+        {pendingAlertsList.length === 0 ? (
+          <div style={{ padding: '16px 8px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            ✓ All user reports have been verified or processed. No pending reports requiring verification.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {pendingAlertsList.map(alert => {
+              const sev = SEVERITY_STYLES[alert.severity] || SEVERITY_STYLES.default
+              return (
+                <div
+                  key={alert.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    padding: '12px 14px',
+                    backgroundColor: 'rgba(30, 41, 59, 0.4)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '8px',
+                    flexWrap: 'wrap'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '240px' }}>
+                    <span className="admin-alert-sev" style={{ background: sev.bg, color: sev.text }}>
+                      {alert.severity}
+                    </span>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {alert.title}
+                      </h4>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Reported by <strong>{alert.reportedBy}</strong> · Location: {alert.location} · AI Conf: {alert.confidence}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{
+                        backgroundColor: 'hsla(145, 60%, 45%, 0.2)',
+                        color: 'hsl(145, 60%, 50%)',
+                        border: '1px solid hsla(145, 60%, 45%, 0.4)',
+                        fontWeight: 700
+                      }}
+                      onClick={() => verifyAlert(alert.id, user?.name || 'Admin')}
+                    >
+                      ✓ Verify (Approve)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{
+                        backgroundColor: 'hsla(0, 75%, 55%, 0.2)',
+                        color: 'hsl(0, 75%, 55%)',
+                        border: '1px solid hsla(0, 75%, 55%, 0.4)',
+                        fontWeight: 700
+                      }}
+                      onClick={() => rejectAlert(alert.id, user?.name || 'Admin')}
+                    >
+                      ✗ Reject (Fake)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{
+                        backgroundColor: 'hsla(0, 75%, 55%, 0.15)',
+                        color: '#ef4444',
+                        border: '1px solid hsla(0, 75%, 55%, 0.3)',
+                        fontWeight: 700
+                      }}
+                      onClick={() => {
+                        if (window.confirm(`Delete report "${alert.title}" permanently?`)) {
+                          deleteAlert(alert.id)
+                        }
+                      }}
+                    >
+                      🗑️ Delete
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => navigate(`/dashboard/alert/${alert.id}`)}
+                    >
+                      Details →
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Recent alerts table */}

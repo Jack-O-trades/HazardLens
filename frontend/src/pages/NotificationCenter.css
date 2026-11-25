@@ -1,3 +1,659 @@
+/* ============================================================
+   NotificationCenter — Theme-aware styles
+   Warm off-white background, white cards, dark navy text
+   ============================================================ */
+
+/* ── Page shell ── */
+.nc-page {
+  --nc-bg: #edecea;
+  --nc-header-bg: #edecea;
+  --nc-card-bg: #ffffff;
+  --nc-item-bg: #f5f4f0;
+  --nc-item-hover: #edecea;
+  --nc-tabbar-bg: #f8f7f4;
+  --nc-border: #e0ded9;
+  --nc-border-subtle: #e8e6e2;
+  --nc-text-title: #1a2640;
+  --nc-text-body: #2d3748;
+  --nc-text-muted: #64748b;
+  --nc-text-label: #6b778a;
+  --nc-scroll-thumb: #c8c6c2;
+  --nc-scroll-track: #edecea;
+  --nc-toggle-off: #c8cbd4;
+  --nc-toggle-on: #1a2640;
+
+  --nc-chip-critical-bg: #fce8e6;
+  --nc-chip-critical-text: #c0392b;
+  --nc-chip-critical-border: #f5c6c2;
+  --nc-chip-warning-bg: #fff3e0;
+  --nc-chip-warning-text: #b05a00;
+  --nc-chip-warning-border: #f5ddb8;
+
+  /* Third severity tier ("medium"), and card elevation/icon tokens —
+     added so severity styling and iconography are class-driven and
+     theme-aware instead of hardcoded per item in JSX. */
+  --nc-severity-caution-bg: #fffbeb;
+  --nc-severity-caution-text: #b45309;
+  --nc-severity-caution-border: #f5e6ae;
+
+  --nc-icon-moon: #4a5568;
+  --nc-icon-cloud: #5a7fa8;
+  --nc-icon-info: #64748b;
+  --nc-icon-shield: #2e6b3e;
+  --nc-icon-warn: #c8a020;
+
+  --nc-tab-inactive: #94a3b8;
+
+  --nc-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.03);
+
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--topbar-h));
+  background: var(--nc-bg);
+  margin: -1.75rem -2rem;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .nc-page {
+    margin: -1.25rem -1rem;
+  }
+}
+
+[data-theme="dark"] .nc-page {
+  --nc-bg: hsl(220, 20%, 8%);
+  --nc-header-bg: hsl(220, 20%, 8%);
+  --nc-card-bg: hsl(220, 18%, 11%);
+  --nc-item-bg: hsl(220, 16%, 13%);
+  --nc-item-hover: hsl(220, 16%, 17%);
+  --nc-tabbar-bg: hsl(220, 18%, 11%);
+  --nc-border: hsl(220, 14%, 22%);
+  --nc-border-subtle: hsl(220, 14%, 18%);
+  --nc-text-title: hsl(210, 20%, 96%);
+  --nc-text-body: hsl(210, 12%, 78%);
+  --nc-text-muted: hsl(210, 10%, 65%);
+  --nc-text-label: hsl(210, 10%, 55%);
+  --nc-scroll-thumb: hsl(220, 14%, 30%);
+  --nc-scroll-track: hsl(220, 20%, 8%);
+  --nc-toggle-off: hsl(220, 14%, 22%);
+  --nc-toggle-on: hsl(34, 92%, 55%);
+
+  --nc-chip-critical-bg: hsla(0, 78%, 62%, 0.15);
+  --nc-chip-critical-text: hsl(0, 78%, 62%);
+  --nc-chip-critical-border: hsla(0, 78%, 62%, 0.3);
+  --nc-chip-warning-bg: hsla(42, 95%, 55%, 0.15);
+  --nc-chip-warning-text: hsl(42, 95%, 55%);
+  --nc-chip-warning-border: hsla(42, 95%, 55%, 0.3);
+
+  --nc-severity-caution-bg: hsla(38, 92%, 58%, 0.15);
+  --nc-severity-caution-text: hsl(38, 92%, 58%);
+  --nc-severity-caution-border: hsla(38, 92%, 58%, 0.3);
+
+  --nc-icon-moon: hsl(210, 10%, 65%);
+  --nc-icon-cloud: hsl(210, 55%, 68%);
+  --nc-icon-info: hsl(210, 10%, 65%);
+  --nc-icon-shield: hsl(140, 45%, 58%);
+  --nc-icon-warn: hsl(42, 90%, 62%);
+
+  --nc-tab-inactive: hsl(210, 10%, 55%);
+
+  --nc-card-shadow: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .nc-page {
+    --nc-bg: hsl(220, 20%, 8%);
+    --nc-header-bg: hsl(220, 20%, 8%);
+    --nc-card-bg: hsl(220, 18%, 11%);
+    --nc-item-bg: hsl(220, 16%, 13%);
+    --nc-item-hover: hsl(220, 16%, 17%);
+    --nc-tabbar-bg: hsl(220, 18%, 11%);
+    --nc-border: hsl(220, 14%, 22%);
+    --nc-border-subtle: hsl(220, 14%, 18%);
+    --nc-text-title: hsl(210, 20%, 96%);
+    --nc-text-body: hsl(210, 12%, 78%);
+    --nc-text-muted: hsl(210, 10%, 65%);
+    --nc-text-label: hsl(210, 10%, 55%);
+    --nc-scroll-thumb: hsl(220, 14%, 30%);
+    --nc-scroll-track: hsl(220, 20%, 8%);
+    --nc-toggle-off: hsl(220, 14%, 22%);
+    --nc-toggle-on: hsl(34, 92%, 55%);
+
+    --nc-chip-critical-bg: hsla(0, 78%, 62%, 0.15);
+    --nc-chip-critical-text: hsl(0, 78%, 62%);
+    --nc-chip-critical-border: hsla(0, 78%, 62%, 0.3);
+    --nc-chip-warning-bg: hsla(42, 95%, 55%, 0.15);
+    --nc-chip-warning-text: hsl(42, 95%, 55%);
+    --nc-chip-warning-border: hsla(42, 95%, 55%, 0.3);
+
+    --nc-severity-caution-bg: hsla(38, 92%, 58%, 0.15);
+    --nc-severity-caution-text: hsl(38, 92%, 58%);
+    --nc-severity-caution-border: hsla(38, 92%, 58%, 0.3);
+
+    --nc-icon-moon: hsl(210, 10%, 65%);
+    --nc-icon-cloud: hsl(210, 55%, 68%);
+    --nc-icon-info: hsl(210, 10%, 65%);
+    --nc-icon-shield: hsl(140, 45%, 58%);
+    --nc-icon-warn: hsl(42, 90%, 62%);
+
+    --nc-tab-inactive: hsl(210, 10%, 55%);
+
+    --nc-card-shadow: none;
+  }
+}
+
+/* ── Header ── */
+.nc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 18px 14px;
+  background: var(--nc-header-bg);
+  border-bottom: 1px solid var(--nc-border-subtle);
+  flex-shrink: 0;
+  transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
+}
+
+.nc-title {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--nc-text-title);
+  font-family: var(--font-heading, 'Inter', sans-serif);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  transition: color var(--dur-med) var(--ease);
+}
+
+/* Digest mode toggle */
+.nc-digest-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nc-digest-label {
+  font-size: 0.875rem;
+  color: var(--nc-text-body);
+  font-weight: 500;
+}
+
+.nc-toggle {
+  width: 50px;
+  height: 30px;
+  border-radius: 99px;
+  background: var(--nc-toggle-off);
+  border: none;
+  position: relative;
+  cursor: pointer;
+  transition: background var(--dur-med) var(--ease);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.nc-toggle--on {
+  background: var(--nc-toggle-on);
+}
+
+.nc-toggle:focus-visible {
+  outline: 2px solid var(--nc-toggle-on);
+  outline-offset: 2px;
+}
+
+.nc-toggle-thumb {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--nc-card-bg);
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s ease, background var(--dur-med) var(--ease);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.nc-toggle--on .nc-toggle-thumb {
+  transform: translateX(20px);
+}
+
+/* ── Quiet hours banner ── */
+.nc-quiet-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 14px 10px;
+  padding: 14px 16px;
+  background: var(--nc-item-bg);
+  border-radius: 12px;
+  border: 1px solid var(--nc-border);
+  box-shadow: var(--nc-card-shadow);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--dur-fast), border-color var(--dur-med) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.nc-quiet-banner:hover {
+  background: var(--nc-item-hover);
+  transform: translateY(-1px);
+}
+.nc-quiet-banner:focus-visible {
+  outline: 2px solid var(--nc-toggle-on);
+  outline-offset: 2px;
+}
+
+.nc-quiet-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nc-quiet-text { flex: 1; }
+
+.nc-quiet-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--nc-text-title);
+  transition: color var(--dur-med) var(--ease);
+}
+
+.nc-quiet-sub {
+  font-size: 0.76rem;
+  color: var(--nc-text-muted);
+  margin-top: 2px;
+  transition: color var(--dur-med) var(--ease);
+}
+
+.nc-quiet-chevron {
+  color: var(--nc-text-muted);
+  flex-shrink: 0;
+  transform: rotate(180deg);
+  transition: transform 0.2s, color var(--dur-med) var(--ease);
+}
+.nc-quiet-chevron--up { transform: rotate(0deg); }
+
+/* ── Icons — theme-aware via currentColor ── */
+.nc-icon {
+  color: var(--nc-text-muted);
+}
+.nc-icon--moon   { color: var(--nc-icon-moon); }
+.nc-icon--cloud  { color: var(--nc-icon-cloud); }
+.nc-icon--info   { color: var(--nc-icon-info); }
+.nc-icon--shield { color: var(--nc-icon-shield); }
+.nc-icon--warn   { color: var(--nc-icon-warn); }
+
+/* ── Scrollable area ── */
+.nc-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 14px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--nc-scroll-thumb) var(--nc-scroll-track);
+  transition: scrollbar-color var(--dur-med) var(--ease);
+}
+.nc-scroll::-webkit-scrollbar { width: 4px; }
+.nc-scroll::-webkit-scrollbar-track { background: transparent; }
+.nc-scroll::-webkit-scrollbar-thumb { background: var(--nc-scroll-thumb); border-radius: 99px; }
+
+/* ── Section labels ── */
+.nc-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--nc-text-label);
+  text-transform: uppercase;
+  padding: 14px 4px 8px;
+  transition: color var(--dur-med) var(--ease);
+}
+
+/* ── NEEDS ATTENTION cards ── */
+.nc-attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--nc-item-bg);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--nc-border);
+  box-shadow: var(--nc-card-shadow);
+  transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
+}
+
+.nc-att-card {
+  position: relative;
+  padding: 14px 14px 12px 18px;
+  border-left: 4px solid transparent;
+  border-bottom: 1px solid var(--nc-border-subtle);
+  cursor: pointer;
+  transition: background 0.12s, border-color var(--dur-med) var(--ease);
+  background: var(--nc-item-bg);
+}
+.nc-att-card:last-child { border-bottom: none; }
+.nc-att-card:hover { background: var(--nc-item-hover); }
+.nc-att-card:focus-visible {
+  outline: 2px solid var(--nc-toggle-on);
+  outline-offset: -2px;
+}
+
+/* Severity → color, driven entirely by CSS so it adapts per theme
+   instead of per-item inline hex values. */
+.nc-att-card--critical { border-left-color: var(--nc-chip-critical-text); }
+.nc-att-card--high     { border-left-color: var(--nc-chip-warning-text); }
+.nc-att-card--medium   { border-left-color: var(--nc-severity-caution-text); }
+
+/* Title row */
+.nc-att-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  flex-wrap: wrap;
+}
+
+.nc-att-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.nc-att-dot--critical { background: var(--nc-chip-critical-text); }
+.nc-att-dot--high     { background: var(--nc-chip-warning-text); }
+.nc-att-dot--medium   { background: var(--nc-severity-caution-text); }
+
+.nc-att-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--nc-text-title);
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-heading, 'Inter', sans-serif);
+  transition: color var(--dur-med) var(--ease);
+}
+
+/* Confidence badge */
+.nc-conf-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.nc-conf-badge--critical {
+  background: var(--nc-chip-critical-bg);
+  color: var(--nc-chip-critical-text);
+  border-color: var(--nc-chip-critical-border);
+}
+.nc-conf-badge--high {
+  background: var(--nc-chip-warning-bg);
+  color: var(--nc-chip-warning-text);
+  border-color: var(--nc-chip-warning-border);
+}
+.nc-conf-badge--medium {
+  background: var(--nc-severity-caution-bg);
+  color: var(--nc-severity-caution-text);
+  border-color: var(--nc-severity-caution-border);
+}
+
+/* Affected area */
+.nc-att-area {
+  font-size: 0.78rem;
+  color: var(--nc-text-body);
+  margin-bottom: 8px;
+  display: flex;
+  gap: 6px;
+  transition: color var(--dur-med) var(--ease);
+}
+
+.nc-att-area-label {
+  font-weight: 500;
+  color: var(--nc-text-muted);
+}
+
+.nc-att-area-value {
+  color: var(--nc-text-body);
+  font-weight: 500;
+}
+
+/* Chips */
+.nc-att-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.nc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: var(--nc-bg);
+  color: var(--nc-text-body);
+  border: 1px solid var(--nc-border);
+  transition: all var(--dur-med) var(--ease);
+}
+
+.nc-chip--critical {
+  background: var(--nc-chip-critical-bg);
+  color: var(--nc-chip-critical-text);
+  border-color: var(--nc-chip-critical-border);
+}
+
+.nc-chip--warning {
+  background: var(--nc-chip-warning-bg);
+  color: var(--nc-chip-warning-text);
+  border-color: var(--nc-chip-warning-border);
+}
+
+.nc-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.nc-chip-dot--red    { background: #d93025; }
+.nc-chip-dot--orange { background: #f59e0b; }
+
+/* Footer row: issued + recommended action */
+.nc-att-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nc-att-issued {
+  font-size: 0.75rem;
+  color: var(--nc-text-muted);
+  flex-shrink: 0;
+  transition: color var(--dur-med) var(--ease);
+}
+
+.nc-att-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.nc-att-action-label {
+  font-size: 0.7rem;
+  color: var(--nc-text-muted);
+  text-align: right;
+}
+
+.nc-att-action-text {
+  font-size: 0.76rem;
+  color: var(--nc-text-body);
+  text-align: right;
+  line-height: 1.4;
+  transition: color var(--dur-med) var(--ease);
+}
+
+/* ── Simple rows (Earlier Today / This Week) ── */
+.nc-simple-list {
+  background: var(--nc-item-bg);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--nc-border);
+  box-shadow: var(--nc-card-shadow);
+  margin-bottom: 2px;
+  transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
+}
+
+.nc-simple-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.nc-simple-row:hover { background: var(--nc-item-hover); }
+
+/* Divider between rows via sibling selector instead of a per-row
+   inline style computed from array index. */
+.nc-simple-row + .nc-simple-row {
+  border-top: 1px solid var(--nc-border-subtle);
+}
+
+.nc-simple-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nc-simple-text { flex: 1; min-width: 0; }
+
+.nc-simple-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--nc-text-title);
+  line-height: 1.3;
+  transition: color var(--dur-med) var(--ease);
+}
+
+.nc-simple-sub {
+  font-size: 0.75rem;
+  color: var(--nc-text-muted);
+  margin-top: 2px;
+  transition: color var(--dur-med) var(--ease);
+}
+
+.nc-simple-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.nc-simple-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.nc-simple-time {
+  font-size: 0.78rem;
+  color: var(--nc-text-muted);
+  white-space: nowrap;
+  transition: color var(--dur-med) var(--ease);
+}
+
+/* ── Bottom tab bar ── */
+.nc-tabbar {
+  display: flex;
+  align-items: center;
+  background: var(--nc-tabbar-bg);
+  border-top: 1px solid var(--nc-border);
+  flex-shrink: 0;
+  padding: 4px 0 max(4px, env(safe-area-inset-bottom));
+  transition: background var(--dur-med) var(--ease), border-color var(--dur-med) var(--ease);
+}
+
+.nc-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px 6px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: opacity 0.15s;
+}
+.nc-tab:hover { opacity: 0.75; }
+.nc-tab:focus-visible {
+  outline: 2px solid var(--nc-toggle-on);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.nc-tab-icon {
+  color: var(--nc-tab-inactive);
+  transition: color var(--dur-med) var(--ease);
+}
+.nc-tab-icon--active {
+  color: var(--nc-text-title);
+}
+
+.nc-tab-label {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--nc-tab-inactive);
+  white-space: nowrap;
+  transition: color var(--dur-med) var(--ease);
+}
+
+.nc-tab--active .nc-tab-label {
+  color: var(--nc-text-title);
+  font-weight: 700;
+  transition: color var(--dur-med) var(--ease);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .nc-title { font-size: 1.9rem; }
+}
+
+@media (max-width: 600px) {
+  .nc-header { padding: 16px 14px 10px; }
+  .nc-title  { font-size: 1.6rem; }
+  .nc-scroll { padding: 0 10px 8px; }
+  .nc-quiet-banner { margin: 0 10px 10px; }
+}
+
+@media (max-width: 480px) {
+  .nc-title { font-size: 1.35rem; }
+  .nc-header { padding: 12px 12px 8px; }
+  .nc-tabs { gap: 0; }
+  .nc-tab { font-size: 0.8rem; padding: 0.5rem 0.75rem; }
+  .nc-att-card { padding: 0.85rem; }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .nc-quiet-banner,
+  .nc-toggle-thumb,
+  .nc-quiet-chevron,
+  .nc-tab,
+  .nc-att-card {
+    transition: none;
+  }
+  .nc-quiet-banner:hover {
+    transform: none;
+  }
+}
 /* ==========================================================================
    HAZARDLENS INCIDENT NOTIFICATION & BROADCAST COMMAND CENTER — CSS
    Enterprise Disaster Telemetry, Early Warning Siren Feeds & Dispatch Controls
@@ -1395,6 +2051,202 @@
   .nc-hero-title {
     font-size: 1.4rem;
   }
+}
+
+/* Audio Tone Grid */
+.nc-tone-button-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.nc-tone-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 120ms var(--ease);
+}
+
+.nc-tone-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.nc-tone-btn--active {
+  background: hsla(34, 92%, 50%, 0.12);
+  border-color: hsla(34, 92%, 50%, 0.4);
+  color: var(--accent-text);
+}
+
+[data-theme="dark"] .nc-tone-btn--active {
+  color: hsl(34, 95%, 68%);
+}
+
+.nc-sound-wave-anim {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.nc-sound-bar {
+  width: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: soundEqualizer 0.4s ease-in-out infinite alternate;
+}
+.nc-sound-bar-1 { height: 12px; animation-delay: 0.05s; }
+.nc-sound-bar-2 { height: 18px; animation-delay: 0.15s; }
+.nc-sound-bar-3 { height: 24px; animation-delay: 0.1s; }
+.nc-sound-bar-4 { height: 16px; animation-delay: 0.2s; }
+.nc-sound-bar-5 { height: 10px; animation-delay: 0.08s; }
+
+@keyframes soundEqualizer {
+  from { transform: scaleY(0.3); }
+  to   { transform: scaleY(1); }
+}
+
+.nc-sound-play-lbl {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+/* Side Action Card */
+.nc-side-card--action {
+  background: linear-gradient(135deg, hsla(34, 92%, 50%, 0.08) 0%, hsla(14, 90%, 55%, 0.04) 100%);
+  border-color: hsla(34, 92%, 50%, 0.25);
+}
+
+.nc-side-action-inner {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nc-side-action-ico {
+  color: var(--accent);
+}
+
+.nc-side-action-title {
+  font-family: var(--font-heading);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.nc-side-action-desc {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.nc-btn--side-action {
+  margin-top: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+.nc-btn--side-action:hover {
+  background: var(--bg-card);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+/* Empty State */
+.nc-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5rem 2rem;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xl);
+  text-align: center;
+}
+
+.nc-empty-icon-pod {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.nc-empty-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.nc-empty-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 380px;
+  margin-bottom: 1.25rem;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   8. RESPONSIVE BREAKPOINTS
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+  .nc-main-grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .nc-main-grid {
+    grid-template-columns: 1fr;
+  }
+  .nc-hero-title {
+    font-size: 1.6rem;
+  }
+  .nc-hero-right {
+    align-items: flex-start;
+    width: 100%;
+  }
+  .nc-telemetry-pill-strip {
+    width: 100%;
+  }
+  .nc-quiet-details-tray {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .nc-hero-header {
+    padding: 1.25rem 1.4rem;
+  }
+  .nc-hero-title {
+    font-size: 1.4rem;
+  }
   .nc-controls-strip {
     flex-direction: column;
     align-items: stretch;
@@ -1419,4 +2271,4 @@
   .nc-card-footer-right {
     justify-content: space-between;
   }
-}
+}

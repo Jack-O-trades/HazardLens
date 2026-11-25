@@ -358,4 +358,20 @@ router.patch('/:id/resolve', requireAuth, requireRole('verifier', 'corrector', '
   }
 })
 
+/**
+ * DELETE /api/alerts/:id
+ * Permanently delete an alert (admin only).
+ */
+router.delete('/:id', requireAuth, requireRole('admin'), async (req, res, next) => {
+  try {
+    const alert = await Alert.findByIdAndDelete(req.params.id)
+    if (!alert) {
+      return res.status(404).json({ error: 'Alert not found' })
+    }
+    res.json({ message: 'Alert deleted successfully', id: req.params.id })
+  } catch (err) {
+    next(err)
+  }
+})
+
 export default router
