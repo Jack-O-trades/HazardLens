@@ -1,5 +1,5 @@
 # HazardLens
-**AI-Powered Multi-Hazard Detection, Risk Assessment & Safe Route Recommendation**
+**AI-Powered Multi-Hazard Detection, Risk Assessment & Safe Route Recommendation⚠️**
 
 ## Overview
 Traditional navigation systems primarily optimize for distance and time. However, they often fail to account for active hazards such as flooding, road blockages, heavy rainfall, landslides, or other localized incidents. 
