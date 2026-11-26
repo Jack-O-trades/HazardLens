@@ -28,10 +28,10 @@ if (db) {
       FROM locations_fts f
       JOIN locations l ON f.rowid = l.rowid
       WHERE locations_fts MATCH ?
+        AND TRIM(l.name) != ''
       ORDER BY 
-          CASE WHEN l.feature_type = 'village' THEN 0 ELSE 1 END,
           rank
-      LIMIT 10
+      LIMIT 15
   `);
 }
 

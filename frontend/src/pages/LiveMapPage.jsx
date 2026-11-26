@@ -559,73 +559,65 @@ export default function LiveMapPage() {
 
   // ---- Search ----
   const geocode = async (query, { limit } = {}) => {
-    let localResults = [];
+    const maxResults = limit || 6;
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.results?.length > 0) {
-          localResults = data.results.map(r => ({
-            ...r,
-            display_name: r.display_name,
-            lat: String(r.lat),
-            lon: String(r.lon),
-            source: 'local'
-          }));
+    // Fire both local DB and Nominatim in parallel — never skip Nominatim
+    const [localResults, nomResults] = await Promise.all([
+      (async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(query)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.results?.length > 0) {
+              return data.results.map(r => ({
+                ...r,
+                display_name: r.display_name,
+                lat: String(r.lat),
+                lon: String(r.lon),
+                source: 'local'
+              }));
+            }
+          }
+        } catch (err) {
+          console.warn("Local search failed", err);
         }
-      }
-    } catch (err) {
-      console.warn("Local search failed", err);
-    }
-
-    // If local database returns plenty of results, return them immediately
-    if (localResults.length >= (limit || 6)) {
-      return localResults.slice(0, limit || 6);
-    }
-
-    let nomResults = [];
-    try {
-      const params = new URLSearchParams({ format: 'json', q: query, addressdetails: '1', countrycodes: 'in' });
-      // Request enough to fill the remaining slots
-      const nomLimit = limit ? limit - localResults.length : 6;
-      params.set('limit', String(Math.max(1, nomLimit)));
-
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.length > 0) {
-          nomResults = data.map(r => ({ ...r, source: 'nominatim' }));
+        return [];
+      })(),
+      (async () => {
+        try {
+          const params = new URLSearchParams({ format: 'json', q: query, addressdetails: '1', countrycodes: 'in', limit: '4' });
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.length > 0) {
+              return data.map(r => ({ ...r, source: 'nominatim' }));
+            }
+          }
+        } catch (err) {
+          console.warn("Nominatim search failed", err);
         }
+        return [];
+      })()
+    ]);
+
+    // Merge: Nominatim results first (cities/districts), then local (villages)
+    const combined = [];
+    const seenCoords = [];
+
+    const isDupeCoord = (lat, lon) =>
+      seenCoords.some(c => Math.abs(c[0] - lat) < 0.01 && Math.abs(c[1] - lon) < 0.01);
+
+    for (const r of [...nomResults, ...localResults]) {
+      const lat = parseFloat(r.lat);
+      const lon = parseFloat(r.lon);
+      if (!isDupeCoord(lat, lon)) {
+        seenCoords.push([lat, lon]);
+        combined.push(r);
       }
-    } catch (err) {
-      console.warn("Nominatim search failed", err);
+      if (combined.length >= maxResults) break;
     }
 
-    // Merge and deduplicate
-    const combined = [...localResults];
-    const seenNames = new Set(localResults.map(r => r.display_name.toLowerCase().trim()));
-
-    for (const nr of nomResults) {
-      const nameKey = nr.display_name.toLowerCase().trim();
-      const nrLat = parseFloat(nr.lat);
-      const nrLon = parseFloat(nr.lon);
-
-      const isNameDupe = Array.from(seenNames).some(seen =>
-        nameKey.includes(seen) || seen.includes(nameKey)
-      );
-      const isCoordDupe = localResults.some(lr =>
-        Math.abs(parseFloat(lr.lat) - nrLat) < 0.05 &&
-        Math.abs(parseFloat(lr.lon) - nrLon) < 0.05
-      );
-
-      if (!isNameDupe && !isCoordDupe) {
-        seenNames.add(nameKey);
-        combined.push(nr);
-      }
-    }
-
-    return combined.slice(0, limit || 6);
+    return combined;
   }
 
   const handleSearch = async (e) => {
@@ -914,7 +906,7 @@ export default function LiveMapPage() {
             {searchSuggestions.map((item, i) => {
               const parts = item.display_name.split(',')
               const mainName = parts[0]?.trim()
-              const subText = parts.slice(1, 3).join(',').trim()
+              const subText = parts.slice(1).join(',').trim()
               return (
                 <button key={item.place_id || i} onMouseDown={() => selectSuggestion(item)}
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', borderBottom: i < searchSuggestions.length - 1 ? `1px solid ${isDark ? '#1e293b' : '#f1f5f9'}` : 'none', cursor: 'pointer', textAlign: 'left', color: textUI }}
