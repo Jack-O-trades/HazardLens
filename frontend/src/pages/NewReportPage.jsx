@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAlerts } from '../context/AlertsContext'
 import { useAuth } from '../context/AuthContext'
+import { useNetwork } from '@/context/NetworkContext'
+import { enqueueOfflineReport } from '@/services/syncService'
 import './NewReportPage.css'
 
 const HAZARD_TYPES = [
@@ -25,6 +27,7 @@ export default function NewReportPage() {
   const navigate = useNavigate()
   const { addAlert } = useAlerts()
   const { user } = useAuth()
+  const { isOnline } = useNetwork()
 
   const videoRef = useRef()
   const canvasRef = useRef()
@@ -54,6 +57,14 @@ export default function NewReportPage() {
 
   // AI Inference call handler
   const analyzeImage = async (base64Image, claimedHazard) => {
+    const offline = !isOnline || (typeof navigator !== 'undefined' && !navigator.onLine)
+    if (offline) {
+      setAiLoading(false)
+      setAiResult(null)
+      setAiError('Offline mode: AI image inference will run once synced.')
+      return
+    }
+
     setAiLoading(true)
     setAiResult(null)
     setAiError(null)
@@ -267,11 +278,11 @@ export default function NewReportPage() {
     }
   }
 
-  // Simulated upload handler
+  // Simulated upload handler (queues into IndexedDB when offline)
   const handleUpload = () => {
     if (!photo) return
     setUploadStatus('uploading')
-    setTimeout(() => {
+    setTimeout(async () => {
       if (simulateSuccess) {
         // Calculate AI confidence score based on custom YOLO model detection
         let finalConfidence = 55 // fallback default
@@ -295,8 +306,7 @@ export default function NewReportPage() {
           }
         }
 
-        // Add the alert to AlertsContext
-        addAlert({
+        const reportPayload = {
           photos: [{ url: photo, caption: desc || 'Hazard reported', uploader: user?.name || 'Citizen Reporter', timestamp: timestamp, aiEvidence: aiResult }],
           hazardType: hazard,
           severity: severity,
@@ -308,7 +318,38 @@ export default function NewReportPage() {
           confidence: finalConfidence,
           aiEvidence: aiResult,
           coordinates,
-        })
+          timestamp,
+        }
+
+        const offline = !isOnline || (typeof navigator !== 'undefined' && !navigator.onLine)
+
+        if (offline) {
+          try {
+            const { localId, idempotencyKey } = await enqueueOfflineReport(reportPayload)
+            addAlert(reportPayload)
+            navigate('/dashboard/report/success', {
+              state: {
+                photo,
+                hazardType: hazard,
+                severity,
+                description: desc,
+                coordinates,
+                timestamp,
+                reportedBy: user?.name || 'Citizen Reporter',
+                savedOffline: true,
+                localId,
+                idempotencyKey,
+              },
+            })
+          } catch (err) {
+            console.error('Failed to enqueue offline report:', err)
+            setUploadStatus('failed')
+          }
+          return
+        }
+
+        // Add the alert to AlertsContext
+        addAlert(reportPayload)
 
         // NOTE: field names here are a best guess based on the old
         // context-page handoff shape (photo/hazardType/severity/
@@ -323,6 +364,7 @@ export default function NewReportPage() {
             coordinates,
             timestamp,
             reportedBy: user?.name || 'Citizen Reporter',
+            savedOffline: false,
           },
         })
       } else {
