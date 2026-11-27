@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Bell, Search, ChevronDown, Menu, User, Settings, LogOut, Sun, Moon } from 'lucide-react'
+import { Bell, Search, ChevronDown, Menu, User, Settings, LogOut, Sun, Moon, Wifi, WifiOff } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAlerts } from '../../context/AlertsContext'
 import { useTheme } from '../../context/ThemeContext'
+import { useNetwork } from '../../context/NetworkContext'
 import './TopBar.css'
 
 /* Shield icon matching the dark navy shield in the reference image */
@@ -82,6 +83,7 @@ export default function TopBar({ onMenuClick }) {
   const { user, logout } = useAuth()
   const { unreadNotificationCount } = useAlerts()
   const { theme, toggleTheme } = useTheme()
+  const { isOnline } = useNetwork()
   const navigate = useNavigate()
   const location = useLocation()
   const [dropOpen, setDropOpen] = useState(false)
@@ -123,7 +125,11 @@ export default function TopBar({ onMenuClick }) {
           onKeyDown={e => e.key === 'Enter' && navigate('/')}>
           <span className="topbar-brand-mark">
             <RiverdaleShieldIcon />
-            <span className="topbar-brand-status" aria-hidden="true" title="Monitoring active" />
+            <span
+              className={`topbar-brand-status ${!isOnline ? 'topbar-brand-status--offline' : ''}`}
+              aria-hidden="true"
+              title={isOnline ? 'Monitoring active' : 'Offline mode'}
+            />
           </span>
           <div className="topbar-brand-text">
             <span className="topbar-brand-name">RIVERDALE ALERTS</span>
@@ -147,8 +153,20 @@ export default function TopBar({ onMenuClick }) {
         </div>
       )}
 
-      {/* Right — Bell + User */}
+      {/* Right — Network status + Theme + Bell + User */}
       <div className="topbar-right">
+        <div
+          className={`topbar-net-pill ${isOnline ? 'topbar-net-pill--online' : 'topbar-net-pill--offline'}`}
+          title={isOnline ? 'Connected to internet' : 'No internet connection — offline mode active'}
+          role="status"
+          aria-live="polite"
+          id="topbar-network-status"
+        >
+          <span className="topbar-net-dot" aria-hidden="true" />
+          {isOnline ? <Wifi size={13} className="topbar-net-icon" /> : <WifiOff size={13} className="topbar-net-icon" />}
+          <span className="topbar-net-label">{isOnline ? 'Online' : 'Offline'}</span>
+        </div>
+
         <button
           className="topbar-theme-btn"
           onClick={toggleTheme}
