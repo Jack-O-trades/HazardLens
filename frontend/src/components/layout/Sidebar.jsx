@@ -51,7 +51,7 @@ export default function Sidebar({ isOpen, onClose }) {
       <div className="sidebar-header">
         <div
           className="sidebar-logo"
-          onClick={() => { navigate('/'); onClose(); }}
+          onClick={() => navigate('/')}
           style={{ cursor: 'pointer' }}
           role="button"
           tabIndex={0}
@@ -66,7 +66,7 @@ export default function Sidebar({ isOpen, onClose }) {
       </div>
 
       {/* User card — click to view profile */}
-      <button className="sidebar-user" onClick={() => { navigate('/dashboard/profile'); onClose() }}>
+      <button className="sidebar-user" onClick={() => navigate('/dashboard/profile')}>
         <div className="sidebar-avatar">{user.avatar}</div>
         <div className="sidebar-user-info">
           <p className="sidebar-user-name">{user.name}</p>

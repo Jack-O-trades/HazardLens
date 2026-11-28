@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { HAZARD_TYPES } from '../data/mockData'
+import { useNetwork } from '@/context/NetworkContext'
+import { enqueueOfflineReport } from '@/services/syncService'
 import './AddContextPage.css'
 
 const MAX_NOTES = 500
@@ -13,6 +15,7 @@ const TIME_STR = now.toLocaleDateString('en-US', {
 export default function AddContextPage() {
   const navigate  = useNavigate()
   const location  = useLocation()
+  const { isOnline } = useNetwork()
   const fileRef   = useRef()
   const videoRef  = useRef()
 
@@ -94,9 +97,29 @@ export default function AddContextPage() {
     })
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    const offline = !isOnline || (typeof navigator !== 'undefined' && !navigator.onLine)
+    if (offline) {
+      try {
+        const { localId, idempotencyKey } = await enqueueOfflineReport({
+          photos,
+          video,
+          hazardType: hazardValue || 'other',
+          hazardTag,
+          description: notes,
+          publicLoc,
+        })
+        navigate('/dashboard/report/success', {
+          state: { photos, video, hazardTag, notes, publicLoc, savedOffline: true, localId, idempotencyKey },
+        })
+      } catch (err) {
+        console.error('Failed to enqueue offline report:', err)
+      }
+      return
+    }
+
     navigate('/dashboard/report/success', {
-      state: { photos, video, hazardTag, notes, publicLoc },
+      state: { photos, video, hazardTag, notes, publicLoc, savedOffline: false },
     })
   }
 

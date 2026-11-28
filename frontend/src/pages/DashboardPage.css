@@ -1563,6 +1563,29 @@
   }
 }
 
+@media (max-width: 768px) {
+  .dash-tactical-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+  }
+  .dash-tactical-banner-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .dash-tactical-banner-text {
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+  .dash-tactical-banner-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.55rem 0.95rem;
+  }
+}
+
 @media (max-width: 640px) {
   .dash-hero-banner {
     padding: 1.25rem 1.35rem;

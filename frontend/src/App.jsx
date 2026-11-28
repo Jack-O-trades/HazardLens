@@ -2,6 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AlertsProvider } from './context/AlertsContext'
 import { ThemeProvider } from './context/ThemeContext'
+//Offline network
+import { NetworkProvider } from '@/context/NetworkContext'
+import OfflineBanner from '@/components/shared/OfflineBanner'
+import { useOfflineSync } from '@/hooks/useOfflineSync'
 
 // Layouts
 import AppLayout from './components/layout/AppLayout'
@@ -46,6 +50,8 @@ function PublicRoute({ children }) {
 }
 
 function AppRoutes() {
+  useOfflineSync()
+
   return (
     <Routes>
       {/* Public */}
@@ -86,14 +92,17 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AlertsProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </AlertsProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <NetworkProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AlertsProvider>
+            <BrowserRouter>
+              <OfflineBanner />
+              <AppRoutes />
+            </BrowserRouter>
+          </AlertsProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </NetworkProvider>
   )
 }
