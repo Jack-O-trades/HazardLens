@@ -511,8 +511,70 @@
   .admin-alert-reporter { grid-area: reporter; }
 }
 
+/* Admin Verification Console pending items */
+.admin-pending-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background-color: rgba(30, 41, 59, 0.4);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-pending-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.admin-pending-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-pending-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* ── Small-phone safety net ── */
+@media (max-width: 640px) {
+  .admin-pending-item {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+    gap: 10px;
+  }
+  .admin-pending-info {
+    min-width: 0;
+    width: 100%;
+    align-items: flex-start;
+  }
+  .admin-pending-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+  .admin-pending-actions .btn {
+    width: 100%;
+    justify-content: center;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 480px) {
   .admin-user-reports { min-width: 0; margin-left: 44px; }
   .admin-user-role { margin-left: 44px; }
+  .admin-pending-actions .btn {
+    font-size: 0.72rem;
+    padding: 0.42rem 0.5rem;
+  }
 }

@@ -244,23 +244,13 @@ export default function AdminPage() {
               return (
                 <div
                   key={alert.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                    padding: '12px 14px',
-                    backgroundColor: 'rgba(30, 41, 59, 0.4)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: '8px',
-                    flexWrap: 'wrap'
-                  }}
+                  className="admin-pending-item"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '240px' }}>
+                  <div className="admin-pending-info">
                     <span className="admin-alert-sev" style={{ background: sev.bg, color: sev.text }}>
                       {alert.severity}
                     </span>
-                    <div>
+                    <div className="admin-pending-text">
                       <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                         {alert.title}
                       </h4>
@@ -270,7 +260,7 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="admin-pending-actions">
                     <button
                       type="button"
                       className="btn btn-sm"

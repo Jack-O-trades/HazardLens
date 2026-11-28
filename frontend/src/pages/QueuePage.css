@@ -268,8 +268,17 @@
 }
 
 .qp-btn--primary:hover {
-  background: var(--accent-hover);
+  background: var(--accent-dim, #d97706);
+  border-color: var(--accent-dim, #d97706);
+  color: #ffffff;
+  box-shadow: 0 4px 14px hsla(34, 92%, 50%, 0.45);
   transform: translateY(-1px);
+}
+
+[data-theme="dark"] .qp-btn--primary:hover {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #0f172a;
 }
 
 .qp-btn--secondary {
@@ -1247,56 +1256,224 @@
    7. RESPONSIVE BREAKPOINTS
    ========================================================================== */
 
-@media (max-width: 1200px) {
-  .qp-metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 1024px) {
+  .qp-telemetry-ribbon {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  [data-theme="dark"] .qp-telemetry-ribbon {
+    background: hsl(220, 18%, 17%);
+  }
+
+  .qp-ribbon-divider {
+    display: none;
+  }
+
+  .qp-ribbon-segment {
+    background: var(--bg-surface);
+    padding: 0.9rem 1.1rem;
+  }
+
+  [data-theme="dark"] .qp-ribbon-segment {
+    background: hsl(220, 22%, 10%);
+  }
+
   .qp-table-container {
     overflow-x: auto;
   }
+
   .qp-matrix-table {
     min-width: 860px;
   }
 }
 
-@media (max-width: 640px) {
-  .qp-hero-header {
-    padding: 1.25rem 1.4rem;
+@media (max-width: 768px) {
+  .qp-console-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+    padding: 1rem;
+    border-radius: var(--radius-lg);
   }
-  .qp-hero-title {
-    font-size: 1.4rem;
+
+  .qp-console-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
-  .qp-metrics-grid {
-    grid-template-columns: 1fr;
-  }
+
   .qp-filter-bar {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.85rem;
   }
+
+  .qp-search-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+
   .qp-status-tabs {
     overflow-x: auto;
     width: 100%;
+    -webkit-overflow-scrolling: touch;
   }
+
   .qp-dropdown-group {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
     width: 100%;
   }
-  .qp-select-pill-wrap {
-    width: 100%;
-  }
+
+  .qp-select-pill-wrap,
   .qp-select-pill {
     width: 100%;
   }
-  .qp-batch-dock {
-    width: calc(100% - 32px);
+
+  /* Transform wide table into clean mobile incident cards */
+  .qp-table-container {
+    overflow-x: visible;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .qp-matrix-table {
+    min-width: 0 !important;
+    width: 100%;
+    display: block;
+  }
+
+  .qp-matrix-table thead {
+    display: none;
+  }
+
+  .qp-matrix-table tbody {
+    display: flex;
     flex-direction: column;
     gap: 0.75rem;
   }
+
+  .qp-matrix-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem 0.75rem;
+    padding: 0.9rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    align-items: start;
+  }
+
+  [data-theme="dark"] .qp-matrix-row {
+    background: hsl(220, 22%, 10%);
+    border-color: hsl(220, 18%, 17%);
+  }
+
+  .qp-matrix-row--critical {
+    border-left: 3px solid var(--sev-critical);
+  }
+
+  .qp-matrix-row td {
+    display: block;
+    padding: 0 !important;
+    border: none !important;
+    width: auto !important;
+    min-width: 0;
+  }
+
+  .qp-td-check {
+    grid-column: 1;
+    grid-row: 1;
+    padding-top: 2px !important;
+  }
+
+  .qp-td-hazard {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .qp-td-loc,
+  .qp-td-sev,
+  .qp-td-conf,
+  .qp-td-status,
+  .qp-td-sla {
+    grid-column: 1 / -1;
+  }
+
+  .qp-td-actions {
+    grid-column: 1 / -1;
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 0.6rem !important;
+    margin-top: 0.15rem;
+    border-top: 1px solid var(--border-subtle) !important;
+  }
+
+  .qp-batch-dock {
+    width: calc(100% - 24px);
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
   .qp-batch-actions {
     width: 100%;
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 540px) {
+  .qp-console-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .qp-console-actions .qp-btn {
+    padding: 0.45rem 0.4rem;
+    font-size: 0.72rem;
+    gap: 4px;
+  }
+
+  .qp-ribbon-segment {
+    padding: 0.75rem 0.7rem;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .qp-ribbon-icon-pod {
+    width: 28px;
+    height: 28px;
+  }
+
+  .qp-ribbon-icon-pod svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .qp-ribbon-val {
+    font-size: 1.2rem;
+  }
+
+  .qp-ribbon-tag {
+    font-size: 0.68rem;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .qp-ribbon-lbl {
+    font-size: 0.66rem;
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  .qp-dropdown-group {
+    grid-template-columns: 1fr;
   }
 }
